@@ -99,3 +99,23 @@
 - Ação tomada: instalação do projeto e extras de desenvolvimento em uma virtualenv local dedicada (`.venv-codex-runtime`) e reexecução da suíte por esse ambiente.
 - Status: contornado na sessão.
 - Observação futura: validar se o fluxo preferido do projeto para testes locais deve ser `uv run` ou uma virtualenv explícita quando houver sandbox/ambiente misto.
+
+## 2026-03-09 - Conflito transitório de nome de container no `codex-dev`
+
+- Contexto: validação operacional da infraestrutura isolada de desenvolvimento do Codex na branch `chore/devcontainer-codex-isolation`.
+- Ação/comando relacionado: `docker compose -f compose.yaml -f compose.dev.yaml up -d codex-dev`, `./scripts/dev-codex.sh -- --version`
+- Erro observado: conflito de nome de container ao executar o launcher enquanto um `compose up` manual concorrente recriava `codex-dev`.
+- Causa identificada: corrida operacional entre subida manual do serviço e execução do launcher, não falha estrutural do `compose.dev.yaml`.
+- Ação tomada: validação refeita em série, com `codex-dev` já estável antes do launcher.
+- Status: resolvido.
+- Observação futura: usar `./scripts/dev-codex.sh` como entrypoint principal do ambiente para evitar corrida de recriação do container.
+
+## 2026-03-09 - Branch Sync Gate bloqueou finalização com drift e worktree suja
+
+- Contexto: tentativa de fechamento da branch antes do push/PR da frente operacional.
+- Ação/comando relacionado: `./scripts/branch-sync-check.sh`
+- Erro observado: a checagem reportou `behind=1`, bloqueando a finalização até a branch voltar a um estado sincronizável.
+- Causa identificada: drift temporário com `origin/main` combinado com worktree ainda suja, impedindo atualização segura pela Branch Sync Gate.
+- Ação tomada: o bloqueio foi respeitado; a finalização só ficou liberada após a branch voltar a um estado limpo e à frente do remoto da própria branch.
+- Status: resolvido.
+- Observação futura: rodar `./scripts/branch-sync-check.sh` cedo e manter a worktree limpa antes de tentar `commit`/`push`/`PR`.
