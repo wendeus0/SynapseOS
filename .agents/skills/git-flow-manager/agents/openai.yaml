@@ -1,0 +1,11 @@
+interface:
+  display_name: "Git Flow Manager"
+  short_description: "Gerencia commit, push e pull request da feature atual."
+  brand_color: "#1D4ED8"
+  default_prompt: |
+    Use a skill git-flow-manager para finalizar o fluxo Git da feature atual.
+    Revise o estado da branch, organize um commit limpo, faça push e abra ou prepare a pull request.
+    Não implemente código, não altere SPECs e não mexa em Docker ou arquitetura nesta etapa.
+
+policy:
+  allow_implicit_invocation: false
