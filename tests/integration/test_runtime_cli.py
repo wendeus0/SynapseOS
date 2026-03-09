@@ -3,13 +3,16 @@ from __future__ import annotations
 from importlib import import_module
 from pathlib import Path
 import json
+import os
 import subprocess
 import sys
+import time
 
 from typer.testing import CliRunner
 
 
 runner = CliRunner()
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def invoke_runtime_command(tmp_path: Path, *args: str):
@@ -19,6 +22,51 @@ def invoke_runtime_command(tmp_path: Path, *args: str):
         "AIGNT_OS_RUNTIME_STATE_DIR": str(tmp_path),
     }
     return runner.invoke(cli_module.app, ["runtime", *args], env=env)
+
+
+def spawn_runtime_foreground(tmp_path: Path) -> subprocess.Popen[str]:
+    env = os.environ.copy()
+    python_path = str(REPO_ROOT / "src")
+    existing_python_path = env.get("PYTHONPATH")
+    env["PYTHONPATH"] = (
+        f"{python_path}{os.pathsep}{existing_python_path}"
+        if existing_python_path
+        else python_path
+    )
+    env["AIGNT_OS_ENVIRONMENT"] = "test"
+    env["AIGNT_OS_RUNTIME_STATE_DIR"] = str(tmp_path)
+
+    return subprocess.Popen(
+        [
+            sys.executable,
+            "-c",
+            "from aignt_os.cli.app import app; app()",
+            "runtime",
+            "run",
+        ],
+        cwd=REPO_ROOT,
+        env=env,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+
+def terminate_process(process: subprocess.Popen[str]) -> subprocess.CompletedProcess[str]:
+    process.terminate()
+    try:
+        stdout, stderr = process.communicate(timeout=5)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        stdout, stderr = process.communicate(timeout=5)
+
+    return subprocess.CompletedProcess(
+        args=process.args,
+        returncode=process.returncode,
+        stdout=stdout,
+        stderr=stderr,
+    )
 
 
 def test_runtime_start_initializes_single_resident_process_and_persists_state(
@@ -140,3 +188,79 @@ def test_runtime_start_rejects_untrusted_state_directory(tmp_path: Path) -> None
 
     assert result.exit_code != 0
     assert "state" in result.stdout.lower() or "state" in result.stderr.lower()
+
+
+def test_runtime_cli_exposes_foreground_command_for_container_entrypoint(
+    tmp_path: Path,
+) -> None:
+    result = invoke_runtime_command(tmp_path, "run", "--help")
+
+    assert result.exit_code == 0
+    assert "run" in result.stdout.lower()
+
+
+def test_runtime_foreground_command_stays_alive_until_signaled(tmp_path: Path) -> None:
+    process = spawn_runtime_foreground(tmp_path)
+    try:
+        time.sleep(0.3)
+
+        assert process.poll() is None
+
+        status_result = invoke_runtime_command(tmp_path, "status")
+        assert status_result.exit_code == 0
+        assert "running" in status_result.stdout.lower()
+    finally:
+        completed = terminate_process(process)
+
+    assert completed.returncode == 0
+
+
+def test_runtime_cli_exposes_readiness_command(tmp_path: Path) -> None:
+    result = invoke_runtime_command(tmp_path, "ready")
+
+    assert result.exit_code != 2
+
+
+def test_runtime_ready_reports_ready_for_running_foreground_runtime(
+    tmp_path: Path,
+) -> None:
+    process = spawn_runtime_foreground(tmp_path)
+    try:
+        time.sleep(0.3)
+
+        ready_result = invoke_runtime_command(tmp_path, "ready")
+
+        assert ready_result.exit_code == 0
+        assert "ready" in ready_result.stdout.lower() or "running" in ready_result.stdout.lower()
+    finally:
+        terminate_process(process)
+
+
+def test_runtime_ready_fails_when_foreground_identity_token_is_adulterated(
+    tmp_path: Path,
+) -> None:
+    process = spawn_runtime_foreground(tmp_path)
+    try:
+        time.sleep(0.3)
+
+        state_file = tmp_path / "runtime-state.json"
+        persisted_state = json.loads(state_file.read_text(encoding="utf-8"))
+        persisted_state["process_identity"] = "unexpected-foreground-token"
+        state_file.write_text(json.dumps(persisted_state), encoding="utf-8")
+
+        ready_result = invoke_runtime_command(tmp_path, "ready")
+        status_result = invoke_runtime_command(tmp_path, "status")
+
+        assert ready_result.exit_code != 0
+        assert "not ready" in ready_result.stdout.lower() or "not ready" in ready_result.stderr.lower()
+        assert status_result.exit_code != 0
+        assert "inconsistent" in status_result.stdout.lower() or "inconsistent" in status_result.stderr.lower()
+    finally:
+        terminate_process(process)
+
+
+def test_runtime_ready_fails_when_runtime_is_not_running(tmp_path: Path) -> None:
+    result = invoke_runtime_command(tmp_path, "ready")
+
+    assert result.exit_code != 0
+    assert "not ready" in result.stdout.lower() or "not ready" in result.stderr.lower()

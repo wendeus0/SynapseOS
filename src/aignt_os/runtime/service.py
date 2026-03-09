@@ -35,11 +35,7 @@ class RuntimeService:
         self.state_store = RuntimeStateStore(state_file)
 
     def start(self) -> RuntimeState:
-        state = self.current_state()
-        if state.status == "running":
-            raise RuntimeLifecycleError("Runtime is already running.")
-        if state.status == "inconsistent":
-            raise RuntimeLifecycleError("Runtime state is inconsistent.")
+        self._require_runnable_state()
 
         process_identity = secrets.token_hex(16)
         process = subprocess.Popen(
@@ -60,6 +56,33 @@ class RuntimeService:
 
     def status(self) -> RuntimeState:
         return self.current_state()
+
+    def ready(self) -> bool:
+        return self.current_state().status == "running"
+
+    def run_foreground(self, process_identity: str) -> None:
+        self._require_runnable_state()
+
+        running = True
+
+        def handle_shutdown(signum: int, frame: object) -> None:
+            del signum, frame
+            nonlocal running
+            running = False
+
+        previous_sigterm = signal.signal(signal.SIGTERM, handle_shutdown)
+        previous_sigint = signal.signal(signal.SIGINT, handle_shutdown)
+
+        # This is the minimal resident process for the AIgnt-Synapse-Flow runtime.
+        self.state_store.write_running(os.getpid(), process_identity)
+
+        try:
+            while running:
+                time.sleep(0.1)
+        finally:
+            self.state_store.write_stopped()
+            signal.signal(signal.SIGTERM, previous_sigterm)
+            signal.signal(signal.SIGINT, previous_sigint)
 
     def stop(self) -> RuntimeState:
         state = self.current_state()
@@ -86,6 +109,13 @@ class RuntimeService:
                 process_identity=state.process_identity,
             )
         return state
+
+    def _require_runnable_state(self) -> None:
+        state = self.current_state()
+        if state.status == "running":
+            raise RuntimeLifecycleError("Runtime is already running.")
+        if state.status == "inconsistent":
+            raise RuntimeLifecycleError("Runtime state is inconsistent.")
 
     def _stop_process(self, pid: int) -> None:
         deadline = time.monotonic() + 2.0
@@ -129,4 +159,16 @@ def _process_identity_matches(pid: int, process_identity: str | None) -> bool:
     except OSError:
         return False
 
-    return PROCESS_MARKER in arguments and process_identity in arguments
+    if PROCESS_MARKER in arguments and process_identity in arguments:
+        return True
+
+    return _is_foreground_runtime_process(arguments, process_identity)
+
+
+def _is_foreground_runtime_process(arguments: list[str], process_identity: str) -> bool:
+    return (
+        "runtime" in arguments
+        and "run" in arguments
+        and "--process-identity" in arguments
+        and process_identity in arguments
+    )

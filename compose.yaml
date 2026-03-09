@@ -7,13 +7,19 @@ services:
         APP_UID: ${AIGNT_OS_UID:-1000}
         APP_GID: ${AIGNT_OS_GID:-1000}
     image: aignt-os:dev
-    command: ["--help"]
+    command: ["runtime", "run"]
     environment:
       AIGNT_OS_ENVIRONMENT: development
     user: "${AIGNT_OS_UID:-1000}:${AIGNT_OS_GID:-1000}"
     volumes:
       - ./artifacts:/app/artifacts
     working_dir: /app
+    healthcheck:
+      test: ["CMD", "aignt", "runtime", "ready"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+      start_period: 2s
     init: true
     stdin_open: true
     tty: true

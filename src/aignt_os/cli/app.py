@@ -1,3 +1,8 @@
+import os
+import secrets
+import sys
+from typing import Annotated
+
 import typer
 
 from aignt_os import __version__
@@ -49,6 +54,47 @@ def runtime_status() -> None:
         raise typer.Exit(code=1)
 
     typer.echo(f"Runtime status: {state.status}")
+
+
+@runtime_app.command("run")
+def runtime_run(
+    process_identity: Annotated[
+        str | None,
+        typer.Option("--process-identity", hidden=True),
+    ] = None,
+) -> None:
+    if process_identity is None:
+        os.execvpe(
+            sys.executable,
+            [
+                sys.executable,
+                "-c",
+                "from aignt_os.cli.app import app; app()",
+                "runtime",
+                "run",
+                "--process-identity",
+                secrets.token_hex(16),
+            ],
+            os.environ.copy(),
+        )
+
+    service = _runtime_service()
+    try:
+        service.run_foreground(process_identity)
+    except RuntimeLifecycleError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+
+@runtime_app.command("ready")
+def runtime_ready() -> None:
+    service = _runtime_service()
+    if service.ready():
+        typer.echo("Runtime ready")
+        return
+
+    typer.echo("Runtime not ready", err=True)
+    raise typer.Exit(code=1)
 
 
 @runtime_app.command("stop")

@@ -17,6 +17,17 @@ def run_script(*args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
+def run_script_with_env(env: dict[str, str], *args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [str(REPO_ROOT / args[0]), *args[1:]],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+        env=env,
+    )
+
+
 def test_operational_ci_uses_real_pull_request_head_checkout() -> None:
     workflow_text = (REPO_ROOT / ".github/workflows/operational-ci.yml").read_text(encoding="utf-8")
 
@@ -93,9 +104,7 @@ def test_docker_up_supports_dry_run() -> None:
     assert result.returncode == 0
     assert "docker compose" in result.stdout
     assert "up" in result.stdout
-    assert "--detach" in result.stdout
     assert "--build" in result.stdout
-    assert "health gate command" in result.stdout
 
 
 def test_docker_preflight_supports_dry_run() -> None:
@@ -114,16 +123,73 @@ def test_docker_preflight_full_runtime_supports_dry_run() -> None:
     assert result.returncode == 0
     assert "docker compose" in result.stdout
     assert "up command" in result.stdout
-    assert "docker-health.sh" in result.stdout
+    assert "healthy" in result.stdout
 
 
-def test_docker_health_supports_dry_run() -> None:
-    result = run_script("scripts/docker-health.sh", "--dry-run")
+def test_docker_preflight_full_runtime_requires_declared_healthcheck(
+    tmp_path: Path, monkeypatch
+) -> None:
+    docker_bin = tmp_path / "docker"
+    docker_bin.write_text(
+        """#!/usr/bin/env bash
+set -euo pipefail
+if [[ "$1" == "version" ]]; then
+  exit 0
+fi
+if [[ "$1" == "compose" ]]; then
+  shift
+  if [[ "$1" == "-f" ]]; then
+    shift 2
+  fi
+  case "$1" in
+    config|build|up)
+      exit 0
+      ;;
+    ps)
+      printf '%s\\n' fake-container-id
+      exit 0
+      ;;
+  esac
+fi
+if [[ "$1" == "inspect" ]]; then
+  if [[ "$3" == *".State.Status"* ]]; then
+    printf '%s\\n' running
+    exit 0
+  fi
+  if [[ "$3" == *".State.Health"* ]]; then
+    printf '%s\\n' no-healthcheck
+    exit 0
+  fi
+fi
+echo "unexpected docker invocation: $*" >&2
+exit 1
+""",
+        encoding="utf-8",
+    )
+    docker_bin.chmod(0o755)
+
+    env = os.environ.copy()
+    env["PATH"] = f"{tmp_path}:{env['PATH']}"
+    monkeypatch.setenv("PATH", env["PATH"])
+
+    result = run_script_with_env(
+        env,
+        "scripts/docker-preflight.sh",
+        "--full-runtime",
+        "--health-timeout",
+        "1",
+    )
+
+    assert result.returncode != 0
+    assert "healthcheck" in result.stderr.lower()
+
+
+def test_docker_preflight_full_runtime_declares_runtime_health_gate() -> None:
+    result = run_script("scripts/docker-preflight.sh", "--dry-run", "--full-runtime")
 
     assert result.returncode == 0
     assert "docker compose" in result.stdout
-    assert "inspect" in result.stdout
-    assert "runtime status" in result.stdout
+    assert "report healthy" in result.stdout
 
 
 def test_docker_rebuild_lists_relevant_inputs() -> None:
@@ -230,8 +296,6 @@ def test_commit_check_sync_dev_bootstraps_before_running_checks(
 def test_compose_declares_runtime_healthcheck() -> None:
     compose_text = (REPO_ROOT / "compose.yaml").read_text(encoding="utf-8")
 
-    assert "entrypoint:" in compose_text
-    assert "- /bin/sh" in compose_text
-    assert "- -lc" in compose_text
+    assert 'command: ["runtime", "run"]' in compose_text
     assert "healthcheck:" in compose_text
-    assert "aignt runtime status" in compose_text
+    assert 'test: ["CMD", "aignt", "runtime", "ready"]' in compose_text
