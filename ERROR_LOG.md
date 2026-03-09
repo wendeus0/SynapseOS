@@ -79,3 +79,23 @@
 - Ação tomada: nenhuma nesta feature; mantido como pendência separada.
 - Status: aberto.
 - Observação futura: tratar em ajuste operacional ou limpeza dedicada antes de usar o check completo como gate global.
+
+## 2026-03-09 08:40 - `.venv` local estava quebrada para executar `pytest`
+
+- Contexto: tentativa de validar a feature de runtime persistente após integrar a branch no merge operacional.
+- Ação/comando relacionado: `PYTHONPATH=src ./.venv/bin/pytest tests/integration/test_runtime_cli.py tests/unit/test_runtime_service_security.py tests/unit/test_runtime_state.py`
+- Erro observado: `bad interpreter` apontando para `/home/g0dsssp33d/work/projetcs/aignt-os/.venv/bin/python3`.
+- Causa identificada: virtualenv preexistente criada com caminho antigo/incorreto.
+- Ação tomada: a validação migrou para um ambiente local novo dedicado (`.venv-codex-runtime`).
+- Status: contornado na sessão.
+- Observação futura: recriar ou remover a `.venv` antiga para evitar falso negativo em validações locais.
+
+## 2026-03-09 08:42 - `uv run pytest` não enxergou dependências de runtime após `uv sync`
+
+- Contexto: validação da suíte específica do runtime persistente depois de sincronizar dependências dev.
+- Ação/comando relacionado: `env UV_CACHE_DIR=/home/g0dsssp33d/work/projects/aignt-os/.cache/uv uv run pytest tests/integration/test_runtime_cli.py tests/unit/test_runtime_service_security.py tests/unit/test_runtime_state.py`
+- Erro observado: `ModuleNotFoundError: No module named 'typer'` durante a coleta.
+- Causa identificada: o runner usado pelo `uv run` permaneceu desalinhado com o ambiente esperado para a sessão.
+- Ação tomada: instalação do projeto e extras de desenvolvimento em uma virtualenv local dedicada (`.venv-codex-runtime`) e reexecução da suíte por esse ambiente.
+- Status: contornado na sessão.
+- Observação futura: validar se o fluxo preferido do projeto para testes locais deve ser `uv run` ou uma virtualenv explícita quando houver sandbox/ambiente misto.
