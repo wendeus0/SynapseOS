@@ -5,10 +5,11 @@ Registrar a stack Python recomendada para implementar o AIgnt OS conforme a arqu
 
 ## MVP
 - **Python 3.12**
+- **Docker + Compose** como requisito operacional inicial de execução prática
 - **Typer** para CLI
 - **Rich** para UX terminal
 - **python-statemachine** para estados
-- **engine própria de pipeline** em Python
+- **AIgnt-Synapse-Flow** em Python como engine própria de pipeline
 - **asyncio** para concorrência
 - **asyncio.create_subprocess_exec()** para execução de CLIs
 - **Pydantic v2** para contratos internos
@@ -25,7 +26,17 @@ Registrar a stack Python recomendada para implementar o AIgnt OS conforme a arqu
 ### Typer
 Melhor DX para CLI moderna, type hints e uso assistido por IA.
 
-### engine própria de pipeline
+### Docker + Compose
+Padroniza o `DOCKER_PREFLIGHT`, isola a execução prática e reduz o risco de comandos perigosos no host.
+
+Trade-offs:
+- melhora isolamento e repetibilidade do ambiente;
+- aumenta o custo operacional quando o Docker falha, inclusive para tarefas simples;
+- desloca o início prático da feature para depois da validação do ambiente;
+- exige que `repo-automation` prepare e valide o runtime antes de `spec-editor`.
+- por isso, o preflight padrão deve permanecer leve e o runtime completo deve ser reservado para workflows ou execuções explícitas.
+
+### AIgnt-Synapse-Flow
 Permite controle fino de hand-offs, retry, rollback e estágios específicos do domínio sem complexidade operacional de um orquestrador pesado.
 
 ### python-statemachine

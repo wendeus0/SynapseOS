@@ -23,6 +23,7 @@ Leia nesta ordem:
 Use esta skill quando:
 
 - a `SPEC.md` da feature estiver pronta
+- o `DOCKER_PREFLIGHT` já tiver sido validado pela skill `repo-automation`
 - a feature ainda não tiver testes adequados
 - a equipe quiser iniciar o ciclo RED → GREEN → REFACTOR
 

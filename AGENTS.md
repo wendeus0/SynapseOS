@@ -21,17 +21,34 @@ Em caso de conflito:
 ## Regras gerais
 - Trabalhe **uma feature por vez**.
 - Não misture escopo de duas features na mesma mudança.
-- Sempre siga a ordem:
-  1. refinar o pedido do usuário em SPEC
-  2. criar testes RED
-  3. implementar o código mínimo GREEN
-  4. refatorar sem quebrar os testes
-  5. atualizar o relatório da feature
+- Sempre siga o fluxo oficial:
+  1. `DOCKER_PREFLIGHT`
+  2. `SPEC`
+  3. `TEST_RED`
+  4. `CODE_GREEN`
+  5. `REFACTOR`
+  6. `SECURITY_REVIEW`
+  7. `REPORT`
+  8. `COMMIT`
 - Nunca invente requisitos ausentes. Se faltar informação, reduza escopo e registre a lacuna em `NOTES.md`.
 - Prefira mudanças pequenas, localizadas e reversíveis.
 - Nunca altere docs centrais sem necessidade real da feature.
-- Use sempre a expressão **engine própria de pipeline** ao se referir ao runtime interno do AIgnt OS.
+- Use sempre o nome **AIgnt-Synapse-Flow** ao se referir ao runtime interno do AIgnt OS. Ao menos uma vez por documento, deixe claro que ele é a **engine própria de pipeline** do AIgnt OS.
 - Preserve o caráter **CLI-first**, **spec-first** e **feature-by-feature** do projeto.
+
+## Fluxo oficial do projeto
+
+```text
+DOCKER_PREFLIGHT → SPEC → TEST_RED → CODE_GREEN → REFACTOR → SECURITY_REVIEW → REPORT → COMMIT
+```
+
+- `DOCKER_PREFLIGHT` é obrigatório antes de qualquer execução prática da feature.
+- O preflight operacional de Docker/container é responsabilidade da skill `repo-automation`.
+- Em CI e no fluxo local, o `DOCKER_PREFLIGHT` deve permanecer leve por padrão: validar compose e build sem subir o container completo.
+- O container completo só sobe em workflow dedicado de runtime/integração ou quando houver pedido explícito ligado a boot, ciclo de vida, persistência ou integração.
+- `spec-editor` só pode iniciar depois que o ambiente estiver verde em Docker ou explicitamente validado.
+- `security-review` atua como gate de segurança antes de `REPORT` e `COMMIT`.
+- `SPEC` pode conter subetapas internas como descoberta, normalização e validação, sem alterar o fluxo oficial acima.
 
 ## Escopo do MVP
 No MVP:
@@ -57,50 +74,74 @@ Pare imediatamente e peça revisão quando:
 - Faça TDD de forma explícita.
 - Escreva testes antes do código de produção.
 - Não refatore antes de os testes ficarem verdes.
+- Não inicie execução prática da feature sem `DOCKER_PREFLIGHT` validado.
 - Mantenha baixo acoplamento e contratos explícitos com Pydantic.
 - Trate parsing como componente crítico.
 - Separe output bruto de output limpo.
 - Não use abstrações prematuras.
 
 ## Agentes recomendados
-### 1. spec-editor
+### 1. repo-automation
+Responsável por:
+- executar `DOCKER_PREFLIGHT`
+- validar build/rebuild do container
+- validar alinhamento operacional com `main`
+- preparar workflows e scripts operacionais
+- manter o preflight leve por padrão, promovendo runtime completo apenas quando explicitamente necessário
+Não inicia lógica de produto.
+
+### 2. spec-editor
 Responsável por:
 - melhorar o pedido do usuário
 - transformar o pedido em `SPEC.md`
 - ajustar `SPEC_FORMAT.md` apenas se necessário
 - reduzir ambiguidade
+Só começa após `DOCKER_PREFLIGHT` verde ou explicitamente validado.
 Não implementa código de produção.
 
-### 2. test-red
+### 3. test-red
 Responsável por:
 - ler `SPEC.md`
 - criar testes que falham
 - validar critérios de aceite da feature
 Não implementa código de produção.
 
-### 3. green-refactor
+### 4. green-refactor
 Responsável por:
 - implementar o mínimo para passar nos testes
 - refatorar após os testes ficarem verdes
 - manter compatibilidade com a arquitetura
 Não altera a SPEC sem motivo explícito.
 
+### 5. security-review
+Responsável por:
+- revisar riscos de Docker, scripts, workflows, skills e código alterado
+- atuar como gate de segurança antes de `REPORT` e `COMMIT`
+- registrar mitigação objetiva quando houver ressalvas
+Não substitui `repo-automation` na execução operacional.
+
 ## Alternativas de operação
 Se multi-agent não estiver disponível:
-- execute `spec-editor` primeiro
+- execute `repo-automation` primeiro
+- depois `spec-editor`
 - depois `test-red`
 - depois `green-refactor`
+- depois `security-review`
 
 Se multi-agent estiver disponível:
-- `spec-editor` roda primeiro
+- `repo-automation` roda primeiro e valida `DOCKER_PREFLIGHT`
+- `spec-editor` só roda após ambiente validado
 - `test-red` e leituras auxiliares podem rodar em paralelo apenas quando a SPEC estiver estável
 - `green-refactor` só começa após a etapa RED estar validada
+- `security-review` roda depois de `REFACTOR` e antes de `REPORT`/`COMMIT`
 
 ## Entregáveis por feature
 Cada feature deve terminar com:
+- `DOCKER_PREFLIGHT` validado ou explicitamente aprovado
 - `SPEC.md` atualizado
 - testes cobrindo a feature
 - implementação mínima funcional
 - refatoração concluída
+- revisão de segurança concluída
 - `NOTES.md` com decisões locais
 - checklist de aceite da feature

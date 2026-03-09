@@ -32,11 +32,12 @@ O sistema recebe uma tarefa, produz uma especificação estruturada, planeja sua
 - Execução principal: **CLI-first**.
 - Runtime do MVP: **dual**, com CLI efêmero e worker/daemon residente leve.
 - Ambiente: **container da aplicação + containers dos agentes selecionados**.
+- Precondição operacional: **DOCKER_PREFLIGHT** validado antes da execução prática de uma feature.
 - Workspace do MVP: **um único workspace local por run**.
 - Observabilidade do MVP: **local**, com logs estruturados e `RUN_REPORT.md` por execução.
 - Memória semântica no MVP: **advisory/read-only**.
 - SPEC oficial: **Markdown estruturado com front matter YAML obrigatório**.
-- Núcleo de orquestração: **engine própria de pipeline**, state-driven, implementada em Python.
+- Núcleo de orquestração: **AIgnt-Synapse-Flow**, a **engine própria de pipeline** do AIgnt OS, state-driven e implementada em Python.
 
 ---
 
@@ -61,6 +62,7 @@ Responsável por estado, pipeline, supervisão, memória e decisão.
 
 Componentes:
 - Orchestrator Engine
+- AIgnt-Synapse-Flow
 - State Machine Manager
 - Pipeline Manager
 - Adaptive Supervisor
@@ -91,16 +93,32 @@ Responsável por persistir runs, steps, artefatos, eventos e relatórios.
 
 ## 5. Esteira de Execução
 
-### 5.1 Pipeline principal
+### 5.1 Fluxo oficial do projeto
+
+```text
+DOCKER_PREFLIGHT → SPEC → TEST_RED → CODE_GREEN → REFACTOR → SECURITY_REVIEW → REPORT → COMMIT
+```
+
+Regras:
+- `DOCKER_PREFLIGHT` é executado pela skill `repo-automation`.
+- Em CI e no fluxo local, o `DOCKER_PREFLIGHT` padrão é leve: `compose config` + build sem `up`.
+- O runtime completo em container fica reservado para workflow dedicado ou acionamento explícito em features que toquem boot, ciclo de vida, persistência ou integração.
+- `spec-editor` só inicia após o ambiente Docker estar verde ou explicitamente validado.
+- `security-review` atua como gate antes de `REPORT` e `COMMIT`.
+- O fluxo oficial organiza o trabalho por feature sem substituir os estados internos do runtime.
+
+### 5.2 Subetapas internas do AIgnt-Synapse-Flow
 
 ```text
 REQUEST → SPEC_DISCOVERY → SPEC_NORMALIZATION → SPEC_VALIDATION → PLAN → TEST_RED → CODE_GREEN → REVIEW → SECURITY → DOCUMENT → COMPLETE
 ```
 
-### 5.2 Motivação da etapa SPEC
+O macroestágio `SPEC` do fluxo oficial engloba `SPEC_DISCOVERY`, `SPEC_NORMALIZATION` e `SPEC_VALIDATION`.
+
+### 5.3 Motivação da etapa SPEC
 A etapa de especificação transforma intenção em contrato operacional. Ela reduz ambiguidade entre agentes, melhora a geração de testes, aumenta a previsibilidade do parsing e permite validar aderência entre requisito, teste, código e documentação.
 
-### 5.3 Regras da etapa SPEC
+### 5.4 Regras da etapa SPEC
 - A entrada é a tarefa bruta do usuário.
 - A saída é uma SPEC híbrida validável.
 - A pipeline não avança para `PLAN` sem validação mínima da SPEC.
@@ -112,6 +130,7 @@ A etapa de especificação transforma intenção em contrato operacional. Ela re
 
 ### 6.1 Modo CLI efêmero
 Usado para:
+- executar ou validar `DOCKER_PREFLIGHT` antes do trabalho prático da feature,
 - iniciar runs,
 - executar runs curtas inline,
 - inspecionar status,
@@ -120,7 +139,7 @@ Usado para:
 ### 6.2 Worker/daemon residente leve
 Usado para:
 - consumir runs pendentes,
-- executar a engine própria de pipeline,
+- executar o AIgnt-Synapse-Flow,
 - aplicar retries longos,
 - persistir progresso,
 - gerar artefatos e relatório final.
@@ -134,6 +153,9 @@ O runtime dual permite preservar a experiência CLI e, ao mesmo tempo, suportar 
 
 ```text
 [User Task / CLI Command]
+          |
+          v
+ [DOCKER_PREFLIGHT / repo-automation]
           |
           v
    [Spec Engine]
@@ -187,7 +209,7 @@ O runtime dual permite preservar a experiência CLI e, ao mesmo tempo, suportar 
 ## 8. Módulos Principais
 
 ### 8.1 Orchestrator Engine
-Coordena a execução ponta a ponta, cria o contexto da run, invoca a engine própria de pipeline e consolida resultados.
+Coordena a execução ponta a ponta, cria o contexto da run, invoca o AIgnt-Synapse-Flow e consolida resultados.
 
 ### 8.2 State Machine Manager
 Modela e valida estados e transições.
@@ -296,18 +318,22 @@ Responsabilidades:
 - decidir se a execução será inline ou assíncrona,
 - consolidar estado final.
 
+### 8.10 AIgnt-Synapse-Flow
+O AIgnt-Synapse-Flow é a engine própria de pipeline do AIgnt OS. Ele coordena os estados internos da run, os hand-offs entre steps, o encadeamento `SPEC → TEST_RED → CODE_GREEN → REFACTOR → SECURITY_REVIEW → REPORT` e a integração com supervisor, memória e adapters.
+
 ---
 
 ## 9. Fluxo de Dados
-1. Usuário envia uma tarefa.
-2. O CLI cria ou dispara uma run.
-3. O Spec Engine produz e valida a SPEC.
-4. O Pipeline Manager seleciona o step atual.
-5. O Adapter executa a ferramenta externa.
-6. O Parsing Engine limpa e valida a saída.
-7. O Supervisor decide o próximo movimento.
-8. O Memory Engine persiste evento, artefato e observações.
-9. Ao final, é gerado um `RUN_REPORT.md`.
+1. `repo-automation` valida o `DOCKER_PREFLIGHT` quando a feature exige execução prática.
+2. Usuário envia uma tarefa.
+3. O CLI cria ou dispara uma run.
+4. O Spec Engine produz e valida a SPEC.
+5. O AIgnt-Synapse-Flow seleciona o step atual.
+6. O Adapter executa a ferramenta externa.
+7. O Parsing Engine limpa e valida a saída.
+8. O Supervisor decide o próximo movimento.
+9. O Memory Engine persiste evento, artefato e observações.
+10. Ao final, é gerado um `RUN_REPORT.md`.
 
 ### 9.1 Artefatos principais por run
 - `REQUEST.md`
@@ -392,7 +418,7 @@ Conteúdo mínimo:
 ### Curto prazo
 - paralelizar alguns steps com `asyncio`;
 - permitir worker residente consumir múltiplas runs;
-- expandir a engine própria de pipeline para DAG simples.
+- expandir o AIgnt-Synapse-Flow para DAG simples.
 
 ### Médio prazo
 - DAG pipeline real;

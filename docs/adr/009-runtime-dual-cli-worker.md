@@ -14,7 +14,7 @@ O MVP adotará um runtime dual:
 ## Consequências
 ### Positivas
 - suporte a tarefas longas desde o início;
-- reaproveitamento da mesma base técnica da engine própria de pipeline;
+- reaproveitamento da mesma base técnica do AIgnt-Synapse-Flow, a engine própria de pipeline do AIgnt OS;
 - menor complexidade que Celery/Temporal no MVP;
 - preservação da experiência CLI.
 

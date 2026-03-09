@@ -9,9 +9,11 @@ SKIP_LINT=0
 SKIP_TYPECHECK=0
 SKIP_TESTS=0
 SKIP_DOCKER=0
+SKIP_SECURITY=0
 FETCH=0
 BASE_REF="origin/main"
 BUILD_IMAGE=0
+FULL_RUNTIME=0
 
 export UV_CACHE_DIR="${UV_CACHE_DIR:-$ROOT_DIR/.cache/uv}"
 mkdir -p "$UV_CACHE_DIR"
@@ -46,6 +48,10 @@ while [[ $# -gt 0 ]]; do
       SKIP_DOCKER=1
       shift
       ;;
+    --skip-security)
+      SKIP_SECURITY=1
+      shift
+      ;;
     --fetch)
       FETCH=1
       shift
@@ -56,6 +62,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --build-image)
       BUILD_IMAGE=1
+      shift
+      ;;
+    --full-runtime)
+      FULL_RUNTIME=1
       shift
       ;;
     *)
@@ -100,11 +110,20 @@ if [[ "$SKIP_TESTS" -ne 1 ]]; then
 fi
 
 if [[ "$SKIP_DOCKER" -ne 1 ]]; then
-  if [[ "$BUILD_IMAGE" -eq 1 ]]; then
-    "$ROOT_DIR/scripts/docker-rebuild.sh"
-  else
-    "$ROOT_DIR/scripts/docker-rebuild.sh" --dry-run
+  docker_args=()
+  if [[ "$FULL_RUNTIME" -eq 1 ]]; then
+    docker_args+=(--full-runtime)
   fi
+
+  if [[ "$BUILD_IMAGE" -eq 1 || "$FULL_RUNTIME" -eq 1 ]]; then
+    "$ROOT_DIR/scripts/docker-preflight.sh" "${docker_args[@]}"
+  else
+    "$ROOT_DIR/scripts/docker-preflight.sh" --dry-run "${docker_args[@]}"
+  fi
+fi
+
+if [[ "$SKIP_SECURITY" -ne 1 ]]; then
+  "$ROOT_DIR/scripts/security-gate.sh"
 fi
 
 printf '%s\n' "Repository operational checks completed."

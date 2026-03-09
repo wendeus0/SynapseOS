@@ -13,6 +13,8 @@ Realizar revisão de segurança prática e objetiva sobre mudanças no repositó
 - AGENTS.md
 - skills em `.agents/skills/`
 
+Esta skill atua como gate no estágio `SECURITY_REVIEW`, imediatamente antes de `REPORT` e `COMMIT` no fluxo oficial.
+
 # Leia antes de agir
 
 Leia nesta ordem:
@@ -60,6 +62,7 @@ Avalie no mínimo:
 - Se a mudança for aceitável com ressalvas, diga isso claramente.
 - Não amplie escopo para arquitetura de produto.
 - Se algo não puder ser validado empiricamente, sinalize como limitação da análise.
+- Considere o `DOCKER_PREFLIGHT` e os workflows operacionais como parte obrigatória da superfície de ataque a revisar.
 
 # Estratégia
 

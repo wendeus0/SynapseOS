@@ -2,7 +2,7 @@
 
 ## O que é o AIgnt OS
 AIgnt OS é um meta-orquestrador de agentes de IA via CLI.
-Ele não é o agente principal de raciocínio; seu papel é coordenar múltiplas ferramentas externas de IA por meio de subprocessos, parsing estruturado, handoffs controlados e uma engine própria de pipeline.
+Ele não é o agente principal de raciocínio; seu papel é coordenar múltiplas ferramentas externas de IA por meio de subprocessos, parsing estruturado, handoffs controlados e do **AIgnt-Synapse-Flow**, a **engine própria de pipeline** do AIgnt OS.
 
 ## Objetivo do projeto
 Construir um runtime de desenvolvimento autônomo e controlado que:
@@ -24,7 +24,18 @@ Construir um runtime de desenvolvimento autônomo e controlado que:
 - observabilidade local
 - evolução progressiva sem sobreengenharia
 
-## Pipeline principal
+## Fluxo oficial do projeto
+DOCKER_PREFLIGHT
+→ SPEC
+→ TEST_RED
+→ CODE_GREEN
+→ REFACTOR
+→ SECURITY_REVIEW
+→ REPORT
+→ COMMIT
+
+## Subetapas internas do AIgnt-Synapse-Flow
+Dentro do fluxo oficial, o AIgnt-Synapse-Flow pode decompor a execução em estados internos como:
 REQUEST
 → SPEC_DISCOVERY
 → SPEC_NORMALIZATION
@@ -37,10 +48,11 @@ REQUEST
 → DOCUMENT
 → COMPLETE
 
-No MVP, a implementação prática pode ser simplificada para uma pipeline linear, mas preservando esses estados como referência arquitetural.
+No MVP, a implementação prática continua linear, mas o operador deve seguir primeiro o fluxo oficial.
 
 ## Componentes centrais
 - Orchestrator Engine
+- AIgnt-Synapse-Flow
 - Pipeline Manager
 - State Machine Manager
 - CLI Adapter Layer
@@ -61,7 +73,13 @@ No MVP, a implementação prática pode ser simplificada para uma pipeline linea
 - memória semântica MVP: advisory/read-only
 - runtime dual: CLI efêmero + worker leve
 - isolamento: container da aplicação + containers dos agentes selecionados
-- engine própria de pipeline: interna ao projeto, state-driven, linear no MVP
+- `DOCKER_PREFLIGHT`: obrigatório antes da execução prática de uma feature
+- `DOCKER_PREFLIGHT` leve: padrão para CI e fluxo local, com compose/config + build sem `up`
+- preflight completo de runtime: reservado para workflow dedicado ou pedido explícito em tarefas de boot/ciclo de vida/persistência/integração
+- `repo-automation`: skill responsável pelo preflight operacional em Docker/container
+- `spec-editor`: só inicia após ambiente validado
+- `security-review`: gate de segurança antes de `REPORT` e `COMMIT`
+- AIgnt-Synapse-Flow: engine própria de pipeline interna ao projeto, state-driven, linear no MVP
 
 ## O que NÃO fazer no MVP
 - não implementar DAG distribuída completa
@@ -75,12 +93,14 @@ No MVP, a implementação prática pode ser simplificada para uma pipeline linea
 O trabalho deve acontecer por feature.
 Cada feature tem sua própria pasta em `features/` e sua própria `SPEC.md`.
 O ciclo ideal é:
-1. esclarecer a feature
-2. escrever a SPEC
-3. escrever testes RED
-4. implementar GREEN
-5. refatorar
-6. fechar com notas e checklist
+1. validar `DOCKER_PREFLIGHT` com `repo-automation`
+2. escrever/refinar a `SPEC` com `spec-editor`
+3. escrever testes `TEST_RED`
+4. implementar `CODE_GREEN`
+5. executar `REFACTOR`
+6. rodar `SECURITY_REVIEW`
+7. gerar `REPORT`
+8. concluir `COMMIT`
 
 ## O que significa “memória semântica” neste momento
 No MVP, memória semântica não decide automaticamente qual agente usar.
@@ -115,8 +135,7 @@ O repositório privilegia progresso incremental, commits pequenos e baixa ambigu
 
 ## Linguagem e terminologia
 Sempre usar:
-- “engine própria de pipeline”
-e não apenas “engine própria”
+- `AIgnt-Synapse-Flow`, deixando explícito ao menos uma vez que ele é a engine própria de pipeline do AIgnt OS
 
 Usar “SPEC” para o artefato formal da feature.
 Usar “run” para uma execução da pipeline.

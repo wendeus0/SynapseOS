@@ -1,0 +1,32 @@
+name: runtime-integration
+
+on:
+  pull_request:
+    paths:
+      - "Dockerfile"
+      - "compose.yaml"
+      - "docker-compose.yml"
+      - "scripts/docker-*.sh"
+      - "src/**/cli/**"
+      - "src/**/worker/**"
+      - "src/**/runtime/**"
+      - "src/**/persistence/**"
+      - "src/**/integration/**"
+      - ".github/workflows/runtime-integration.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run full runtime preflight
+        run: ./scripts/docker-preflight.sh --full-runtime
+
+      - name: Run operational security gate
+        run: ./scripts/security-gate.sh

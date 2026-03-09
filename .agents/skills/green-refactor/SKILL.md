@@ -24,6 +24,7 @@ Leia nesta ordem:
 Use esta skill quando:
 
 - a SPEC estiver estável
+- o `DOCKER_PREFLIGHT` já tiver sido validado pela skill `repo-automation`
 - os testes RED já tiverem sido escritos
 - a feature estiver pronta para a etapa GREEN
 
@@ -42,7 +43,7 @@ Não use esta skill para:
 - Primeiro faça os testes passarem com o menor código possível.
 - Só depois refatore.
 - Preserve contratos, nomes e limites arquiteturais do projeto.
-- Use sempre a expressão **engine própria de pipeline**.
+- Use sempre o nome **AIgnt-Synapse-Flow** e deixe claro, ao menos uma vez, que ele é a engine própria de pipeline do AIgnt OS.
 - Mantenha compatibilidade com o MVP:
   - pipeline linear
   - runtime dual simples

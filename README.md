@@ -10,6 +10,8 @@ O AIgnt OS é um **orquestrador de ferramentas externas de IA via CLI**. Em vez 
 
 O sistema recebe uma tarefa, produz uma especificação estruturada, planeja a execução, aciona agentes externos, limpa e valida suas saídas, reage a falhas e entrega um relatório auditável por run.
 
+O runtime interno é coordenado pelo **AIgnt-Synapse-Flow**, a **engine própria de pipeline** do AIgnt OS.
+
 ### Princípios fundamentais
 
 | Princípio | Descrição |
@@ -36,9 +38,12 @@ CLI funcional → SPEC válida → State Machine → Parser → Adapter base asy
 ### Esteira principal do MVP
 
 ```
-REQUEST → SPEC_DISCOVERY → SPEC_NORMALIZATION → SPEC_VALIDATION
-       → PLAN → TEST_RED → CODE_GREEN → REVIEW → SECURITY → DOCUMENT → COMPLETE
+DOCKER_PREFLIGHT → SPEC → TEST_RED → CODE_GREEN → REFACTOR → SECURITY_REVIEW → REPORT → COMMIT
 ```
+
+Dentro do macroestágio `SPEC`, o AIgnt-Synapse-Flow pode decompor a execução em `SPEC_DISCOVERY`, `SPEC_NORMALIZATION` e `SPEC_VALIDATION`.
+
+Por padrão, o `DOCKER_PREFLIGHT` do projeto é leve: valida `compose config` e build sem subir o container completo. O runtime completo fica para workflow dedicado de integração/runtime ou para execução explícita quando a feature tocar boot, ciclo de vida, persistência ou integração.
 
 ### Entregas obrigatórias
 
@@ -46,7 +51,7 @@ REQUEST → SPEC_DISCOVERY → SPEC_NORMALIZATION → SPEC_VALIDATION
 - State machine com transições auditáveis
 - Parsing robusto de outputs ruidosos de CLIs
 - Adapter base assíncrono com timeout, sanitização e contrato único
-- Engine própria de pipeline linear (sem dependência de orquestrador externo)
+- AIgnt-Synapse-Flow linear, a engine própria de pipeline do AIgnt OS (sem dependência de orquestrador externo)
 - Persistência operacional (SQLite + artifacts em disco)
 - Worker leve com polling, lock e retomada de runs
 - Supervisor com retry determinístico, reroute simples e falha terminal
@@ -139,7 +144,8 @@ aignt-os/
 │       ├── 006-regex-based-parsing.md
 │       ├── 007-local-llms-offline-reasoning.md
 │       ├── 008-spec-driven-development.md
-│       └── 009-runtime-dual-cli-worker.md
+│       ├── 009-runtime-dual-cli-worker.md
+│       └── 010-adopt-aignt-synapse-flow-name.md
 │
 ├── features/              # SPECs e notas por feature do MVP
 │   └── init_feature_worktrees.sh  # Script para criar worktrees das features
@@ -166,7 +172,7 @@ aignt-os/
 
 ## Desenvolvimento por feature
 
-O desenvolvimento segue o ciclo **Spec-first → Red → Green → Refactor**, com uma feature por worktree:
+O desenvolvimento segue o ciclo **Docker Preflight → Spec → Red → Green → Refactor → Security Review → Report → Commit**, com uma feature por worktree:
 
 ```
 feature/f01-bootstrap-contracts

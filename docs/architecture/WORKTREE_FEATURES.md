@@ -7,7 +7,7 @@ Organizar o desenvolvimento do MVP em features pequenas, isoladas por branch/wor
 - Trabalhar **uma feature por vez**.
 - Cada feature deve ter sua própria `SPEC.md`.
 - Nenhuma feature entra em código antes da SPEC e dos testes mínimos.
-- O MVP de 10 dias deve priorizar **núcleo funcional**: SPEC, state machine, parser, adapter base, engine própria de pipeline linear, persistência, worker leve e `RUN_REPORT.md`.
+- O MVP de 10 dias deve priorizar **núcleo funcional**: SPEC, state machine, parser, adapter base, AIgnt-Synapse-Flow linear como engine própria de pipeline, persistência, worker leve e `RUN_REPORT.md`.
 - Adapters reais ficam limitados a **1 adapter real prioritário** no prazo de 10 dias.
 
 ## Sequência recomendada de features
@@ -37,7 +37,7 @@ Organizar o desenvolvimento do MVP em features pequenas, isoladas por branch/wor
 **Entrega:** `BaseCLIAdapter`, `CLIExecutionResult`, timeout e sanitização.
 **Branch/worktree:** `feature/f05-cli-adapter-base`
 
-### F06 — Engine Própria de Pipeline Linear
+### F06 — AIgnt-Synapse-Flow Linear
 **Objetivo:** executar a esteira linear com step executor e hand-offs mínimos.
 **Entrega:** `PipelineStep`, `StepExecutor`, `PipelineEngine`, fluxo até `PLAN` ou fluxo completo em fake mode.
 **Branch/worktree:** `feature/f06-pipeline-engine-linear`

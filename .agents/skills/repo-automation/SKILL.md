@@ -12,6 +12,12 @@ Implementar automações operacionais do repositório de forma prática e mínim
 - validação contra `main`
 - workflows e scripts operacionais
 
+Esta skill é a responsável por executar e validar o estágio `DOCKER_PREFLIGHT` do fluxo oficial:
+
+```text
+DOCKER_PREFLIGHT → SPEC → TEST_RED → CODE_GREEN → REFACTOR → SECURITY_REVIEW → REPORT → COMMIT
+```
+
 # Leia antes de agir
 
 Leia nesta ordem:
@@ -38,7 +44,7 @@ Use esta skill quando a tarefa pedir qualquer combinação de:
 Não use esta skill para:
 - criar ou revisar `SPEC.md` de uma feature de domínio
 - escrever a primeira versão de testes RED de lógica de produto
-- implementar componentes centrais da engine própria de pipeline
+- implementar componentes centrais do AIgnt-Synapse-Flow
 - alterar arquitetura central sem necessidade operacional clara
 
 # Restrições obrigatórias
@@ -50,6 +56,7 @@ Não use esta skill para:
 - Não substitua a estratégia de desenvolvimento feature-by-feature.
 - Não altere a branch `main` diretamente.
 - Não assuma acesso real ao GitHub ou à registry se isso não estiver disponível; nesse caso, gere arquivos prontos para uso.
+- Considere `spec-editor` bloqueada até o `DOCKER_PREFLIGHT` ficar verde ou explicitamente validado.
 
 # Resultados esperados
 
@@ -72,6 +79,7 @@ Quando aplicável, esta skill pode:
 - identifique os arquivos operacionais já existentes
 - descubra como o projeto é executado e testado
 - identifique quais arquivos devem disparar rebuild
+- valide como o `DOCKER_PREFLIGHT` libera o início prático da feature
 
 ## 2. Commit flow
 Implemente automação prática para o fluxo de commit, priorizando:
@@ -86,6 +94,16 @@ Prefira:
 - script shell simples
 - Makefile opcional
 - workflow do GitHub Actions para CI
+
+O `DOCKER_PREFLIGHT` deve deixar claro quando o ambiente foi:
+- validado estaticamente;
+- buildado;
+- efetivamente iniciado em Docker, quando aplicável.
+
+Política operacional:
+- o preflight padrão em CI e no fluxo local deve ser leve;
+- subir o container completo é exceção, não padrão;
+- runtime completo deve acontecer só em workflow dedicado ou quando explicitamente pedido para boot/ciclo de vida/persistência/integração.
 
 ## 4. Gatilho de rebuild
 Considere como relevantes para rebuild:
@@ -126,6 +144,7 @@ Ordem preferida:
 Antes de encerrar, confirme:
 - a automação realmente modifica arquivos operacionais do repo
 - build/rebuild ficou acionável e claro
+- o `DOCKER_PREFLIGHT` ficou explícito como requisito antes da feature
 - a validação contra `main` está explícita
 - não houve ampliação indevida de escopo
 - riscos operacionais e de segurança foram identificados

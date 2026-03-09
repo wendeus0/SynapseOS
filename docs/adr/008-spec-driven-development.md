@@ -15,8 +15,10 @@ Adotar **Spec-Driven Development** com uma SPEC híbrida:
 A esteira passa a ser:
 
 ```text
-REQUEST → SPEC_DISCOVERY → SPEC_NORMALIZATION → SPEC_VALIDATION → PLAN → TEST_RED → CODE_GREEN → REVIEW → SECURITY → DOCUMENT
+DOCKER_PREFLIGHT → SPEC → TEST_RED → CODE_GREEN → REFACTOR → SECURITY_REVIEW → REPORT → COMMIT
 ```
+
+Dentro do macroestágio `SPEC`, o AIgnt-Synapse-Flow continua usando `SPEC_DISCOVERY`, `SPEC_NORMALIZATION` e `SPEC_VALIDATION` como subetapas internas.
 
 ## Consequências
 ### Positivas

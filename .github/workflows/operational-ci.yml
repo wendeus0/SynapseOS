@@ -22,9 +22,21 @@ jobs:
       - name: Validate branch alignment
         run: ./scripts/validate-branch.sh --fetch --allow-main --base-ref origin/main
 
-  repo-checks:
+  docker-preflight:
     runs-on: ubuntu-latest
     needs: branch-validation
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Docker preflight
+        run: ./scripts/docker-preflight.sh
+
+  repo-checks:
+    runs-on: ubuntu-latest
+    needs:
+      - branch-validation
+      - docker-preflight
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -43,4 +55,14 @@ jobs:
         run: uv sync --locked --extra dev
 
       - name: Run repository operational checks
-        run: ./scripts/commit-check.sh --skip-branch-validation --skip-docker --allow-main
+        run: ./scripts/commit-check.sh --skip-branch-validation --skip-docker --skip-security --allow-main
+
+  security-review:
+    runs-on: ubuntu-latest
+    needs: repo-checks
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run operational security gate
+        run: ./scripts/security-gate.sh

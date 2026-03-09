@@ -68,6 +68,24 @@ def test_docker_up_supports_dry_run() -> None:
     assert "--build" in result.stdout
 
 
+def test_docker_preflight_supports_dry_run() -> None:
+    result = run_script("scripts/docker-preflight.sh", "--dry-run")
+
+    assert result.returncode == 0
+    assert "docker compose" in result.stdout
+    assert "config" in result.stdout
+    assert "build" in result.stdout
+    assert "up command" not in result.stdout
+
+
+def test_docker_preflight_full_runtime_supports_dry_run() -> None:
+    result = run_script("scripts/docker-preflight.sh", "--dry-run", "--full-runtime")
+
+    assert result.returncode == 0
+    assert "docker compose" in result.stdout
+    assert "up command" in result.stdout
+
+
 def test_docker_rebuild_lists_relevant_inputs() -> None:
     result = run_script("scripts/docker-rebuild.sh", "--print-files")
 
@@ -75,3 +93,10 @@ def test_docker_rebuild_lists_relevant_inputs() -> None:
     assert "pyproject.toml" in result.stdout
     assert "src/aignt_os/cli/app.py" in result.stdout
     assert "uv.lock" in result.stdout
+
+
+def test_security_gate_accepts_current_operational_surface() -> None:
+    result = run_script("scripts/security-gate.sh")
+
+    assert result.returncode == 0
+    assert "Security gate passed" in result.stdout

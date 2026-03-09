@@ -1,4 +1,4 @@
-# ADR-003 — Adotar state machine + engine própria de pipeline
+# ADR-003 — Adotar state machine + AIgnt-Synapse-Flow
 
 ## Status
 Aceito
@@ -9,7 +9,7 @@ O AIgnt OS precisa coordenar uma esteira com estados explícitos, retries, rollb
 ## Decisão
 O sistema adotará:
 - **state machine** para governar estados e transições;
-- uma **engine própria de pipeline** em Python para coordenar os steps, hand-offs, retries e integração com o supervisor.
+- o **AIgnt-Synapse-Flow**, a **engine própria de pipeline** do AIgnt OS, em Python para coordenar os steps, hand-offs, retries e integração com o supervisor.
 
 ## Consequências
 ### Positivas
@@ -20,7 +20,7 @@ O sistema adotará:
 
 ### Negativas
 - maior responsabilidade de implementação interna;
-- necessidade de testes rigorosos da engine própria de pipeline.
+- necessidade de testes rigorosos do AIgnt-Synapse-Flow.
 
 ## Alternativas consideradas
 - pipeline linear hardcoded;
