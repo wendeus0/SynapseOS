@@ -1,0 +1,11 @@
+interface:
+  display_name: "ADR Manager"
+  short_description: "Avalia a necessidade de ADR e cria ou atualiza registros de decisão arquitetural."
+  brand_color: "#6D28D9"
+  default_prompt: |
+    Use a skill adr-manager para avaliar se a mudança atual exige criação ou atualização de ADR.
+    Foque em decisões estáveis, duráveis e com impacto arquitetural ou operacional relevante.
+    Não implemente código, não altere workflows e não crie SPECs.
+
+policy:
+  allow_implicit_invocation: false
