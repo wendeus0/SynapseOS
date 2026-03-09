@@ -14,6 +14,7 @@ FETCH=0
 BASE_REF="origin/main"
 BUILD_IMAGE=0
 FULL_RUNTIME=0
+SYNC_DEV=0
 
 export UV_CACHE_DIR="${UV_CACHE_DIR:-$ROOT_DIR/.cache/uv}"
 mkdir -p "$UV_CACHE_DIR"
@@ -68,6 +69,10 @@ while [[ $# -gt 0 ]]; do
       FULL_RUNTIME=1
       shift
       ;;
+    --sync-dev)
+      SYNC_DEV=1
+      shift
+      ;;
     *)
       echo "Unknown argument: $1" >&2
       exit 1
@@ -78,6 +83,13 @@ done
 if ! command -v uv >/dev/null 2>&1; then
   echo "uv is required to run repository checks." >&2
   exit 1
+fi
+
+uv_run_args=(run --no-sync)
+
+if [[ "$SYNC_DEV" -eq 1 ]]; then
+  uv sync --locked --extra dev
+  uv_run_args=(run)
 fi
 
 if [[ "$SKIP_BRANCH_VALIDATION" -ne 1 ]]; then
@@ -94,19 +106,19 @@ if [[ "$SKIP_BRANCH_VALIDATION" -ne 1 ]]; then
 fi
 
 if [[ "$SKIP_FORMAT" -ne 1 ]]; then
-  uv run ruff format --check .
+  uv "${uv_run_args[@]}" ruff format --check .
 fi
 
 if [[ "$SKIP_LINT" -ne 1 ]]; then
-  uv run ruff check .
+  uv "${uv_run_args[@]}" ruff check .
 fi
 
 if [[ "$SKIP_TYPECHECK" -ne 1 ]]; then
-  uv run mypy
+  uv "${uv_run_args[@]}" mypy
 fi
 
 if [[ "$SKIP_TESTS" -ne 1 ]]; then
-  uv run pytest
+  uv "${uv_run_args[@]}" pytest
 fi
 
 if [[ "$SKIP_DOCKER" -ne 1 ]]; then
