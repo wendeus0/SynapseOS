@@ -1,27 +1,79 @@
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
 [project]
 name = "aignt-os"
 version = "0.1.0"
-description = "Add your description here"
+description = "AIgnt OS - meta-orchestrator for AI agents via CLI"
 readme = "README.md"
 requires-python = ">=3.12"
+license = { text = "Proprietary" }
+authors = [
+  { name = "Wendel Gabriel Duarte da Silva" }
+]
 dependencies = [
-    "alembic>=1.18.4",
-    "jsonschema>=4.26.0",
-    "pydantic>=2.12.5",
-    "pydantic-settings>=2.13.1",
-    "python-statemachine>=3.0.0",
-    "rich>=14.3.3",
-    "sqlalchemy>=2.0.48",
-    "structlog>=25.5.0",
-    "typer>=0.24.1",
+  "typer>=0.12.5",
+  "rich>=13.9.4",
+  "pydantic>=2.9.2",
+  "pydantic-settings>=2.6.1",
+  "python-statemachine>=2.5.0",
+  "sqlalchemy>=2.0.36",
+  "alembic>=1.14.0",
+  "structlog>=24.4.0",
+  "jsonschema>=4.23.0",
+  "pyyaml>=6.0.2",
 ]
 
-[dependency-groups]
+[project.optional-dependencies]
 dev = [
-    "hypothesis>=6.151.9",
-    "mypy>=1.19.1",
-    "pytest>=9.0.2",
-    "pytest-asyncio>=1.3.0",
-    "pytest-mock>=3.15.1",
-    "ruff>=0.15.5",
+  "pytest>=8.3.3",
+  "pytest-asyncio>=0.24.0",
+  "pytest-mock>=3.14.0",
+  "hypothesis>=6.118.8",
+  "ruff>=0.7.3",
+  "mypy>=1.13.0",
 ]
+
+[project.scripts]
+aignt = "aignt_os.cli.app:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/aignt_os"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra"
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+  "E",
+  "F",
+  "I",
+  "B",
+  "UP",
+]
+ignore = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.12"
+mypy_path = "src"
+strict = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+no_implicit_optional = true
+check_untyped_defs = true
+packages = ["aignt_os"]
