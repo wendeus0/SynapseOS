@@ -1,15 +1,14 @@
 from __future__ import annotations
 
-from importlib import import_module
-from pathlib import Path
 import json
 import os
 import subprocess
 import sys
 import time
+from importlib import import_module
+from pathlib import Path
 
 from typer.testing import CliRunner
-
 
 runner = CliRunner()
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -29,9 +28,7 @@ def spawn_runtime_foreground(tmp_path: Path) -> subprocess.Popen[str]:
     python_path = str(REPO_ROOT / "src")
     existing_python_path = env.get("PYTHONPATH")
     env["PYTHONPATH"] = (
-        f"{python_path}{os.pathsep}{existing_python_path}"
-        if existing_python_path
-        else python_path
+        f"{python_path}{os.pathsep}{existing_python_path}" if existing_python_path else python_path
     )
     env["AIGNT_OS_ENVIRONMENT"] = "test"
     env["AIGNT_OS_RUNTIME_STATE_DIR"] = str(tmp_path)
@@ -252,9 +249,14 @@ def test_runtime_ready_fails_when_foreground_identity_token_is_adulterated(
         status_result = invoke_runtime_command(tmp_path, "status")
 
         assert ready_result.exit_code != 0
-        assert "not ready" in ready_result.stdout.lower() or "not ready" in ready_result.stderr.lower()
+        assert (
+            "not ready" in ready_result.stdout.lower() or "not ready" in ready_result.stderr.lower()
+        )
         assert status_result.exit_code != 0
-        assert "inconsistent" in status_result.stdout.lower() or "inconsistent" in status_result.stderr.lower()
+        assert (
+            "inconsistent" in status_result.stdout.lower()
+            or "inconsistent" in status_result.stderr.lower()
+        )
     finally:
         terminate_process(process)
 

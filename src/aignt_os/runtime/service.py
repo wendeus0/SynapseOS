@@ -2,15 +2,14 @@ from __future__ import annotations
 
 import errno
 import os
-from pathlib import Path
 import secrets
 import signal
 import subprocess
 import sys
 import time
+from pathlib import Path
 
 from aignt_os.runtime.state import RuntimeState, RuntimeStateStore
-
 
 PROCESS_MARKER = "--aignt-runtime-process"
 
