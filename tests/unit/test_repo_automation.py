@@ -208,6 +208,16 @@ def test_security_gate_accepts_current_operational_surface() -> None:
     assert "Security gate passed" in result.stdout
 
 
+def test_security_gate_falls_back_to_grep_when_rg_is_unavailable(tmp_path: Path) -> None:
+    env = os.environ.copy()
+    env["PATH"] = "/usr/bin:/bin"
+
+    result = run_script_with_env(env, "scripts/security-gate.sh")
+
+    assert result.returncode == 0
+    assert "Security gate passed" in result.stdout
+
+
 def test_commit_check_hook_mode_skips_real_docker_preflight() -> None:
     result = run_script(
         "scripts/commit-check.sh",
