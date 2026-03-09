@@ -1,0 +1,19 @@
+interface:
+  display_name: "Debug Failure"
+  short_description: "Diagnostica falhas reais, classifica a causa inicial e indica o próximo agent."
+  brand_color: "#1D4ED8"
+  default_prompt: |
+    Use a skill debug-failure para investigar uma falha real.
+    Foque em:
+    - reproduzir a falha quando possível
+    - separar sintoma, evidência e causa provável
+    - classificar a falha como código/runtime, teste, Docker/compose, workflow/CI, Git/branch ou ambiente local
+    - indicar qual agent deve atuar em seguida
+
+    Não implemente a correção.
+    Não decida backlog.
+    Não crie ADR.
+    Se a falha revelar possível necessidade de feature ou ADR, apenas encaminhe para technical-triage ou adr-manager.
+
+policy:
+  allow_implicit_invocation: false

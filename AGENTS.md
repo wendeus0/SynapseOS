@@ -36,6 +36,18 @@ Em caso de conflito:
 - Use sempre o nome **AIgnt-Synapse-Flow** ao se referir ao runtime interno do AIgnt OS. Ao menos uma vez por documento, deixe claro que ele é a **engine própria de pipeline** do AIgnt OS.
 - Preserve o caráter **CLI-first**, **spec-first** e **feature-by-feature** do projeto.
 
+## Convenção de nomes para agents/skills
+- Use o padrão `<domínio>-<papel>`.
+- Mantenha nomes em inglês.
+- Famílias preferidas: `repo-*`, `git-*`, `security-*`, `session-*`, `technical-*`, `adr-*`, `debug-*`, `spec-*`, `test-*`, `green-*`.
+
+## Branch Sync Gate
+- Em qualquer branch diferente de `main`, verifique drift com `origin/main` antes de trabalho relevante, antes de `commit`/`push`/`PR` e depois de mudanças estruturais com risco de drift.
+- Use `./scripts/branch-sync-check.sh` para detectar atraso sempre.
+- Use `./scripts/branch-sync-update.sh` apenas como atualização conservadora/best effort: só quando a branch não for `main`, a working tree estiver limpa e não houver conflito imediato detectável.
+- Mesmo após essa checagem, `rebase` ou `merge` ainda podem exigir intervenção manual.
+- Se a branch estiver atrasada e não for seguro atualizar, pare e reporte explicitamente.
+
 ## Fluxo oficial do projeto
 
 ```text
@@ -98,6 +110,14 @@ Responsável por:
 - distinguir checks leves de hook do `DOCKER_PREFLIGHT` operacional real
 - manter o preflight leve por padrão, promovendo runtime completo apenas quando explicitamente necessário
 Não inicia lógica de produto.
+Não faz diagnóstico inicial de falhas; use `debug-failure` antes quando o problema ainda não estiver classificado.
+
+### debug-failure
+Responsável por:
+- investigar falhas reais em CI, scripts, testes, Docker, runtime, Git e ambiente local
+- reproduzir a falha quando possível
+- classificar a falha por tipo e indicar o próximo agent responsável
+Não implementa a correção, não decide backlog e não substitui `repo-automation`.
 
 ### 2. spec-editor
 Responsável por:
