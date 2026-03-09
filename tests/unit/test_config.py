@@ -22,6 +22,16 @@ def test_settings_accepts_environment_override(monkeypatch: pytest.MonkeyPatch) 
     assert settings.app_name == "AIgnt OS Test"
 
 
+def test_settings_exposes_runtime_state_file(monkeypatch: pytest.MonkeyPatch) -> None:
+    config_module = import_module("aignt_os.config")
+    monkeypatch.setenv("AIGNT_OS_RUNTIME_STATE_DIR", ".runtime-state")
+
+    settings = config_module.AppSettings()
+
+    assert settings.runtime_state_dir.name == ".runtime-state"
+    assert settings.runtime_state_file.name == "runtime-state.json"
+
+
 def test_settings_rejects_invalid_environment_value() -> None:
     config_module = import_module("aignt_os.config")
 

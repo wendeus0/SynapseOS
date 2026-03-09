@@ -12,13 +12,23 @@
 
 ## 2026-03-09 06:02 - Falha de rede ao sincronizar dependências com `uv`
 
-- Contexto: tentativa de executar `commit-check` pelo caminho operacional padrão.
-- Ação/comando relacionado: `uv sync` / `uv run ...`
+- Contexto: tentativa de executar `commit-check` e sincronizar dependências pelo caminho operacional padrão.
+- Ação/comando relacionado: `uv sync --locked --extra dev`, `uv run ...`, `./scripts/commit-check.sh --skip-branch-validation --skip-docker`
 - Erro observado: falha para baixar `pyyaml==6.0.3` por `dns error` e `Temporary failure in name resolution`.
 - Causa identificada: ambiente sem acesso de rede para resolver/baixar dependências.
-- Ação tomada: validações locais passaram a usar `.venv` já presente e testes com `PYTHONPATH=src`.
+- Ação tomada: reexecução fora do sandbox quando necessário; validações locais alternativas usaram `.venv` já presente e testes com `PYTHONPATH=src`.
 - Status: contornado na sessão; não validado pelo caminho de rede real.
 - Observação futura: revalidar `uv sync --locked --extra dev` em ambiente com rede antes de concluir o ciclo operacional completo.
+
+## 2026-03-09 06:04 - `commit-check` sem dependências dev preparadas
+
+- Contexto: validação operacional local em ambiente limpo.
+- Ação/comando relacionado: `./scripts/commit-check.sh --skip-branch-validation --skip-docker`
+- Erro observado: `error: Failed to spawn: ruff`.
+- Causa identificada: o script assumia ferramentas dev instaladas sem sincronização prévia.
+- Ação tomada: ajuste operacional posterior para tornar o bootstrap explícito com `--sync-dev`, mantendo `uv run --no-sync` no fluxo padrão.
+- Status: resolvido.
+- Observação futura: documentar o uso de `--sync-dev` para bootstrap local.
 
 ## 2026-03-09 06:08 - `pytest` da `.venv` sem `PYTHONPATH=src`
 
@@ -29,3 +39,33 @@
 - Ação tomada: validação local da suíte foi feita com `PYTHONPATH=src ./.venv/bin/pytest`.
 - Status: contornado na sessão.
 - Observação futura: validar se vale padronizar explicitamente o import path local fora do fluxo `uv run`.
+
+## 2026-03-09 - Docker preflight bloqueado no sandbox
+
+- Contexto: validação do `DOCKER_PREFLIGHT` da worktree antes de iniciar a feature.
+- Ação/comando relacionado: `./scripts/docker-preflight.sh`
+- Erro observado: build falhou com `Docker daemon is not accessible`.
+- Causa identificada: limitação de acesso ao daemon Docker no sandbox, não erro do repositório.
+- Ação tomada: reexecução fora do sandbox; `compose config` e build passaram.
+- Status: resolvido.
+- Observação futura: manter diferenciação explícita entre falha de sandbox e falha real do preflight.
+
+## 2026-03-09 - Runtime stop aceitava risco de sinalizar PID arbitrário
+
+- Contexto: implementação inicial do runtime persistente mínimo.
+- Ação/comando relacionado: testes de segurança do runtime (`pytest tests/integration/test_runtime_cli.py tests/unit/test_runtime_state.py tests/unit/test_runtime_service_security.py`)
+- Erro observado: `stop` confiava em PID persistido e não validava identidade adicional do processo.
+- Causa identificada: hardening local ausente na primeira implementação do lifecycle.
+- Ação tomada: adição de `process_identity`, validação via `/proc/<pid>/cmdline`, falha segura em mismatch, escrita atômica e permissões restritas no arquivo de estado.
+- Status: resolvido.
+- Observação futura: a validação continua Linux-first e o endurecimento de path ainda é básico no MVP.
+
+## 2026-03-09 - Formatação do repositório fora do escopo da feature
+
+- Contexto: execução do fluxo operacional completo.
+- Ação/comando relacionado: `UV_CACHE_DIR=.cache/uv uv run ruff format --check .`
+- Erro observado: arquivos preexistentes fora do padrão de formatação.
+- Causa identificada: dívida de formatação já presente no repositório, não ligada ao runtime persistente.
+- Ação tomada: nenhuma nesta feature; mantido como pendência separada.
+- Status: aberto.
+- Observação futura: tratar em ajuste operacional ou limpeza dedicada antes de usar o check completo como gate global.
