@@ -31,10 +31,10 @@
 - A mitigação final desta frente moveu a validação de branch para antes de qualquer resolução de fluxo e antes de qualquer `uv sync`, eliminando sincronização desnecessária antes do gate operacional.
 - O `security-review` final desta frente foi concluído com aprovação sem ressalvas, mantendo a separação entre hook leve, checks locais e `DOCKER_PREFLIGHT` operacional real.
 - A validação operacional do ambiente atual do Codex com `network-access = true` confirmou `git push` e `gh pr create` funcionando no sandbox normal; a governança operacional foi ajustada para refletir o sandbox como caminho padrão e manter fallback fora do sandbox apenas como contingência para falha real de rede/sandbox, sem mascarar erro de autenticação, permissão ou conectividade real do host.
+- A revalidação operacional mais recente confirmou `ruff format --check .` verde no estado atual do repositório, restaurando o gate completo de formatação sem necessidade de ajuste adicional.
+- A sincronização conservadora da branch atual com `origin/main` foi revalidada com `git fetch origin main --prune`, `./scripts/branch-sync-check.sh` e `./scripts/branch-sync-update.sh --mode rebase`, permanecendo em no-op seguro com `ahead=0` e `behind=0`.
 
 ## Pendências abertas
-
-- Resolver a dívida de formatação global do repositório para que `ruff format --check .` possa voltar a ser gate completo sem ressalvas.
 
 ## Pontos de atenção futuros
 

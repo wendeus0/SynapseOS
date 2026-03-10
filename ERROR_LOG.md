@@ -76,9 +76,9 @@
 - Ação/comando relacionado: `UV_CACHE_DIR=.cache/uv uv run ruff format --check .`
 - Erro observado: arquivos preexistentes fora do padrão de formatação.
 - Causa identificada: dívida de formatação já presente no repositório, não ligada ao runtime persistente.
-- Ação tomada: nenhuma nesta feature; mantido como pendência separada.
-- Status: aberto.
-- Observação futura: tratar em ajuste operacional ou limpeza dedicada antes de usar o check completo como gate global.
+- Ação tomada: a pendência ficou aberta inicialmente; em 2026-03-10 o repositório foi revalidado com `env UV_CACHE_DIR=/home/g0dsssp33d/work/projects/aignt-os/.cache/uv uv run --no-sync ruff format --check .` e o gate voltou a fechar verde no estado atual.
+- Status: resolvido no estado atual do repositório.
+- Observação futura: revalidar após mudanças amplas de documentação ou baseline para garantir que `ruff format --check .` continue apto a operar como gate completo.
 
 ## 2026-03-09 08:40 - `.venv` local estava quebrada para executar `pytest`
 
