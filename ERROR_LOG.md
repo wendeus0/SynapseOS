@@ -129,3 +129,13 @@
 - Ação tomada: o fluxo operacional em `scripts/commit-check.sh` passou a executar `python -m mypy` e `python -m pytest` via `uv`; os testes operacionais do script foram ajustados para refletir o novo contrato.
 - Status: resolvido.
 - Observação futura: manter o fluxo com `python -m ...` reduz dependência de wrappers quebrados da `.venv`, mas a virtualenv local antiga ainda pode merecer limpeza dedicada fora desta frente.
+
+## 2026-03-10 - PR `#19` falhou no `repo-checks` da F02
+
+- Contexto: tentativa de fechar a feature `F02-spec-engine-mvp` com PR já aberta no GitHub.
+- Ação/comando relacionado: `gh pr checks 19`, inspeção dos logs do GitHub Actions e revalidação local com `ruff`, `mypy`, `pytest` e `./scripts/commit-check.sh --sync-dev --skip-branch-validation --skip-docker --skip-security --allow-main`.
+- Erro observado: `repo-checks` falhou por formatação pendente em `src/aignt_os/specs/validator.py`, import order em `tests/unit/test_spec_validator.py` e `mypy` reclamando de `Library stubs not installed for "yaml"`.
+- Causa identificada: o delta da F02 foi commitado sem alinhar completamente os gates locais de formatação, lint e tipagem exigidos pelo CI.
+- Ação tomada: correção mínima no `SpecValidator` e no teste afetado, com revalidação local completa dos mesmos gates usados no CI.
+- Status: resolvido na branch atual.
+- Observação futura: manter a reexecução explícita do `repo-checks` local equivalente antes de concluir novas atualizações da PR.

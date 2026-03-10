@@ -36,6 +36,8 @@
 - A feature `F02-spec-engine-mvp` passou a ter `SPEC.md` propria, fixtures de SPEC valida/invalida e um validador minimo de `SPEC_VALIDATION` com parser de front matter YAML, checagem de campos obrigatorios e exigencia das secoes `Contexto` e `Objetivo`.
 - A validacao local da `F02-spec-engine-mvp` foi concluida com testes verdes para o novo `SpecValidator`, mantendo o recorte da feature sem antecipar state machine, pipeline completa ou editor de SPEC.
 - O `security-review` da `F02-spec-engine-mvp` foi aprovado com ressalvas baixas: manter `yaml.safe_load` e, na integracao futura, restringir o chamador a paths esperados de `SPEC.md` dentro do workspace da run.
+- A PR `#19` da `F02-spec-engine-mvp` teve o gate `repo-checks` restaurado com correcao minima de formatacao, import order e compatibilidade de `mypy` no `SpecValidator`, sem ampliar o escopo da feature.
+- O `security-review` mais recente da correcao da F02 aprovou o delta com ressalva baixa e localizada: o `# type: ignore[import-untyped]` em `yaml` e aceitavel neste recorte, mas pode ser removido depois com tipagem mais explicita ou `types-PyYAML`.
 
 ## Pendências abertas
 
@@ -51,6 +53,7 @@
 - `memory.md` deve permanecer memória durável e reaproveitável, sem virar transcrição de conversa.
 - O `memory-curator` deve consolidar estado e handoff, enquanto `ERROR_LOG.md` e `PENDING_LOG.md` seguem como trilha operacional detalhada.
 - Na integracao futura do `SpecValidator`, o chamador deve restringir a leitura de `SPEC.md` a paths esperados do workspace para evitar ampliacao desnecessaria da superficie de entrada.
+- O `# type: ignore[import-untyped]` em `yaml` da F02 permanece como mitigacao minima de tipagem; reavaliar remocao quando houver frente dedicada de endurecimento ou tipagem de dependencias.
 
 ## Itens que podem virar novas features ou ajustes futuros
 
