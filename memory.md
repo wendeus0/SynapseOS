@@ -9,6 +9,7 @@
 - `DOCKER_PREFLIGHT` continua obrigatorio antes da execucao pratica de uma feature.
 - O preflight padrao segue leve por padrao.
 - O Codex opera em fluxo container-first via `codex-dev`, separado do runtime `aignt-os`.
+- No ambiente atual do Codex com `network-access = true`, `git push` e `gh pr create` funcionam no sandbox como caminho operacional padrao; fallback fora do sandbox fica restrito a contingencia por falha real de rede/sandbox.
 - A Branch Sync Gate usa `./scripts/branch-sync-check.sh` e `./scripts/branch-sync-update.sh` como caminho padrao e conservador.
 - `debug-failure` faz diagnostico inicial de falhas; `session-logger` continua responsavel pelo log operacional detalhado.
 - O caminho operacional padrao para checks/testes locais passa a ser `./scripts/commit-check.sh --sync-dev`, mantendo `uv` como gerenciador de ambiente e evitando dependencia de virtualenv legada do host.
