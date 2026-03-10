@@ -2,6 +2,9 @@
 
 ## Decisões incorporadas recentemente
 
+- A validação operacional de `uv sync --locked --extra dev` foi concluída com sucesso em ambiente com rede liberada.
+- A validação real do job `branch-validation` em GitHub Actions foi concluída com sucesso, confirmando checkout por `github.event.pull_request.head.sha` e uso de `github.head_ref` para o nome efetivo da branch em `pull_request`.
+- O fluxo local de `./scripts/commit-check.sh --no-sync` foi endurecido para executar `mypy` e `pytest` via `python -m ...`, reduzindo dependência de wrappers quebrados na `.venv`.
 - A validação operacional de `./scripts/docker-preflight.sh` sem `--dry-run` foi concluída com sucesso no modo padrão leve (`compose config` + build, sem `up`) em ambiente com Docker acessível.
 - A validação contra `main` em `pull_request` passou a usar o `head.sha` real da PR e o nome real da branch, evitando merge ref/detached ref sintético no GitHub Actions.
 - O hook local `.githooks/pre-commit` ficou explicitamente leve via `./scripts/commit-check.sh --hook-mode`.
@@ -31,8 +34,6 @@
 
 ## Pendências abertas
 
-- Validar em GitHub Actions real se o job `branch-validation` continua correto em eventos `pull_request` usando `github.event.pull_request.head.sha` e `github.head_ref`.
-- Validar o fluxo completo de `uv sync --locked --extra dev` em ambiente com rede liberada.
 - Resolver a dívida de formatação global do repositório para que `ruff format --check .` possa voltar a ser gate completo sem ressalvas.
 
 ## Pontos de atenção futuros

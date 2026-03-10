@@ -262,8 +262,8 @@ def test_commit_check_hook_mode_keeps_fast_no_sync_flow(tmp_path: Path, monkeypa
     assert uv_calls == [
         "run --no-sync ruff format --check .",
         "run --no-sync ruff check .",
-        "run --no-sync mypy",
-        "run --no-sync pytest",
+        "run --no-sync python -m mypy",
+        "run --no-sync python -m pytest",
     ]
 
 
@@ -297,8 +297,8 @@ def test_commit_check_sync_dev_bootstraps_before_running_checks_by_default(
         "sync --locked --extra dev",
         "run ruff format --check .",
         "run ruff check .",
-        "run mypy",
-        "run pytest",
+        "run python -m mypy",
+        "run python -m pytest",
     ]
 
 
@@ -330,8 +330,8 @@ def test_commit_check_no_sync_keeps_fast_rerun_mode(tmp_path: Path, monkeypatch)
     assert uv_calls == [
         "run --no-sync ruff format --check .",
         "run --no-sync ruff check .",
-        "run --no-sync mypy",
-        "run --no-sync pytest",
+        "run --no-sync python -m mypy",
+        "run --no-sync python -m pytest",
     ]
 
 

@@ -132,11 +132,11 @@ if [[ "$SKIP_LINT" -ne 1 ]]; then
 fi
 
 if [[ "$SKIP_TYPECHECK" -ne 1 ]]; then
-  uv "${uv_run_args[@]}" mypy
+  uv "${uv_run_args[@]}" python -m mypy
 fi
 
 if [[ "$SKIP_TESTS" -ne 1 ]]; then
-  uv "${uv_run_args[@]}" pytest
+  uv "${uv_run_args[@]}" python -m pytest
 fi
 
 if [[ "$SKIP_DOCKER" -ne 1 ]]; then

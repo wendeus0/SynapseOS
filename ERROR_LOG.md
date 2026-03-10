@@ -119,3 +119,13 @@
 - Ação tomada: o bloqueio foi respeitado; a finalização só ficou liberada após a branch voltar a um estado limpo e à frente do remoto da própria branch.
 - Status: resolvido.
 - Observação futura: rodar `./scripts/branch-sync-check.sh` cedo e manter a worktree limpa antes de tentar `commit`/`push`/`PR`.
+
+## 2026-03-10 - `uv run --no-sync` caiu em wrappers quebrados da `.venv`
+
+- Contexto: revalidação operacional do fluxo local após `uv sync --locked --extra dev` em ambiente com rede liberada.
+- Ação/comando relacionado: `./scripts/commit-check.sh --no-sync --skip-branch-validation --skip-docker --skip-security`, `uv run --no-sync mypy`, `uv run --no-sync pytest`
+- Erro observado: `uv run --no-sync mypy` falhou com `No such file or directory`; o mesmo padrão afetava wrappers da `.venv` usados no passo de testes.
+- Causa identificada: wrappers de `.venv/bin/mypy` e `.venv/bin/pytest` apontavam para caminho antigo/incorreto em `/home/g0dsssp33d/work/projetcs/aignt-os/.venv/bin/python3`.
+- Ação tomada: o fluxo operacional em `scripts/commit-check.sh` passou a executar `python -m mypy` e `python -m pytest` via `uv`; os testes operacionais do script foram ajustados para refletir o novo contrato.
+- Status: resolvido.
+- Observação futura: manter o fluxo com `python -m ...` reduz dependência de wrappers quebrados da `.venv`, mas a virtualenv local antiga ainda pode merecer limpeza dedicada fora desta frente.
