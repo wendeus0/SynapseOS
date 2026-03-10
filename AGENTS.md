@@ -99,6 +99,9 @@ Pare imediatamente e peça revisão quando:
 - Não rode o Codex diretamente no host quando a tarefa exigir execução prática em container.
 - O fluxo padrão do Codex deve montar apenas o repositório em `/workspace` e usar a configuração versionada em `.codex/config.toml`.
 - Não monte `docker.sock`, não use `privileged` e não monte o `$HOME` do host no ambiente isolado do Codex.
+- No ambiente atual do Codex com `network-access = true`, tente `git push` e `gh pr create` normalmente no sandbox como caminho padrão.
+- Reexecute fora do sandbox apenas como contingência quando houver falha real de rede/sandbox ou bloqueio operacional equivalente.
+- Trate autenticação, permissão no GitHub e conectividade real do host como problemas distintos; não masque esses casos com fallback automático.
 
 ## Agentes recomendados
 ### 1. repo-automation

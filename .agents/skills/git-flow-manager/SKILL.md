@@ -75,8 +75,8 @@ Leia nesta ordem:
 - Não faça squash/rebase/merge automaticamente sem pedido explícito.
 - Prefira mensagens de commit curtas, claras e alinhadas ao escopo da feature.
 - Se não houver acesso para abrir a PR de fato, gere o conteúdo pronto para uso manual.
-- `git push` e `gh pr create` devem ser tentados primeiro no fluxo normal do sandbox.
-- Se `git push` ou `gh pr create` falharem apenas por limitação de rede/sandbox e o prefixo correspondente já estiver aprovado fora do sandbox, reexecute automaticamente com elevação usando esse prefixo, sem tratar isso como falha do repositório.
+- No ambiente atual do Codex com `network-access = true`, `git push` e `gh pr create` devem ser tentados normalmente no sandbox como caminho padrão.
+- Reexecute fora do sandbox apenas se `git push` ou `gh pr create` falharem por limitação real de rede/sandbox da sessão atual e o prefixo correspondente já estiver aprovado fora do sandbox.
 - Se a reexecução fora do sandbox falhar, ou se a causa inicial indicar autenticação real do host, permissão no GitHub ou conectividade real fora do sandbox, pare e reporte como bloqueio real.
 
 # Processo
@@ -99,12 +99,12 @@ Leia nesta ordem:
 
 ## Etapa 4 — push
 1. Faça push da branch atual.
-2. Se o push falhar por erro típico de rede/sandbox da sessão atual, reexecute automaticamente fora do sandbox apenas quando o prefixo `git push` já estiver aprovado.
+2. No ambiente atual com `network-access = true`, trate o sandbox como caminho padrão e só reexecute fora dele se houver erro real de rede/sandbox na sessão atual.
 3. Se a falha persistir fora do sandbox, ou se desde o início indicar autenticação/acesso/permissão real, pare e explique.
 
 ## Etapa 5 — pull request
 1. Se possível, abra a PR.
-2. Se `gh pr create` falhar por erro típico de rede/sandbox da sessão atual, reexecute automaticamente fora do sandbox apenas quando o prefixo `gh pr create` já estiver aprovado.
+2. No ambiente atual com `network-access = true`, trate o sandbox como caminho padrão e só reexecute fora dele se `gh pr create` falhar por erro real de rede/sandbox na sessão atual.
 3. Se a falha persistir fora do sandbox, ou se desde o início indicar autenticação/acesso/permissão real no host ou no GitHub, gere o conteúdo manual e reporte o bloqueio real.
 4. Se não for possível, gere:
    - título da PR
