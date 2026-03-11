@@ -143,3 +143,107 @@ def test_codex_cli_adapter_builds_container_first_exec_command() -> None:
         "never",
         "Implement the plan.",
     ]
+
+
+def test_base_cli_adapter_raises_operational_error_when_launcher_is_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    adapters = _adapters_module()
+
+    class FakeAdapter(_FakeAdapterMixin, adapters.BaseCLIAdapter):
+        pass
+
+    async def fake_create_subprocess_exec(*command: str, **kwargs: object) -> _FakeProcess:
+        del command, kwargs
+        raise FileNotFoundError("missing launcher")
+
+    monkeypatch.setattr(adapters.asyncio, "create_subprocess_exec", fake_create_subprocess_exec)
+
+    with pytest.raises(adapters.AdapterOperationalError, match="launcher") as excinfo:
+        asyncio.run(FakeAdapter(tool_name="fake-tool").execute("plan feature"))
+
+    error = excinfo.value
+    assert error.tool_name == "fake-tool"
+    assert error.reason == "launcher_unavailable"
+    assert error.command == ["fake-tool", "--prompt", "plan feature"]
+
+
+@pytest.mark.parametrize(
+    ("result_kwargs", "expected_category", "expected_blocked"),
+    [
+        (
+            {
+                "return_code": -9,
+                "stderr_clean": "process timed out",
+                "timed_out": True,
+                "success": False,
+            },
+            "timeout",
+            False,
+        ),
+        (
+            {
+                "return_code": 1,
+                "stderr_clean": "docker: command not found",
+                "timed_out": False,
+                "success": False,
+            },
+            "launcher_unavailable",
+            True,
+        ),
+        (
+            {
+                "return_code": 1,
+                "stderr_clean": "no such service: codex-dev",
+                "timed_out": False,
+                "success": False,
+            },
+            "container_unavailable",
+            True,
+        ),
+        (
+            {
+                "return_code": 23,
+                "stderr_clean": (
+                    "401 Unauthorized: Missing bearer or basic authentication in header"
+                ),
+                "timed_out": False,
+                "success": False,
+            },
+            "authentication_unavailable",
+            True,
+        ),
+        (
+            {
+                "return_code": 2,
+                "stderr_clean": "unexpected codex failure",
+                "timed_out": False,
+                "success": False,
+            },
+            "return_code_nonzero",
+            False,
+        ),
+    ],
+)
+def test_classify_codex_execution_result(
+    result_kwargs: dict[str, object],
+    expected_category: str,
+    expected_blocked: bool,
+) -> None:
+    adapters = _adapters_module()
+    contracts = import_module("aignt_os.contracts")
+
+    result = contracts.CLIExecutionResult(
+        tool_name="codex",
+        command=["./scripts/dev-codex.sh", "--", "exec", "prompt"],
+        stdout_raw="",
+        stderr_raw=str(result_kwargs["stderr_clean"]),
+        stdout_clean="",
+        duration_ms=10,
+        **result_kwargs,
+    )
+
+    assessment = adapters.classify_codex_execution(result)
+
+    assert assessment.category == expected_category
+    assert assessment.is_operational_block == expected_blocked

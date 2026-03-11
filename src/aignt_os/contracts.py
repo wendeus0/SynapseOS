@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import (
     BaseModel,
@@ -28,3 +28,18 @@ class CLIExecutionResult(BaseModel):
     duration_ms: NonNegativeInt
     timed_out: StrictBool
     success: StrictBool
+
+
+class CodexExecutionAssessment(BaseModel):
+    model_config = ConfigDict(strict=True)
+
+    category: Literal[
+        "success",
+        "timeout",
+        "return_code_nonzero",
+        "launcher_unavailable",
+        "container_unavailable",
+        "authentication_unavailable",
+    ]
+    is_operational_block: StrictBool
+    detail: StrictStr

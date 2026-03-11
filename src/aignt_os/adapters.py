@@ -5,9 +5,42 @@ import re
 import time
 from abc import ABC, abstractmethod
 
-from aignt_os.contracts import CLIExecutionResult
+from aignt_os.contracts import CLIExecutionResult, CodexExecutionAssessment
 
 ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+_LAUNCHER_UNAVAILABLE_PATTERNS = (
+    "docker: command not found",
+    "cannot connect to the docker daemon",
+    "failed to connect to the docker daemon",
+)
+_CONTAINER_UNAVAILABLE_PATTERNS = (
+    "no such service",
+    'service "codex-dev" is not running',
+    "no such container",
+)
+_AUTHENTICATION_UNAVAILABLE_PATTERNS = (
+    "authentication required",
+    "not logged in",
+    "unauthorized",
+    "invalid token",
+    "api key",
+    "missing bearer or basic authentication",
+)
+
+
+class AdapterOperationalError(RuntimeError):
+    def __init__(
+        self,
+        *,
+        tool_name: str,
+        command: list[str],
+        reason: str,
+        message: str,
+    ) -> None:
+        super().__init__(message)
+        self.tool_name = tool_name
+        self.command = command
+        self.reason = reason
 
 
 class BaseCLIAdapter(ABC):
@@ -29,12 +62,20 @@ class BaseCLIAdapter(ABC):
         self._validate_command(command)
 
         started_at = time.monotonic()
-        process = await asyncio.create_subprocess_exec(
-            *command,
-            stdin=asyncio.subprocess.DEVNULL,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
+        try:
+            process = await asyncio.create_subprocess_exec(
+                *command,
+                stdin=asyncio.subprocess.DEVNULL,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+        except OSError as exc:
+            raise AdapterOperationalError(
+                tool_name=self.tool_name,
+                command=command,
+                reason="launcher_unavailable",
+                message=(f"{self.tool_name} launcher unavailable for command {command!r}: {exc}"),
+            ) from exc
 
         timed_out = False
         try:
@@ -90,3 +131,47 @@ class CodexCLIAdapter(BaseCLIAdapter):
             "never",
             prompt,
         ]
+
+
+def classify_codex_execution(result: CLIExecutionResult) -> CodexExecutionAssessment:
+    stderr_lower = result.stderr_clean.lower()
+
+    if result.success:
+        return CodexExecutionAssessment(
+            category="success",
+            is_operational_block=False,
+            detail="Codex CLI completed successfully.",
+        )
+    if result.timed_out:
+        return CodexExecutionAssessment(
+            category="timeout",
+            is_operational_block=False,
+            detail="Codex CLI exceeded the configured timeout.",
+        )
+    if _contains_any(stderr_lower, _LAUNCHER_UNAVAILABLE_PATTERNS):
+        return CodexExecutionAssessment(
+            category="launcher_unavailable",
+            is_operational_block=True,
+            detail=result.stderr_clean or "Codex launcher or Docker runtime is unavailable.",
+        )
+    if _contains_any(stderr_lower, _CONTAINER_UNAVAILABLE_PATTERNS):
+        return CodexExecutionAssessment(
+            category="container_unavailable",
+            is_operational_block=True,
+            detail=result.stderr_clean or "Codex container is unavailable.",
+        )
+    if _contains_any(stderr_lower, _AUTHENTICATION_UNAVAILABLE_PATTERNS):
+        return CodexExecutionAssessment(
+            category="authentication_unavailable",
+            is_operational_block=True,
+            detail=result.stderr_clean or "Codex authentication is unavailable.",
+        )
+    return CodexExecutionAssessment(
+        category="return_code_nonzero",
+        is_operational_block=False,
+        detail=result.stderr_clean or "Codex CLI exited with a non-zero return code.",
+    )
+
+
+def _contains_any(value: str, patterns: tuple[str, ...]) -> bool:
+    return any(pattern in value for pattern in patterns)

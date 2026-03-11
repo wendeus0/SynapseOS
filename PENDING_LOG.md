@@ -118,6 +118,14 @@
 - O `# type: ignore[import-untyped]` em `yaml` da F02 permanece como mitigacao minima de tipagem; reavaliar remocao quando houver frente dedicada de endurecimento ou tipagem de dependencias.
 - Na evolucao da state machine apos a F03, considerar encapsular estados em `Enum` ou aplicar `TERMINAL_STATES` de forma efetiva para reduzir risco de drift semantico sem ampliar esta feature.
 
+## TUI — Ideia de feature futura (análise de viabilidade concluída)
+
+- **Rich enriquecido (F13-rich-cli-output)**: Rich `>=13.9.4` já é dependência de produção e nunca foi usado em `src/`. Substituir `typer.echo()` por `Console`/`Table`/`Panel` em `aignt runtime status` é de baixo risco e sem nova dependência. Indicado como F13.
+- **TUI watch (F14-tui-watch-command)**: `aignt tui` como subcomando opcional usando Textual. Pré-requisito: F13 + implementação de `observability/` (diretório vazio). Hook ideal já existe: `PipelineObserver` em `pipeline.py`.
+- **Constraint Typer×asyncio**: `asyncio.run(app.run_async())` dentro do comando Typer é a forma de coexistência; funcional mas exige cuidado com event loop.
+- **TTY em container**: Rich degrada automaticamente sem TTY; Textual exige guarda `sys.stdout.isatty()`.
+- **Não implementar antes**: observabilidade incompleta limita valor de TUI real; Rich básico tem valor imediato.
+
 ## Itens que podem virar novas features ou ajustes futuros
 
 - Endurecimento adicional do path de estado para restringir explicitamente a uma raiz confiável do workspace.
