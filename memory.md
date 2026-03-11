@@ -8,9 +8,9 @@
 
 ## Local snapshot
 
-- `main` local esta limpo e sincronizado com `origin/main` apos o merge da PR `#38` da `F12-codex-adapter-operational-hardening`.
-- A worktree atual foi aberta na branch `chore/post-f12-handoff-logs-memory` apenas para consolidar `PENDING_LOG.md`, `ERROR_LOG.md` e `memory.md`.
-- O MVP inicial de 10 features foi concluido; o follow-up `F12` tambem foi mergeado, fechando o hardening operacional do primeiro adapter real.
+- `main` local esta limpo e sincronizado com `origin/main` apos os merges das PRs `#38` e `#39`, no commit `68892b1`.
+- Nao ha branch ativa de produto nem delta local pendente; a proxima sessao deve partir de `main` limpa.
+- O MVP inicial de 10 features foi concluido; o follow-up `F12` tambem foi mergeado, fechando o hardening operacional do primeiro adapter real e o handoff pos-F12.
 
 # Stable decisions
 
@@ -21,12 +21,13 @@
 - O `memory-curator` pode ser acionado por `$memory-curator encerrar conversa` ou `$memory-curator close session` para atualizar `memory.md` e gerar handoff de encerramento.
 - Com `network-access = true`, `git push` e `gh pr create` devem ser tentados primeiro no sandbox; fallback fora do sandbox fica restrito a falha real de rede ou sandbox.
 - O `CodexCLIAdapter` permanece o primeiro adapter real integrado; a F12 fixou classificacao operacional explicita para timeout, return code nao zero e bloqueios de launcher/container/autenticacao sem reabrir a pipeline.
+- A avaliacao de ADR pos-F12 concluiu que o hardening operacional do Codex e a chore de handoff estendem decisoes ja cobertas por ADR-004, ADR-011 e ADR-012; nao ha ADR nova nem atualizacao pendente por ora.
 - Os artefatos operacionais padrao em `.aignt-os/` devem permanecer fora do versionamento.
 
 # Active fronts
 
-- Fechar a chore `post-f12-handoff-logs-memory` no fluxo Git.
-- Abrir a proxima frente pequena de produto depois do merge desta chore, com `F13-rich-cli-output` como candidata principal.
+- Abrir a proxima frente pequena de produto, com `F13-rich-cli-output` como candidata principal.
+- Manter apenas follow-ups operacionais realmente bloqueantes fora da trilha principal de produto.
 
 # Open decisions
 
@@ -43,13 +44,13 @@
 
 # Next recommended steps
 
-- Promover a chore de handoff atual para alinhar logs e memoria com o estado pos-F12.
-- Depois disso, abrir a `F13-rich-cli-output` via `spec-editor` como proxima frente de produto de baixo risco.
+- Abrir a `F13-rich-cli-output` via `spec-editor` como proxima frente de produto de baixo risco.
+- Validar o recorte minimo da F13 em torno de `aignt runtime status`, sem misturar TUI completa ou Textual nesta abertura.
 - Manter revisoes amplas de docs antigas fora do caminho critico, salvo quando bloquearem validacao real.
 
 # Last handoff summary
 
 - Read before acting: releia `AGENTS.md`, `CONTEXT.md`, `memory.md`, `PENDING_LOG.md`, `ERROR_LOG.md`, `git status` e `git diff --stat`.
-- Current state: `main` esta sincronizado apos o merge da PR `#38`; a worktree atual existe apenas para consolidar logs e memoria duravel.
-- Open points: promover a chore de handoff e, em seguida, abrir a proxima frente pequena de produto.
+- Current state: `main` esta limpa e sincronizada apos os merges das PRs `#38` e `#39`; nao ha delta local pendente nem ADR nova requerida pelo estado atual da obra.
+- Open points: definir o recorte exato da `F13-rich-cli-output` e manter o smoke autenticado do Codex como follow-up operacional nao bloqueante.
 - Recommended next front: `F13-rich-cli-output`, mantendo o recorte inicial pequeno e centrado em melhoria visual da CLI com Rich.
