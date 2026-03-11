@@ -1,5 +1,15 @@
 # ERROR_LOG
 
+## 2026-03-11 - `dev-codex.sh` caiu em symlink legada no volume `codex-home`
+
+- Contexto: validacao do startup minimo do Codex apos endurecer o baseline MCP no `codex-dev`.
+- Acao/comando relacionado: `./scripts/dev-codex.sh -- --version`
+- Erro observado: `cp: '/workspace/.codex/config.toml' and '/home/codex/.codex/config.toml' are the same file`.
+- Causa identificada: o volume persistido `codex-home` ainda guardava uma symlink legada de `config.toml`, criada antes da troca de estrategia de geracao da configuracao efetiva.
+- Acao tomada: o launcher foi endurecido e a renderizacao da config efetiva foi extraida para `scripts/render-codex-config.sh`, eliminando dependencia da symlink antiga.
+- Status: resolvido.
+- Observacao futura: manter o launcher responsavel por gerar a config efetiva no volume do `codex-dev`, sem depender de symlink persistida entre execucoes.
+
 ## 2026-03-09 06:00 - Falha de `uv run` por cache fora da workspace
 
 - Contexto: validação operacional local durante revisão e correção de workflows/scripts.

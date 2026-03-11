@@ -2,6 +2,13 @@
 
 ## Decisões incorporadas recentemente
 
+- A baseline MCP do `codex-dev` passou a ser segura por padrao: `.codex/config.toml` deixou de carregar `github-actions`, `sqlite` e `docker` no startup default, e o MCP oficial do GitHub passou a ser renderizado dinamicamente apenas quando houver token no ambiente.
+- O fallback de `GITHUB_TOKEN` para `GITHUB_PERSONAL_ACCESS_TOKEN` ficou centralizado em `scripts/render-codex-config.sh`, tornando o launcher do Codex testavel e removendo a dependencia de symlink persistida no volume `codex-home`.
+- A avaliacao operacional confirmou que o MCP de Docker deve ficar fora do baseline do `codex-dev`, porque o ambiente isolado continua sem `docker.sock`.
+- `tests/unit/test_repo_automation.py` passou a cobrir o baseline seguro do MCP do Codex, a renderizacao da config efetiva com e sem token e a ausencia de `docker.sock` no `codex-dev`.
+- A validacao desta frente ficou fechada com `./scripts/docker-preflight.sh`, `pytest tests/unit/test_repo_automation.py` verde, smoke do `dev-codex.sh` sem token e smoke com fallback via `GITHUB_TOKEN`.
+- O `security-review` do delta MCP/Codex foi concluido com aprovacao e duas ressalvas baixas e nao bloqueantes: o helper de renderizacao aceita `--source`/`--output` arbitrarios e o fallback de `GITHUB_TOKEN` pode habilitar o MCP do GitHub em ambientes onde essa variavel ja exista por outro motivo.
+- O fechamento Git desta frente foi isolado na branch `chore/codex-mcp-baseline-hardening` com commit local `89e8111 chore(repo): harden codex mcp baseline`, sem push e sem PR.
 - A validação operacional de `uv sync --locked --extra dev` foi concluída com sucesso em ambiente com rede liberada.
 - A validação real do job `branch-validation` em GitHub Actions foi concluída com sucesso, confirmando checkout por `github.event.pull_request.head.sha` e uso de `github.head_ref` para o nome efetivo da branch em `pull_request`.
 - O fluxo local de `./scripts/commit-check.sh --no-sync` foi endurecido para executar `mypy` e `pytest` via `python -m ...`, reduzindo dependência de wrappers quebrados na `.venv`.
@@ -47,8 +54,12 @@
 
 ## Pendências abertas
 
+- Validar em momento futuro uma operacao real do MCP oficial do GitHub com credencial valida, pois a frente atual fechou apenas o startup path e a cobertura operacional do launcher.
+
 ## Pontos de atenção futuros
 
+- O fallback de `GITHUB_TOKEN` para `GITHUB_PERSONAL_ACCESS_TOKEN` continua aceitavel para o baseline atual, mas pode merecer opt-in explicito se gerar ambiguidade operacional em ambientes com tokens preexistentes.
+- O helper `scripts/render-codex-config.sh` continua restrito ao launcher atual; se passar a ser reutilizado fora desse fluxo, vale endurecer os paths aceitos.
 - `uv run --no-sync` continua dependendo de ambiente previamente sincronizado; em worktree fria ele pode cair no Python do host e falhar por dependências ausentes.
 - O fluxo local com `.venv` pode exigir `PYTHONPATH=src` quando não se usa `uv run`; por isso ele continua apenas como fallback operacional e não como caminho padrão.
 - O hardening do runtime valida identidade do processo por marcador + token em `/proc/<pid>/cmdline`; isso continua Linux-first.
