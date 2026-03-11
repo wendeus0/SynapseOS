@@ -72,7 +72,7 @@ def test_render_codex_config_adds_github_server_when_token_is_present(tmp_path: 
 
     assert result.returncode == 0
     rendered_text = output_config.read_text(encoding="utf-8")
-    assert '[mcp_servers.github]' in rendered_text
+    assert "[mcp_servers.github]" in rendered_text
     assert 'args = ["--toolsets=default,actions", "stdio"]' in rendered_text
 
 
@@ -93,7 +93,7 @@ def test_render_codex_config_uses_github_token_as_fallback(tmp_path: Path) -> No
 
     assert result.returncode == 0
     rendered_text = output_config.read_text(encoding="utf-8")
-    assert '[mcp_servers.github]' in rendered_text
+    assert "[mcp_servers.github]" in rendered_text
 
 
 def test_codex_dev_compose_keeps_docker_socket_out_of_isolated_container() -> None:
