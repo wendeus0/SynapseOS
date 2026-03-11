@@ -194,8 +194,22 @@ The repo is explicitly spec-first:
 
 - SPECs are Markdown documents with required YAML front matter.
 - The validator requires at least the metadata fields `id`, `type`, `summary`, `inputs`, `outputs`, `acceptance_criteria`, and `non_goals`.
-- The body must contain the sections `Contexto` and `Objetivo`.
+- The body must contain the sections `Contexto` and `Objetivo` as **H1 headings** (`# Contexto`, `# Objetivo`). The parser only recognizes `# ` (H1) — `## ` headings are ignored.
+- Feature directories follow the pattern `features/F<NN>-<slug>/` with the SPEC at `features/F<NN>-<slug>/SPEC.md`.
 - The state machine blocks moving past `SPEC_VALIDATION` until the flow stays in order.
+
+To validate a SPEC locally:
+
+```bash
+uv run --no-sync python -c "
+from pathlib import Path
+from aignt_os.specs.validator import validate_spec_file
+result = validate_spec_file(Path('features/<feature>/SPEC.md'))
+print(result)
+"
+```
+
+The public API is `validate_spec_file(path: Path) -> SpecDocument` — there is no `SpecValidator` class.
 
 ### Testing layout
 
@@ -203,9 +217,21 @@ Current test coverage is organized as:
 
 - `tests/unit/` for config, contracts, SPEC validation, runtime state/security, state machine, and repo automation scripts
 - `tests/integration/` for CLI bootstrap and runtime CLI behavior
-- `tests/fixtures/specs/` for SPEC fixtures
+- `tests/fixtures/specs/` for SPEC fixtures (valid and invalid fixtures used by SPEC validator tests)
 
 `tests/pipeline/` exists as part of the intended architecture, but current coverage is mostly unit and integration tests.
+
+Test function naming convention: `test_<o_que_faz>_<cenário>` — describe behavior, not implementation.  
+Example: `test_state_machine_blocks_plan_before_spec_validation`
+
+Key project exceptions to test explicitly:
+- `InvalidStateTransition` — test invalid transition scenarios in state machine tests
+- `SpecValidationError` — test with invalid SPEC fixtures already in `tests/fixtures/specs/`
+- `RuntimeInconsistentError` — test via CLI integration, not directly against the service
+
+Test anti-patterns to avoid:
+- Do not mock what can be tested with the real implementation (e.g., do not mock `validate_spec_file`)
+- Do not use `time.sleep` in tests — use time mocks when necessary
 
 ## Key repo-specific conventions
 
@@ -240,6 +266,10 @@ The repo expects this order:
 7. report/commit
 
 Do not treat a green local hook as equivalent to the operational preflight.
+
+### Configuration and environment variables
+
+All `AppSettings` fields are overridable via environment variables with the `AIGNT_OS_` prefix (e.g., `AIGNT_OS_ENVIRONMENT`, `AIGNT_OS_RUNTIME_STATE_DIR`). Never use `os.environ` directly — always read settings through `AppSettings`.
 
 ### Follow the repo's Python execution style
 
