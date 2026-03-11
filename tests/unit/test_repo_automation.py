@@ -28,6 +28,86 @@ def run_script_with_env(env: dict[str, str], *args: str) -> subprocess.Completed
     )
 
 
+def test_codex_config_baseline_excludes_optional_mcp_servers() -> None:
+    config_text = (REPO_ROOT / ".codex/config.toml").read_text(encoding="utf-8")
+
+    assert "[mcp_servers.github]" not in config_text
+    assert "[mcp_servers.github-actions]" not in config_text
+    assert "[mcp_servers.sqlite]" not in config_text
+    assert "[mcp_servers.docker]" not in config_text
+
+
+def test_render_codex_config_warns_and_keeps_safe_baseline_without_token(
+    tmp_path: Path,
+) -> None:
+    output_config = tmp_path / "config.toml"
+
+    result = run_script(
+        "scripts/render-codex-config.sh",
+        "--source",
+        str(REPO_ROOT / ".codex/config.toml"),
+        "--output",
+        str(output_config),
+    )
+
+    assert result.returncode == 0
+    assert "GitHub MCP desabilitado" in result.stderr
+    rendered_text = output_config.read_text(encoding="utf-8")
+    assert "[mcp_servers.github]" not in rendered_text
+
+
+def test_render_codex_config_adds_github_server_when_token_is_present(tmp_path: Path) -> None:
+    output_config = tmp_path / "config.toml"
+    env = os.environ.copy()
+    env["GITHUB_PERSONAL_ACCESS_TOKEN"] = "dummy-token"
+
+    result = run_script_with_env(
+        env,
+        "scripts/render-codex-config.sh",
+        "--source",
+        str(REPO_ROOT / ".codex/config.toml"),
+        "--output",
+        str(output_config),
+    )
+
+    assert result.returncode == 0
+    rendered_text = output_config.read_text(encoding="utf-8")
+    assert "[mcp_servers.github]" in rendered_text
+    assert 'args = ["--toolsets=default,actions", "stdio"]' in rendered_text
+
+
+def test_render_codex_config_uses_github_token_as_fallback(tmp_path: Path) -> None:
+    output_config = tmp_path / "config.toml"
+    env = os.environ.copy()
+    env.pop("GITHUB_PERSONAL_ACCESS_TOKEN", None)
+    env["GITHUB_TOKEN"] = "dummy-token"
+
+    result = run_script_with_env(
+        env,
+        "scripts/render-codex-config.sh",
+        "--source",
+        str(REPO_ROOT / ".codex/config.toml"),
+        "--output",
+        str(output_config),
+    )
+
+    assert result.returncode == 0
+    rendered_text = output_config.read_text(encoding="utf-8")
+    assert "[mcp_servers.github]" in rendered_text
+
+
+def test_codex_dev_compose_keeps_docker_socket_out_of_isolated_container() -> None:
+    compose_text = (REPO_ROOT / "compose.dev.yaml").read_text(encoding="utf-8")
+
+    assert "docker.sock" not in compose_text
+
+
+def test_codex_dev_image_installs_github_mcp_server() -> None:
+    dockerfile_text = (REPO_ROOT / ".devcontainer/Dockerfile").read_text(encoding="utf-8")
+
+    assert "github-mcp-server" in dockerfile_text
+
+
 def test_operational_ci_uses_real_pull_request_head_checkout() -> None:
     workflow_text = (REPO_ROOT / ".github/workflows/operational-ci.yml").read_text(encoding="utf-8")
 

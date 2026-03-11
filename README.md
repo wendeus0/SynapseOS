@@ -209,3 +209,4 @@ Nenhuma feature avança para código sem `SPEC.md` aprovada e testes mínimos es
 - Para habilitar o MCP oficial do GitHub dentro do `codex-dev`, exporte `GITHUB_PERSONAL_ACCESS_TOKEN` antes de rodar o launcher. Se apenas `GITHUB_TOKEN` estiver definido, o launcher o reutiliza como fallback.
 - O toolset `actions` do MCP oficial do GitHub cobre o caso de GitHub Actions; não há servidor `github-actions` separado no baseline atual.
 - O MCP de SQLite fica desabilitado por padrão até existir um banco real a ser exposto no workspace.
+- O MCP de Docker também fica fora do baseline do `codex-dev`, porque esse ambiente isolado não monta `docker.sock`.

@@ -14,15 +14,15 @@ network_access = true
 # O launcher `./scripts/dev-codex.sh` usa este arquivo como base e:
 #   - habilita o MCP oficial do GitHub quando houver token no ambiente;
 #   - reutiliza esse MCP para GitHub Actions via `--toolsets=default,actions`;
-#   - deixa o MCP de SQLite desabilitado por padrão até existir um banco real.
+#   - deixa MCPs dependentes de recursos ausentes no `codex-dev` fora do baseline.
 #
 # Pré-requisito para habilitar GitHub MCP:
 #   export GITHUB_PERSONAL_ACCESS_TOKEN=ghp_...
 # Compatibilidade:
 #   se apenas `GITHUB_TOKEN` estiver definido, o launcher o reaproveita como
 #   fallback para `GITHUB_PERSONAL_ACCESS_TOKEN`.
+#
+# Nota:
+#   o `codex-dev` permanece sem `docker.sock`; por isso o MCP de Docker nao faz
+#   parte do baseline seguro deste ambiente isolado.
 # ---------------------------------------------------------------------------
-
-[mcp_servers.docker]
-command = "uvx"
-args = ["docker-mcp"]
