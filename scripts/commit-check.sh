@@ -143,6 +143,8 @@ if [[ "$SKIP_DOCKER" -ne 1 ]]; then
   docker_args=()
   if [[ "$FULL_RUNTIME" -eq 1 ]]; then
     docker_args+=(--full-runtime)
+  elif [[ "$BUILD_IMAGE" -eq 1 ]]; then
+    docker_args+=(--build)
   fi
 
   if [[ "$BUILD_IMAGE" -eq 1 || "$FULL_RUNTIME" -eq 1 ]]; then

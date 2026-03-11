@@ -3,10 +3,11 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SERVICE="aignt-os"
-SKIP_BUILD=0
 SKIP_UP=1
 DRY_RUN=0
 HEALTH_TIMEOUT=30
+BUILD_MODE="config-only"
+BUILD_MODE_EXPLICIT=0
 
 export DOCKER_CONFIG="${DOCKER_CONFIG:-$ROOT_DIR/.cache/docker/config}"
 mkdir -p "$DOCKER_CONFIG"
@@ -18,7 +19,18 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --skip-build)
-      SKIP_BUILD=1
+      BUILD_MODE="config-only"
+      BUILD_MODE_EXPLICIT=1
+      shift
+      ;;
+    --build)
+      BUILD_MODE="always"
+      BUILD_MODE_EXPLICIT=1
+      shift
+      ;;
+    --build-if-needed)
+      BUILD_MODE="if-needed"
+      BUILD_MODE_EXPLICIT=1
       shift
       ;;
     --skip-up)
@@ -46,17 +58,26 @@ done
 
 config_cmd=(docker compose -f "$ROOT_DIR/compose.yaml" config)
 build_cmd=("$ROOT_DIR/scripts/docker-build.sh" --use-compose)
+rebuild_cmd=("$ROOT_DIR/scripts/docker-rebuild.sh" --use-compose)
 up_cmd=("$ROOT_DIR/scripts/docker-up.sh" --service "$SERVICE" --detach)
 
+if [[ "$SKIP_UP" -ne 1 && "$BUILD_MODE_EXPLICIT" -ne 1 ]]; then
+  BUILD_MODE="if-needed"
+fi
+
 printf '%s\n' "Resolved preflight config command: ${config_cmd[*]}"
-if [[ "$SKIP_BUILD" -ne 1 ]]; then
+if [[ "$BUILD_MODE" == "always" ]]; then
   printf '%s\n' "Resolved preflight build command: ${build_cmd[*]}"
+elif [[ "$BUILD_MODE" == "if-needed" ]]; then
+  printf '%s\n' "Resolved preflight rebuild command: ${rebuild_cmd[*]}"
+else
+  printf '%s\n' "Resolved preflight build mode: config-only"
 fi
 if [[ "$SKIP_UP" -ne 1 ]]; then
   printf '%s\n' "Resolved preflight up command: ${up_cmd[*]}"
   printf '%s\n' "Resolved preflight health requirement: container must stay running and report healthy"
 else
-  printf '%s\n' "Resolved preflight mode: light (--skip-up default)"
+  printf '%s\n' "Resolved preflight runtime mode: skip-up (default)"
 fi
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
@@ -65,8 +86,10 @@ fi
 
 "${config_cmd[@]}"
 
-if [[ "$SKIP_BUILD" -ne 1 ]]; then
+if [[ "$BUILD_MODE" == "always" ]]; then
   "${build_cmd[@]}"
+elif [[ "$BUILD_MODE" == "if-needed" ]]; then
+  "${rebuild_cmd[@]}"
 fi
 
 if [[ "$SKIP_UP" -ne 1 ]]; then

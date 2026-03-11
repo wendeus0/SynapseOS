@@ -7,7 +7,7 @@
 # The setup mirrors the Codex devcontainer bootstrap:
 #   1. Install uv (Python package manager used throughout the repo)
 #   2. Bootstrap the dev environment with locked dependencies
-#   3. Run the lightweight Docker preflight check
+#   3. Run the lightweight Docker preflight check (`compose config` only)
 #
 # Reference: https://docs.github.com/en/copilot/customizing-copilot/customizing-the-development-environment-for-copilot-coding-agent
 
@@ -24,5 +24,5 @@ steps:
   - name: Validate repository checks (light)
     run: ./scripts/commit-check.sh --no-sync
 
-  - name: Docker preflight (light)
+  - name: Docker preflight (config-only)
     run: ./scripts/docker-preflight.sh

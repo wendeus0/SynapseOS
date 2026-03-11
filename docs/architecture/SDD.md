@@ -101,7 +101,7 @@ DOCKER_PREFLIGHT → SPEC → TEST_RED → CODE_GREEN → REFACTOR → SECURITY_
 
 Regras:
 - `DOCKER_PREFLIGHT` é executado pela skill `repo-automation`.
-- Em CI e no fluxo local, o `DOCKER_PREFLIGHT` padrão é leve: `compose config` + build sem `up`.
+- Em CI e no fluxo local, o `DOCKER_PREFLIGHT` padrão é leve: `compose config` sem `up`; build fica explícito quando necessário.
 - O runtime completo em container fica reservado para workflow dedicado ou acionamento explícito em features que toquem boot, ciclo de vida, persistência ou integração.
 - `spec-editor` só inicia após o ambiente Docker estar verde ou explicitamente validado.
 - `security-review` atua como gate antes de `REPORT` e `COMMIT`.

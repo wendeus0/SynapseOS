@@ -1,5 +1,15 @@
 # ERROR_LOG
 
+## 2026-03-11 - Corpo de PR inline sofreu expansao de shell durante `gh pr create`
+
+- Contexto: fechamento Git da branch `chore/docker-preflight-modes` com abertura de PR no sandbox.
+- Ação/comando relacionado: `gh pr create --body "...markdown com backticks..."`.
+- Erro observado: o shell expandiu trechos do corpo Markdown como substituição de comando, gerando mensagens como `zsh:1: command not found: DOCKER_PREFLIGHT` e publicando uma descrição de PR corrompida.
+- Causa identificada: uso de `gh pr create --body` com texto inline contendo backticks e conteúdo shell-sensitive, sem encapsulamento seguro em arquivo.
+- Ação tomada: a PR foi aberta, o corpo publicado foi inspecionado e corrigido imediatamente com `gh pr edit --body-file /tmp/pr24-body.md`.
+- Status: resolvido.
+- Observação futura: no fluxo Git assistido por agente, preferir `gh pr create --body-file` ou `gh pr edit --body-file` por padrão para evitar expansão acidental de shell em descrições Markdown.
+
 ## 2026-03-11 - `dev-codex.sh` caiu em symlink legada no volume `codex-home`
 
 - Contexto: validacao do startup minimo do Codex apos endurecer o baseline MCP no `codex-dev`.

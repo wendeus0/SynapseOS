@@ -56,7 +56,7 @@ DOCKER_PREFLIGHT → SPEC → TEST_RED → CODE_GREEN → REFACTOR → SECURITY_
 
 - `DOCKER_PREFLIGHT` é obrigatório antes de qualquer execução prática da feature.
 - O preflight operacional de Docker/container é responsabilidade da skill `repo-automation`.
-- Em CI e no fluxo local, o `DOCKER_PREFLIGHT` deve permanecer leve por padrão: validar compose e build sem subir o container completo.
+- Em CI e no fluxo local, o `DOCKER_PREFLIGHT` deve permanecer leve por padrão: validar `compose config` sem subir o container completo; build fica explícito quando necessário.
 - Hooks locais podem executar checks leves de repositório, mas isso não substitui o `DOCKER_PREFLIGHT` operacional real antes da execução prática da feature.
 - O container completo só sobe em workflow dedicado de runtime/integração ou quando houver pedido explícito ligado a boot, ciclo de vida, persistência ou integração.
 - `spec-editor` só pode iniciar depois que o ambiente estiver verde em Docker ou explicitamente validado.

@@ -15,7 +15,7 @@ Os workflows são a linha de defesa operacional do repositório.
 |-----|-----------|
 | `branch-validation` | Valida nome e alinhamento da branch com `origin/main` |
 | `repo-checks` | Ruff format, ruff check, mypy, pytest |
-| `docker-preflight` | Valida `compose config` e build sem subir o runtime |
+| `docker-preflight` | Valida `compose config` no caminho leve; build fica explícito nos jobs de imagem |
 | `security-review` | Gate de segurança antes de merge |
 | `build-image` | Build da imagem Docker de produção |
 

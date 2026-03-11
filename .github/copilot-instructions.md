@@ -133,10 +133,12 @@ The repo distinguishes lightweight repository checks from operational Docker pre
 
 ```bash
 ./scripts/docker-preflight.sh
+./scripts/docker-preflight.sh --build
 ./scripts/docker-preflight.sh --full-runtime
 ```
 
-- Default `docker-preflight` is intentionally light: `docker compose config` plus build, without bringing the full runtime up.
+- Default `docker-preflight` is intentionally light: `docker compose config` only.
+- Use `--build` when the goal is to validate the application image.
 - Use `--full-runtime` only for changes that affect boot, lifecycle, persistence, integration, or container runtime behavior.
 
 ### Git hook behavior

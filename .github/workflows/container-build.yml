@@ -38,7 +38,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run Docker preflight
-        run: ./scripts/docker-preflight.sh
+        run: ./scripts/docker-preflight.sh --build
 
       - name: Run operational security gate
         run: ./scripts/security-gate.sh

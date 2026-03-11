@@ -74,7 +74,7 @@ No MVP, a implementação prática continua linear, mas o operador deve seguir p
 - runtime dual: CLI efêmero + worker leve
 - isolamento: container da aplicação + containers dos agentes selecionados
 - `DOCKER_PREFLIGHT`: obrigatório antes da execução prática de uma feature
-- `DOCKER_PREFLIGHT` leve: padrão para CI e fluxo local, com compose/config + build sem `up`
+- `DOCKER_PREFLIGHT` leve: padrão para CI e fluxo local, com `compose config` sem `up`; build fica explícito quando necessário
 - hook local leve: checks rápidos de repositório; não equivale ao `DOCKER_PREFLIGHT` operacional real
 - preflight completo de runtime: reservado para workflow dedicado ou pedido explícito em tarefas de boot/ciclo de vida/persistência/integração
 - `repo-automation`: skill responsável pelo preflight operacional em Docker/container

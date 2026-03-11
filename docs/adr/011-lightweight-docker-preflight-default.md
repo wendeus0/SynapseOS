@@ -10,9 +10,9 @@ O projeto também busca preservar segurança operacional e previsibilidade sem b
 
 ## Decisão
 Manter o `DOCKER_PREFLIGHT` leve por padrão:
-- em CI, o padrão é validar `compose config` e build com `--skip-up`;
-- no fluxo local e hooks, o padrão é preflight leve, sem bloquear commits com `docker compose up`;
-- build real Docker só acontece quando explicitamente pedido ou em contextos especiais;
+- em CI, o padrão é validar `compose config` sem build implícito;
+- no fluxo local e hooks, o padrão é preflight leve, sem bloquear commits com `docker compose up` nem build desnecessário;
+- build real Docker só acontece quando explicitamente pedido ou em jobs de imagem;
 - subir o container completo fica reservado para workflow dedicado de runtime/integração ou para tarefas explícitas de boot, ciclo de vida, persistência ou integração.
 
 ## Consequências

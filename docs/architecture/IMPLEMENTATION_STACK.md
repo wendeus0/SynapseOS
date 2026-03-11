@@ -34,7 +34,7 @@ Trade-offs:
 - aumenta o custo operacional quando o Docker falha, inclusive para tarefas simples;
 - desloca o início prático da feature para depois da validação do ambiente;
 - exige que `repo-automation` prepare e valide o runtime antes de `spec-editor`.
-- por isso, o preflight padrão deve permanecer leve e o runtime completo deve ser reservado para workflows ou execuções explícitas.
+- por isso, o preflight padrão deve permanecer leve (`compose config`), com build e runtime completo reservados para workflows ou execuções explícitas.
 
 ### AIgnt-Synapse-Flow
 Permite controle fino de hand-offs, retry, rollback e estágios específicos do domínio sem complexidade operacional de um orquestrador pesado.

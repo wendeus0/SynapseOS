@@ -122,6 +122,14 @@ def test_operational_ci_repo_checks_use_sync_dev_commit_flow() -> None:
     assert "uv sync --locked --extra dev" not in workflow_text
 
 
+def test_container_build_workflow_uses_explicit_build_preflight() -> None:
+    workflow_text = (REPO_ROOT / ".github/workflows/container-build.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert "./scripts/docker-preflight.sh --build" in workflow_text
+
+
 def test_validate_branch_allows_current_branch_when_explicitly_permitted() -> None:
     result = run_script(
         "scripts/validate-branch.sh",
@@ -193,8 +201,26 @@ def test_docker_preflight_supports_dry_run() -> None:
     assert result.returncode == 0
     assert "docker compose" in result.stdout
     assert "config" in result.stdout
-    assert "build" in result.stdout
+    assert "config-only" in result.stdout
+    assert "build command" not in result.stdout
+    assert "rebuild command" not in result.stdout
     assert "up command" not in result.stdout
+
+
+def test_docker_preflight_build_supports_dry_run() -> None:
+    result = run_script("scripts/docker-preflight.sh", "--dry-run", "--build")
+
+    assert result.returncode == 0
+    assert "build command" in result.stdout
+    assert "docker-build.sh" in result.stdout
+
+
+def test_docker_preflight_build_if_needed_supports_dry_run() -> None:
+    result = run_script("scripts/docker-preflight.sh", "--dry-run", "--build-if-needed")
+
+    assert result.returncode == 0
+    assert "rebuild command" in result.stdout
+    assert "docker-rebuild.sh" in result.stdout
 
 
 def test_docker_preflight_full_runtime_supports_dry_run() -> None:
@@ -202,6 +228,7 @@ def test_docker_preflight_full_runtime_supports_dry_run() -> None:
 
     assert result.returncode == 0
     assert "docker compose" in result.stdout
+    assert "rebuild command" in result.stdout
     assert "up command" in result.stdout
     assert "healthy" in result.stdout
 
