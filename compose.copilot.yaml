@@ -47,7 +47,8 @@ services:
     tty: true
     tmpfs:
       # /home/codex/.copilot: config de auth copiado pelo dev-copilot.sh antes do exec
-      - /home/codex/.copilot:size=16777216,mode=700
+      # uid/gid=1000 necessário pois tmpfs é montado como root por padrão
+      - /home/codex/.copilot:size=16777216,mode=700,uid=1000,gid=1000
       - /tmp:size=268435456,mode=1777
       - /run:size=16777216,mode=755
 
