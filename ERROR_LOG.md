@@ -1,5 +1,25 @@
 # ERROR_LOG
 
+## 2026-03-11 17:44 -03 - Worktree fria da F09 sem dependencias dev para coleta de testes
+
+- Contexto: implementacao da `F09-supervisor-mvp` em worktree nova.
+- Ação/comando relacionado: `pytest tests/unit/test_supervisor.py ... tests/integration/test_pipeline_persistence.py` e `env UV_CACHE_DIR=/home/g0dsssp33d/work/projects/aignt-os/.cache/uv uv run pytest ...`
+- Erro observado: `ModuleNotFoundError: No module named 'typer'` durante a carga de `tests/integration/conftest.py`.
+- Causa identificada: a worktree foi aberta sem bootstrap de dependencias dev; a coleta dos testes de integracao depende de `typer`.
+- Ação tomada: `env UV_CACHE_DIR=/home/g0dsssp33d/work/projects/aignt-os/.cache/uv uv sync --locked --extra dev` e reexecucao da suite no ambiente sincronizado.
+- Status: resolvido localmente.
+- Observação futura: em worktree fria, sincronizar extras de desenvolvimento antes de rodar suites que carregam `tests/integration/conftest.py`.
+
+## 2026-03-11 17:44 -03 - `mypy src tests` continua falhando por modulo duplicado `conftest`
+
+- Contexto: validacao final da `F09-supervisor-mvp` antes do handoff.
+- Ação/comando relacionado: `env UV_CACHE_DIR=/home/g0dsssp33d/work/projects/aignt-os/.cache/uv uv run mypy src tests`
+- Erro observado: `tests/unit/conftest.py: error: Duplicate module named "conftest" (also at "tests/integration/conftest.py")`.
+- Causa identificada: a invocacao ampla `mypy src tests` conflita com os dois `conftest.py`; o fluxo oficial do repositório usa `uv run --no-sync python -m mypy`, que nao reproduz esse problema.
+- Ação tomada: a validacao da feature foi concluida pelo caminho padrao do repositório com `uv run --no-sync python -m mypy`, que passou verde.
+- Status: contornado na sessão; erro ainda reproduzivel fora do fluxo padrao.
+- Observação futura: decidir se o projeto vai endurecer `mypy` para aceitar `src tests` explicitamente ou manter apenas a invocacao padrao do repositório.
+
 ## 2026-03-11 - `test_adapter_parser_flow` falhou por fixture ANSI como texto literal
 
 - Contexto: criação dos testes de integração do parsing engine na branch `chore/tdd-integration-hardening`.

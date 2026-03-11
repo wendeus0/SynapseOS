@@ -2,6 +2,11 @@
 
 ## Decisões incorporadas recentemente
 
+- A `F09-supervisor-mvp` foi materializada com `SPEC.md`, `NOTES.md` e `CHECKLIST.md` proprios, mantendo o AIgnt-Synapse-Flow como a engine propria de pipeline do AIgnt OS e limitando o recorte a supervisor deterministico, pipeline linear ate `SECURITY` e persistencia de decisoes do supervisor.
+- A pipeline agora suporta `CODE_GREEN`, `REVIEW` e `SECURITY`; a state machine passou a aceitar `REVIEW -> CODE_GREEN` para rework, e o novo modulo `aignt_os.supervisor` decide entre `retry`, `reroute`, `return_to_code_green` e `fail` de forma deterministica.
+- A persistencia de runs da F09 passou a registrar eventos `supervisor_decision`, e a validacao local da feature fechou verde com `233` testes passando, `ruff check`, `uv run --no-sync python -m mypy`, `./scripts/security-gate.sh` e `./scripts/commit-check.sh --skip-docker`.
+- O recorte da F09 manteve `retry` e `reroute` dentro da mesma execucao da pipeline; nao houve retomada persistida entre polls do worker nem ampliacao para `DOCUMENT` ou `RUN_REPORT.md`.
+
 - Os três documentos arquiteturais principais foram refinados para maior convergência: `SPEC_FORMAT.md` ganhou tabela de campos obrigatórios, regra H1 obrigatória documentada, valores válidos para `type`, assimetria intencional `non_goals`/`acceptance_criteria` explicada, referência ao template v2 e nova seção sobre testes de integração nos acceptance_criteria. `TDD.md` teve nomes de testes corrigidos para convenção do projeto, seção 9 de fixtures marcada com ✅/🔜, seção 10 sincronizada com estrutura real, e nova seção 13 formalizando requisito de testes de integração por categoria de feature. `SDD.md` teve estados `INIT`/`RETRYING` marcados como pós-MVP, DOCKER_PREFLIGHT reposicionado como gate lateral no diagrama, `metadata: dict` corrigido para `dict[str, Any]`, `parser_confidence` e `REQUEST.md` marcados como não implementados no MVP, e tabela de mapeamento macro ↔ estados internos adicionada na seção 5.
 - A suíte de testes foi expandida de 88 → 215 testes ao longo da sessão de hardening: novos conftest.py (unit + integration), fixtures de SPEC inválidas, fixtures de CLI output realistas, test_spec_validator (4→18), test_state_machine (5→30), test_parsing_engine (9→21), test_contracts (4→17), test_config (4→12), test_happy_path (20 novos), test_failure_recovery (9 novos), test_review_rework (11 novos), test_adapter_parser_flow (10 novos de integração).
 - `pytest-cov>=5.0.0` foi adicionado ao `pyproject.toml` com configuração `[tool.coverage.run]` e `[tool.coverage.report]`. Versão instalada: `7.0.0`.
@@ -77,7 +82,9 @@
 
 ## Pendências abertas
 
-- Commit, PR e merge da branch `chore/tdd-integration-hardening` ainda pendentes (próximo passo imediato).
+- Commit, push e PR da branch `feature/f09-supervisor-mvp` ainda pendentes.
+- Revisar o delta final da F09 no fluxo Git (`REPORT` e `COMMIT`) antes de abrir a proxima feature.
+- Definir a frente seguinte apos o fechamento da F09; o proximo passo natural continua sendo `F10` para `RUN_REPORT.md` e 1 adapter real.
 - Revisão dos `NOTES.md` de cada feature (F01–F07) para verificar se referenciam conceitos obsoletos (estados `INIT`/`RETRYING`, `parser_confidence`, `REQUEST.md` como artefato).
 - Verificar se SPECs F01–F05 usam `## 1. Contexto` (H2) em vez de `# Contexto` (H1) — o validator exige H1. Ainda não foi confirmado se esses SPECs passam no `validate_spec_file()`. Pode exigir atualização das SPECs ou confirmação de que a regra H1 se aplica apenas ao validator e não ao formato de seções do corpo da SPEC.
 - Fixtures de testes aspiracionais marcadas como 🔜 no TDD.md: `tests/fixtures/worker/` (ainda ausente).
@@ -89,6 +96,9 @@
 - Fixture `noisy_mixed_output.txt` e `noisy_no_code_block.txt` armazenam sequências ANSI como literais `\u001b`. Todo helper que os lê para testar comportamento de ANSI precisa de `unicode_escape=True`. Considerar adicionar comentário nos próprios arquivos de fixture documentando isso.
 - A ampliação de `TRANSPORT_NOISE_PREFIXES` para incluir prefixos como `[rpc]` deve ser decisão explícita documentada na SPEC da feature responsável — não uma adição silenciosa.
 - Os testes de `test_review_rework.py` exercitam a state machine diretamente para estados CODE_GREEN/REVIEW/SECURITY que ainda não estão implementados no `PipelineEngine`. Quando o Supervisor/pipeline for implementado para esses estados, esses testes servem como documentação de comportamento esperado e devem ser migrados para testes de integração.
+- O retry/reroute da F09 permanece restrito a uma unica execucao do AIgnt-Synapse-Flow; retomada persistida entre polls do worker e requeue duravel continuam fora de escopo.
+- A invocacao ampla `uv run mypy src tests` continua falhando por modulo duplicado `conftest`; o fluxo padrao do repositório segue sendo `uv run --no-sync python -m mypy`.
+- Em worktree fria, `pytest` e `uv run pytest` podem falhar na coleta ate que `uv sync --locked --extra dev` tenha sido executado.
 - H1 vs H2 nas SPECs F01–F05: checar se `## 1. Contexto` causa falha de validação no `SpecValidator` após a regra H1 ter sido documentada.
 
 - O fallback de `GITHUB_TOKEN` para `GITHUB_PERSONAL_ACCESS_TOKEN` continua aceitavel para o baseline atual, mas pode merecer opt-in explicito se gerar ambiguidade operacional em ambientes com tokens preexistentes.

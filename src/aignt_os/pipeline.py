@@ -13,8 +13,17 @@ from aignt_os.specs import (
     SpecValidationError as _SpecValidationError,
 )
 from aignt_os.state_machine import LINEAR_STATE_FLOW, AIgntStateMachine
+from aignt_os.supervisor import Supervisor, SupervisorDecision
 
-PIPELINE_STOP_STATES = ("SPEC_VALIDATION", "PLAN", "TEST_RED")
+PRIMARY_EXECUTOR_ROUTE = "primary"
+PIPELINE_STOP_STATES = (
+    "SPEC_VALIDATION",
+    "PLAN",
+    "TEST_RED",
+    "CODE_GREEN",
+    "REVIEW",
+    "SECURITY",
+)
 PIPELINE_ENTRY_STATES = (
     "REQUEST",
     "SPEC_DISCOVERY",
@@ -22,6 +31,9 @@ PIPELINE_ENTRY_STATES = (
     "SPEC_VALIDATION",
     "PLAN",
     "TEST_RED",
+    "CODE_GREEN",
+    "REVIEW",
+    "SECURITY",
 )
 
 
@@ -52,6 +64,7 @@ class PipelineContext(BaseModel):
     run_id: StrictStr | None = None
     step_history: list[StrictStr] = Field(default_factory=list)
     artifacts: dict[str, StrictStr] = Field(default_factory=dict)
+    supervisor_decisions: list[StrictStr] = Field(default_factory=list)
     validated_spec: SpecDocument | None = None
 
 
@@ -82,6 +95,14 @@ class PipelineObserver(Protocol):
         error: Exception,
     ) -> None: ...
 
+    def on_supervisor_decision(
+        self,
+        step: PipelineStep,
+        context: PipelineContext,
+        decision: SupervisorDecision,
+        error: Exception,
+    ) -> None: ...
+
 
 PIPELINE_STEPS: dict[str, PipelineStep] = {
     "SPEC_VALIDATION": PipelineStep(
@@ -96,6 +117,18 @@ PIPELINE_STEPS: dict[str, PipelineStep] = {
         state="TEST_RED",
         description="Produce the failing test hand-off for the current feature.",
     ),
+    "CODE_GREEN": PipelineStep(
+        state="CODE_GREEN",
+        description="Produce the minimal implementation to satisfy the failing tests.",
+    ),
+    "REVIEW": PipelineStep(
+        state="REVIEW",
+        description="Review the current delta and request rework when needed.",
+    ),
+    "SECURITY": PipelineStep(
+        state="SECURITY",
+        description="Review security-sensitive aspects before reporting completion.",
+    ),
 }
 
 SpecValidationError = _SpecValidationError
@@ -105,13 +138,15 @@ class PipelineEngine:
     def __init__(
         self,
         *,
-        executors: dict[str, StepExecutor] | None = None,
+        executors: dict[str, StepExecutor | dict[str, StepExecutor]] | None = None,
         state_machine: AIgntStateMachine | None = None,
         observer: PipelineObserver | None = None,
+        supervisor: Supervisor | None = None,
     ) -> None:
-        self.executors = dict(executors or {})
+        self.executors = self._normalize_executors(executors or {})
         self.state_machine = state_machine or AIgntStateMachine()
         self.observer = observer
+        self.supervisor = supervisor
 
     def run(
         self,
@@ -156,9 +191,11 @@ class PipelineEngine:
                     context.current_state = self.state_machine.current_state
                     continue
 
-                if current_state in {"PLAN", "TEST_RED"}:
+                if current_state in {"PLAN", "TEST_RED", "CODE_GREEN", "REVIEW", "SECURITY"}:
                     current_step = PIPELINE_STEPS[current_state]
-                    result = self._execute_runtime_step(current_step, context)
+                    result = self._run_runtime_step(current_step, context)
+                    if result is None:
+                        continue
                     context.artifacts.update(result.artifacts)
                     context.step_history.append(current_step.state)
                     context.current_state = current_state
@@ -173,7 +210,7 @@ class PipelineEngine:
                     continue
 
                 raise PipelineExecutionError(
-                    f"Current state '{current_state}' is outside the supported F06 pipeline range."
+                    f"Current state '{current_state}' is outside the supported F09 pipeline range."
                 )
         except Exception as exc:
             if self.observer is not None:
@@ -192,11 +229,52 @@ class PipelineEngine:
         self,
         step: PipelineStep,
         context: PipelineContext,
+        *,
+        route: str = PRIMARY_EXECUTOR_ROUTE,
     ) -> StepExecutionResult:
-        executor = self.executors.get(step.state)
+        executor = self.executors.get(step.state, {}).get(route)
         if executor is None:
-            raise PipelineExecutionError(f"Missing executor for pipeline step '{step.state}'.")
+            raise PipelineExecutionError(
+                f"Missing executor for pipeline step '{step.state}' on route '{route}'."
+            )
         return executor.execute(step, context)
+
+    def _run_runtime_step(
+        self,
+        step: PipelineStep,
+        context: PipelineContext,
+    ) -> StepExecutionResult | None:
+        attempt = 0
+        route = PRIMARY_EXECUTOR_ROUTE
+
+        while True:
+            try:
+                return self._execute_runtime_step(step, context, route=route)
+            except Exception as exc:
+                attempt += 1
+                decision = self._decide_after_failure(
+                    step=step,
+                    context=context,
+                    error=exc,
+                    attempt=attempt,
+                )
+
+                if decision.action == "retry":
+                    route = decision.route or route
+                    continue
+
+                if decision.action == "reroute":
+                    route = decision.route or route
+                    continue
+
+                if decision.action == "return_to_code_green":
+                    context.step_history.append(step.state)
+                    context.current_state = step.state
+                    self.state_machine.advance_to("CODE_GREEN")
+                    context.current_state = self.state_machine.current_state
+                    return None
+
+                raise exc
 
     def _validate_entry_state(self) -> None:
         if self.state_machine.current_state not in PIPELINE_ENTRY_STATES:
@@ -218,3 +296,48 @@ class PipelineEngine:
                 f"Current state '{current_state}' has no next state in the linear flow."
             )
         return LINEAR_STATE_FLOW[next_index]
+
+    def _normalize_executors(
+        self,
+        executors: dict[str, StepExecutor | dict[str, StepExecutor]],
+    ) -> dict[str, dict[str, StepExecutor]]:
+        normalized: dict[str, dict[str, StepExecutor]] = {}
+        for state, executor_config in executors.items():
+            if isinstance(executor_config, dict):
+                normalized[state] = dict(executor_config)
+            else:
+                normalized[state] = {PRIMARY_EXECUTOR_ROUTE: executor_config}
+        return normalized
+
+    def _decide_after_failure(
+        self,
+        *,
+        step: PipelineStep,
+        context: PipelineContext,
+        error: Exception,
+        attempt: int,
+    ) -> SupervisorDecision:
+        if self.supervisor is None:
+            raise error
+
+        decision = self.supervisor.decide_after_failure(
+            state=step.state,
+            error=error,
+            attempt=attempt,
+            available_routes=tuple(self.executors.get(step.state, {}).keys()),
+        )
+        context.supervisor_decisions.append(f"{decision.action}:{step.state}")
+
+        observer_callback = (
+            None
+            if self.observer is None
+            else getattr(
+                self.observer,
+                "on_supervisor_decision",
+                None,
+            )
+        )
+        if observer_callback is not None:
+            observer_callback(step, context, decision, error)
+
+        return decision

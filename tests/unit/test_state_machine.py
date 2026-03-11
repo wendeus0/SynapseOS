@@ -66,6 +66,26 @@ def test_state_machine_rejects_invalid_transition_that_skips_flow_order() -> Non
         machine.advance_to("TEST_RED")
 
 
+def test_state_machine_allows_review_to_return_to_code_green() -> None:
+    state_machine_module = _state_machine_module()
+
+    machine = state_machine_module.AIgntStateMachine()
+    for state in (
+        "SPEC_DISCOVERY",
+        "SPEC_NORMALIZATION",
+        "SPEC_VALIDATION",
+        "PLAN",
+        "TEST_RED",
+        "CODE_GREEN",
+        "REVIEW",
+    ):
+        machine.advance_to(state)
+
+    machine.advance_to("CODE_GREEN")
+
+    assert machine.current_state == "CODE_GREEN"
+
+
 # ---------------------------------------------------------------------------
 # Parametrised invalid skip transitions
 # ---------------------------------------------------------------------------

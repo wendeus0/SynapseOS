@@ -53,6 +53,12 @@ def test_review_rework_review_transitions_to_security_on_approval() -> None:
     assert sm.current_state == "SECURITY"
 
 
+def test_review_rework_review_can_return_to_code_green_for_rework() -> None:
+    sm = _make_sm_at("REVIEW")
+    sm.advance_to("CODE_GREEN")
+    assert sm.current_state == "CODE_GREEN"
+
+
 def test_review_rework_review_can_transition_to_failed() -> None:
     sm = _make_sm_at("REVIEW")
     sm.advance_to("FAILED")
