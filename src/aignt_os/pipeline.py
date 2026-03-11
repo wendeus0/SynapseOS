@@ -14,7 +14,7 @@ from aignt_os.specs import (
 )
 from aignt_os.state_machine import LINEAR_STATE_FLOW, AIgntStateMachine
 
-PIPELINE_STOP_STATES = ("PLAN", "TEST_RED")
+PIPELINE_STOP_STATES = ("SPEC_VALIDATION", "PLAN", "TEST_RED")
 PIPELINE_ENTRY_STATES = (
     "REQUEST",
     "SPEC_DISCOVERY",

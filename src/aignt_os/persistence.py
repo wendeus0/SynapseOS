@@ -230,6 +230,25 @@ class RunRepository:
             rows = connection.execute(select(self.runs).order_by(self.runs.c.created_at)).mappings()
             return [_run_record_from_row(row) for row in rows]
 
+    def find_next_pending_run(self) -> RunRecord | None:
+        with self.engine.begin() as connection:
+            row = (
+                connection.execute(
+                    select(self.runs)
+                    .where(
+                        self.runs.c.status == "pending",
+                        self.runs.c.locked.is_(False),
+                    )
+                    .order_by(self.runs.c.created_at)
+                    .limit(1)
+                )
+                .mappings()
+                .first()
+            )
+        if row is None:
+            return None
+        return _run_record_from_row(row)
+
     def list_steps(self, run_id: str) -> list[RunStepRecord]:
         with self.engine.begin() as connection:
             rows = connection.execute(
@@ -417,20 +436,31 @@ class PersistedPipelineRunner:
         self.artifact_store = artifact_store
         self.executors = dict(executors or {})
 
-    def run(self, spec_path: Path, *, stop_at: str = "TEST_RED") -> PipelineContext:
-        run_id = self.repository.create_run(
+    def create_pending_run(self, spec_path: Path, *, stop_at: str = "TEST_RED") -> str:
+        return self.repository.create_run(
             spec_path=spec_path,
             initial_state="REQUEST",
             stop_at=stop_at,
         )
-        if not self.repository.acquire_lock(run_id):
+
+    def run(self, spec_path: Path, *, stop_at: str = "TEST_RED") -> PipelineContext:
+        run_id = self.create_pending_run(spec_path, stop_at=stop_at)
+        return self.run_existing(run_id)
+
+    def run_existing(self, run_id: str, *, assume_locked: bool = False) -> PipelineContext:
+        run_record = self.repository.get_run(run_id)
+        if not assume_locked and not self.repository.acquire_lock(run_id):
             raise RuntimeError(f"Could not acquire lock for run '{run_id}'.")
 
         engine = PipelineEngine(
             executors=self.executors,
             observer=PipelinePersistenceObserver(self.repository, self.artifact_store),
         )
-        return engine.run(spec_path, stop_at=stop_at, run_id=run_id)
+        return engine.run(
+            Path(run_record.spec_path),
+            stop_at=run_record.stop_at,
+            run_id=run_id,
+        )
 
 
 def _ensure_private_directory(path: Path) -> None:

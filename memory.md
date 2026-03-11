@@ -8,8 +8,9 @@
 
 ## Local snapshot
 
-- A worktree atual esta em `chore/log-preflight-sync`, com `behind=1` em relacao a `origin/main`; o diff de arvore contra `origin/main` esta vazio, mas a branch deve ser sincronizada antes de nova frente ou fechamento operacional.
-- Ha edicoes locais focadas apenas em normalizar `memory.md` e ajustar o contrato da skill `memory-curator`.
+- A frente ativa esta na worktree `feature/f08-worker-runtime-dual`, alinhada com `origin/main` antes do delta local.
+- A F08 adiciona dispatch interno `sync`/`async`/`auto`, worker leve consumindo runs pendentes, suporte a `stop_at=SPEC_VALIDATION`, checklist da feature e ignorar `.aignt-os/` no Git.
+- Os gates locais mais recentes da F08 fecharam verdes: `commit-check --no-sync --skip-docker --skip-security`, `DOCKER_PREFLIGHT` real com `--full-runtime`, container `aignt-os` em estado `healthy`, e suite completa com `223` testes verdes.
 
 # Stable decisions
 
@@ -19,16 +20,18 @@
 - `memory.md` guarda memoria duravel e reaproveitavel; `PENDING_LOG.md` e `ERROR_LOG.md` guardam detalhe operacional da sessao.
 - O `memory-curator` pode ser acionado por `$memory-curator encerrar conversa` ou `$memory-curator close session` para atualizar `memory.md` e gerar handoff de encerramento.
 - Com `network-access = true`, `git push` e `gh pr create` devem ser tentados primeiro no sandbox; fallback fora do sandbox fica restrito a falha real de rede ou sandbox.
+- Na F08, o runtime foreground passa a poder hospedar um worker leve do AIgnt-Synapse-Flow, a engine propria de pipeline do AIgnt OS, sem nova CLI publica de runs.
+- Os artefatos operacionais padrao em `.aignt-os/` devem permanecer fora do versionamento.
 
 # Active fronts
 
-- Normalizar a governanca de memoria duravel para que `memory.md` fique estavel e o `memory-curator` gere handoff de encerramento reutilizavel.
-- Fechar validacoes operacionais ainda abertas do fluxo recente sem reabrir escopo de produto.
+- Fechar a F08 no fluxo Git com `security-review`, commit, push e PR.
+- Abrir a F09 logo apos o fechamento da F08, mantendo o recorte em supervisor MVP com retry deterministico, reroute simples e falha terminal.
 
 # Open decisions
 
-- Validar em GitHub Actions real se o job `branch-validation` continua correto apos os ajustes recentes.
-- Definir quando limpar ou re-sincronizar branches locais antigas e worktrees auxiliares para reduzir ruido operacional.
+- Confirmar na F10 qual adapter real sera priorizado no happy path final; default atual continua sendo Codex CLI.
+- Decidir depois do merge da F08 se vale endurecer o tratamento de falhas amplas do worker alem do recorte MVP atual.
 
 # Recurrent pitfalls
 
@@ -39,13 +42,13 @@
 
 # Next recommended steps
 
-- Concluir esta normalizacao e manter o detalhe da sessao apenas em `PENDING_LOG.md` e `ERROR_LOG.md`.
-- Sincronizar a branch local com `main` antes de iniciar nova frente ou finalizar entrega operacional.
-- Validar em ambiente apropriado o job `branch-validation` e o fluxo `uv sync --locked --extra dev`.
+- Concluir o `security-review` da F08 e fechar commit/push/PR da branch `feature/f08-worker-runtime-dual`.
+- Depois do merge da F08, abrir a F09 com `spec-editor` → `test-red` → `green-refactor`.
+- Deixar limpeza ampla de logs/docs antigos fora do caminho critico ate o MVP fechar.
 
 # Last handoff summary
 
 - Read before acting: releia `AGENTS.md`, `CONTEXT.md`, `memory.md`, `PENDING_LOG.md`, `ERROR_LOG.md`, `git status` e `git diff --stat`.
-- Current state: a memoria duravel foi normalizada para separar baseline global, snapshot local, decisoes estaveis e proximo passo; a worktree ainda precisa sincronizar a branch antes da proxima frente.
-- Open points: validar `branch-validation` em GitHub Actions real, revalidar `uv sync --locked --extra dev` em ambiente com rede e decidir limpeza de branches/worktrees antigas.
-- Recommended next front: sincronize a branch com `main`, confirme os checks operacionais restantes e so entao abra a proxima feature ou ajuste operacional.
+- Current state: a F08 esta implementada e validada localmente, incluindo worker leve, dispatch interno e `DOCKER_PREFLIGHT` real com runtime saudavel.
+- Open points: concluir o parecer de seguranca da F08, fechar commit/PR e depois abrir a F09.
+- Recommended next front: terminar o fechamento Git da F08 e so entao iniciar a frente do supervisor MVP.

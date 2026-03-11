@@ -10,6 +10,7 @@ import time
 from pathlib import Path
 
 from aignt_os.runtime.state import RuntimeState, RuntimeStateStore
+from aignt_os.runtime.worker import RuntimeWorker
 
 PROCESS_MARKER = "--aignt-runtime-process"
 
@@ -30,8 +31,9 @@ def _runtime_process_code() -> str:
 
 
 class RuntimeService:
-    def __init__(self, state_file: Path) -> None:
+    def __init__(self, state_file: Path, *, worker: RuntimeWorker | None = None) -> None:
         self.state_store = RuntimeStateStore(state_file)
+        self.worker = worker
 
     def start(self) -> RuntimeState:
         self._require_runnable_state()
@@ -77,7 +79,13 @@ class RuntimeService:
 
         try:
             while running:
-                time.sleep(0.1)
+                if self.worker is None:
+                    time.sleep(0.1)
+                    continue
+
+                processed_run_id = self.worker.poll_once()
+                if processed_run_id is None:
+                    self.worker.sleep_when_idle()
         finally:
             self.state_store.write_stopped()
             signal.signal(signal.SIGTERM, previous_sigterm)

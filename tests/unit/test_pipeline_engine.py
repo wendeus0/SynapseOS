@@ -112,6 +112,24 @@ def test_pipeline_engine_can_stop_after_plan(tmp_path: Path) -> None:
     assert test_red_executor.calls == []
 
 
+def test_pipeline_engine_can_stop_after_spec_validation(tmp_path: Path) -> None:
+    pipeline = _pipeline_module()
+    spec_path = tmp_path / "SPEC.md"
+    _write_valid_spec(spec_path)
+    plan_executor = _RecordingExecutor(artifact_key="plan_md", artifact_value="plan")
+
+    engine = pipeline.PipelineEngine(executors={"PLAN": plan_executor})
+
+    context = engine.run(spec_path, stop_at="SPEC_VALIDATION")
+
+    assert engine.state_machine.current_state == "SPEC_VALIDATION"
+    assert context.current_state == "SPEC_VALIDATION"
+    assert context.step_history == ["SPEC_VALIDATION"]
+    assert context.artifacts["spec_id"] == "F06-fixture"
+    assert "plan_md" not in context.artifacts
+    assert plan_executor.calls == []
+
+
 def test_pipeline_engine_blocks_plan_when_spec_is_invalid(tmp_path: Path) -> None:
     pipeline = _pipeline_module()
     spec_path = tmp_path / "SPEC.md"

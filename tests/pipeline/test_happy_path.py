@@ -259,7 +259,7 @@ def test_pipeline_propagates_exception_from_failing_plan_executor(tmp_path: Path
 
 @pytest.mark.parametrize(
     "stop_at",
-    ["PLAN", "TEST_RED"],
+    ["SPEC_VALIDATION", "PLAN", "TEST_RED"],
 )
 def test_pipeline_accepts_supported_stop_at_values(tmp_path: Path, stop_at: str) -> None:
     pipeline = _pipeline_module()
@@ -275,7 +275,7 @@ def test_pipeline_accepts_supported_stop_at_values(tmp_path: Path, stop_at: str)
 
 @pytest.mark.parametrize(
     "invalid_stop_at",
-    ["SPEC_VALIDATION", "CODE_GREEN", "REVIEW", "COMPLETE", "REQUEST", "INVALID"],
+    ["CODE_GREEN", "REVIEW", "COMPLETE", "REQUEST", "INVALID"],
 )
 def test_pipeline_rejects_unsupported_stop_at_values(tmp_path: Path, invalid_stop_at: str) -> None:
     pipeline = _pipeline_module()

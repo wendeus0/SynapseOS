@@ -15,6 +15,7 @@ class AppSettings(BaseSettings):
     runtime_state_dir: Path = Path(".aignt-os/runtime")
     runs_db_path: Path = Path(".aignt-os/runs/runs.sqlite3")
     artifacts_dir: Path = Path(".aignt-os/artifacts")
+    runtime_poll_interval_seconds: float = 0.5
 
     @property
     def runtime_state_file(self) -> Path:

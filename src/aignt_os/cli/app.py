@@ -8,6 +8,7 @@ import typer
 from aignt_os import __version__
 from aignt_os.config import AppSettings
 from aignt_os.runtime.service import RuntimeLifecycleError, RuntimeService
+from aignt_os.runtime.worker import build_runtime_worker
 
 app = typer.Typer(help="AIgnt OS CLI")
 runtime_app = typer.Typer(help="Manage the minimal persistent runtime.")
@@ -27,7 +28,10 @@ def version() -> None:
 def _runtime_service() -> RuntimeService:
     settings = AppSettings()
     try:
-        return RuntimeService(settings.runtime_state_file)
+        return RuntimeService(
+            settings.runtime_state_file,
+            worker=build_runtime_worker(settings),
+        )
     except ValueError as exc:
         raise typer.BadParameter(str(exc)) from exc
 
