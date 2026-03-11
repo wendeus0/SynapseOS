@@ -79,10 +79,7 @@ def test_run_report_generator_matches_expected_fixture(tmp_path: Path) -> None:
     report_content = generator.build(run_id)
 
     expected_report = (
-        Path(__file__).resolve().parents[1]
-        / "fixtures"
-        / "reports"
-        / "expected_run_report.md"
+        Path(__file__).resolve().parents[1] / "fixtures" / "reports" / "expected_run_report.md"
     ).read_text(encoding="utf-8")
 
     assert report_content == expected_report.format(run_id=run_id)
