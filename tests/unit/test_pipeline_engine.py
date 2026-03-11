@@ -58,6 +58,24 @@ class _RecordingExecutor:
         )
 
 
+class _FlakyExecutor:
+    def __init__(self, *, fail_times: int, artifact_key: str, artifact_value: str) -> None:
+        self.fail_times = fail_times
+        self.artifact_key = artifact_key
+        self.artifact_value = artifact_value
+        self.calls = 0
+
+    def execute(self, step, context):  # type: ignore[no-untyped-def]
+        self.calls += 1
+        if self.calls <= self.fail_times:
+            supervisor = import_module("aignt_os.supervisor")
+            raise supervisor.RetryableStepError(f"temporary failure at {step.state}")
+        pipeline = _pipeline_module()
+        return pipeline.StepExecutionResult(
+            artifacts={self.artifact_key: self.artifact_value},
+        )
+
+
 def test_pipeline_engine_executes_linear_flow_until_test_red(tmp_path: Path) -> None:
     pipeline = _pipeline_module()
     spec_path = tmp_path / "SPEC.md"
@@ -158,3 +176,98 @@ def test_pipeline_engine_fails_when_required_executor_is_missing(tmp_path: Path)
 
     assert engine.state_machine.current_state == "TEST_RED"
     assert plan_executor.calls == [("PLAN", "F06-fixture")]
+
+
+def test_pipeline_engine_can_retry_code_green_and_continue_to_security(tmp_path: Path) -> None:
+    pipeline = _pipeline_module()
+    spec_path = tmp_path / "SPEC.md"
+    _write_valid_spec(spec_path)
+    plan_executor = _RecordingExecutor(artifact_key="plan_md", artifact_value="plan")
+    test_red_executor = _RecordingExecutor(artifact_key="tests_md", artifact_value="red")
+    code_green_executor = _FlakyExecutor(
+        fail_times=1,
+        artifact_key="code_md",
+        artifact_value="green",
+    )
+    review_executor = _RecordingExecutor(artifact_key="review_md", artifact_value="review")
+    security_executor = _RecordingExecutor(
+        artifact_key="security_md",
+        artifact_value="security",
+    )
+    supervisor = import_module("aignt_os.supervisor")
+
+    engine = pipeline.PipelineEngine(
+        executors={
+            "PLAN": plan_executor,
+            "TEST_RED": test_red_executor,
+            "CODE_GREEN": code_green_executor,
+            "REVIEW": review_executor,
+            "SECURITY": security_executor,
+        },
+        supervisor=supervisor.Supervisor(max_retries=2),
+    )
+
+    context = engine.run(spec_path, stop_at="SECURITY")
+
+    assert context.current_state == "SECURITY"
+    assert context.step_history == [
+        "SPEC_VALIDATION",
+        "PLAN",
+        "TEST_RED",
+        "CODE_GREEN",
+        "REVIEW",
+        "SECURITY",
+    ]
+    assert context.supervisor_decisions == ["retry:CODE_GREEN"]
+    assert code_green_executor.calls == 2
+
+
+def test_pipeline_engine_can_return_from_review_to_code_green(tmp_path: Path) -> None:
+    pipeline = _pipeline_module()
+    spec_path = tmp_path / "SPEC.md"
+    _write_valid_spec(spec_path)
+    plan_executor = _RecordingExecutor(artifact_key="plan_md", artifact_value="plan")
+    test_red_executor = _RecordingExecutor(artifact_key="tests_md", artifact_value="red")
+    code_green_executor = _RecordingExecutor(artifact_key="code_md", artifact_value="green")
+    security_executor = _RecordingExecutor(
+        artifact_key="security_md",
+        artifact_value="security",
+    )
+    supervisor = import_module("aignt_os.supervisor")
+
+    class _RejectingReviewExecutor:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def execute(self, step, context):  # type: ignore[no-untyped-def]
+            self.calls += 1
+            if self.calls == 1:
+                raise supervisor.ReviewRejectedError("changes requested")
+            return pipeline.StepExecutionResult(artifacts={"review_md": "approved"})
+
+    review_executor = _RejectingReviewExecutor()
+    engine = pipeline.PipelineEngine(
+        executors={
+            "PLAN": plan_executor,
+            "TEST_RED": test_red_executor,
+            "CODE_GREEN": code_green_executor,
+            "REVIEW": review_executor,
+            "SECURITY": security_executor,
+        },
+        supervisor=supervisor.Supervisor(max_retries=1),
+    )
+
+    context = engine.run(spec_path, stop_at="SECURITY")
+
+    assert context.current_state == "SECURITY"
+    assert context.step_history == [
+        "SPEC_VALIDATION",
+        "PLAN",
+        "TEST_RED",
+        "CODE_GREEN",
+        "REVIEW",
+        "CODE_GREEN",
+        "REVIEW",
+        "SECURITY",
+    ]
+    assert context.supervisor_decisions == ["return_to_code_green:REVIEW"]

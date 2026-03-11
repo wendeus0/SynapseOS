@@ -115,3 +115,67 @@ def test_persisted_pipeline_marks_failed_run_when_spec_validation_blocks_plan(
     assert run_record.failure_message is not None
     assert [event.event_type for event in events] == ["run_started", "run_failed"]
     assert not (artifact_store.base_path / run_record.run_id / "PLAN").exists()
+
+
+def test_persisted_pipeline_records_supervisor_decision_events(tmp_path: Path) -> None:
+    persistence = import_module("aignt_os.persistence")
+    pipeline = import_module("aignt_os.pipeline")
+    supervisor = import_module("aignt_os.supervisor")
+
+    spec_path = tmp_path / "SPEC.md"
+    _write_valid_spec(spec_path)
+    repository = persistence.RunRepository(tmp_path / "runs.sqlite3")
+    artifact_store = persistence.ArtifactStore(tmp_path / "artifacts")
+
+    class _FlakyCodeGreenExecutor:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def execute(self, step, context):  # type: ignore[no-untyped-def]
+            self.calls += 1
+            if self.calls == 1:
+                raise supervisor.RetryableStepError("temporary failure")
+            return pipeline.StepExecutionResult(
+                artifacts={"code_md": "# Green\n"},
+                raw_output="RAW GREEN\n",
+                clean_output="# Green\n",
+            )
+
+    class _FixedExecutor:
+        def __init__(self, artifact_name: str, content: str) -> None:
+            self.artifact_name = artifact_name
+            self.content = content
+
+        def execute(self, step, context):  # type: ignore[no-untyped-def]
+            return pipeline.StepExecutionResult(artifacts={self.artifact_name: self.content})
+
+    runner = persistence.PersistedPipelineRunner(
+        repository=repository,
+        artifact_store=artifact_store,
+        executors={
+            "PLAN": _FixedExecutor("plan_md", "# Plan\n"),
+            "TEST_RED": _FixedExecutor("tests_md", "# Tests\n"),
+            "CODE_GREEN": _FlakyCodeGreenExecutor(),
+            "REVIEW": _FixedExecutor("review_md", "# Review\n"),
+            "SECURITY": _FixedExecutor("security_md", "# Security\n"),
+        },
+        supervisor=supervisor.Supervisor(max_retries=2),
+    )
+
+    context = runner.run(spec_path, stop_at="SECURITY")
+    events = repository.list_events(context.run_id)
+
+    assert [event.event_type for event in events] == [
+        "run_started",
+        "step_completed",
+        "step_completed",
+        "step_completed",
+        "supervisor_decision",
+        "step_completed",
+        "step_completed",
+        "step_completed",
+        "run_completed",
+    ]
+    assert events[3].state == "TEST_RED"
+    assert events[4].state == "CODE_GREEN"
+    assert "retry" in events[4].message

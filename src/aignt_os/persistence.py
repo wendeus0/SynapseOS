@@ -23,6 +23,7 @@ from sqlalchemy.engine import RowMapping
 from sqlalchemy.sql import update
 
 from aignt_os.pipeline import (
+    PRIMARY_EXECUTOR_ROUTE,
     PipelineContext,
     PipelineEngine,
     PipelineObserver,
@@ -30,6 +31,7 @@ from aignt_os.pipeline import (
     StepExecutionResult,
     StepExecutor,
 )
+from aignt_os.supervisor import Supervisor, SupervisorDecision
 
 ARTIFACT_DIR_MODE = 0o700
 ARTIFACT_FILE_MODE = 0o600
@@ -400,6 +402,25 @@ class PipelinePersistenceObserver(PipelineObserver):
             message=str(error),
         )
 
+    def on_supervisor_decision(
+        self,
+        step: PipelineStep,
+        context: PipelineContext,
+        decision: SupervisorDecision,
+        error: Exception,
+    ) -> None:
+        run_id = self._run_id(context)
+        self.repository.record_event(
+            run_id,
+            state=step.state,
+            event_type="supervisor_decision",
+            message=(
+                f"{decision.action} -> {decision.next_state}"
+                f" [route={decision.route or PRIMARY_EXECUTOR_ROUTE}]"
+                f": {error}"
+            ),
+        )
+
     def _run_id(self, context: PipelineContext) -> str:
         if context.run_id is None:
             raise ValueError("Pipeline context is missing run_id for persistence.")
@@ -430,11 +451,13 @@ class PersistedPipelineRunner:
         *,
         repository: RunRepository,
         artifact_store: ArtifactStore,
-        executors: dict[str, StepExecutor] | None = None,
+        executors: dict[str, StepExecutor | dict[str, StepExecutor]] | None = None,
+        supervisor: Supervisor | None = None,
     ) -> None:
         self.repository = repository
         self.artifact_store = artifact_store
         self.executors = dict(executors or {})
+        self.supervisor = supervisor
 
     def create_pending_run(self, spec_path: Path, *, stop_at: str = "TEST_RED") -> str:
         return self.repository.create_run(
@@ -455,6 +478,7 @@ class PersistedPipelineRunner:
         engine = PipelineEngine(
             executors=self.executors,
             observer=PipelinePersistenceObserver(self.repository, self.artifact_store),
+            supervisor=self.supervisor,
         )
         return engine.run(
             Path(run_record.spec_path),

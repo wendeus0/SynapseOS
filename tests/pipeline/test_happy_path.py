@@ -259,15 +259,26 @@ def test_pipeline_propagates_exception_from_failing_plan_executor(tmp_path: Path
 
 @pytest.mark.parametrize(
     "stop_at",
-    ["SPEC_VALIDATION", "PLAN", "TEST_RED"],
+    ["SPEC_VALIDATION", "PLAN", "TEST_RED", "CODE_GREEN", "REVIEW", "SECURITY"],
 )
 def test_pipeline_accepts_supported_stop_at_values(tmp_path: Path, stop_at: str) -> None:
     pipeline = _pipeline_module()
     spec_path = _make_spec(tmp_path, _VALID_SPEC_CONTENT)
     plan_exec = _FakeExecutor(plan_md="# Plan")
     test_exec = _FakeExecutor(tests_md="# Tests")
+    code_exec = _FakeExecutor(code_md="# Code")
+    review_exec = _FakeExecutor(review_md="# Review")
+    security_exec = _FakeExecutor(security_md="# Security")
 
-    engine = pipeline.PipelineEngine(executors={"PLAN": plan_exec, "TEST_RED": test_exec})
+    engine = pipeline.PipelineEngine(
+        executors={
+            "PLAN": plan_exec,
+            "TEST_RED": test_exec,
+            "CODE_GREEN": code_exec,
+            "REVIEW": review_exec,
+            "SECURITY": security_exec,
+        }
+    )
     context = engine.run(spec_path, stop_at=stop_at)
 
     assert context.current_state == stop_at
@@ -275,7 +286,7 @@ def test_pipeline_accepts_supported_stop_at_values(tmp_path: Path, stop_at: str)
 
 @pytest.mark.parametrize(
     "invalid_stop_at",
-    ["CODE_GREEN", "REVIEW", "COMPLETE", "REQUEST", "INVALID"],
+    ["COMPLETE", "REQUEST", "INVALID"],
 )
 def test_pipeline_rejects_unsupported_stop_at_values(tmp_path: Path, invalid_stop_at: str) -> None:
     pipeline = _pipeline_module()
