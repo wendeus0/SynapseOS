@@ -48,7 +48,7 @@ class AIgntStateMachine:
 def _build_allowed_transitions() -> dict[str, set[str]]:
     transitions: dict[str, set[str]] = {}
 
-    for current_state, next_state in zip(LINEAR_STATE_FLOW, LINEAR_STATE_FLOW[1:]):
+    for current_state, next_state in zip(LINEAR_STATE_FLOW, LINEAR_STATE_FLOW[1:], strict=False):
         transitions[current_state] = {next_state, "FAILED"}
 
     transitions["COMPLETE"] = set()
