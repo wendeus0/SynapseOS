@@ -2,6 +2,9 @@
 
 ## Decisões incorporadas recentemente
 
+- A chore `test-layout-typecheck-hardening` estabilizou a arvore `tests/` com package markers explicitos, removendo a colisao operacional entre `tests/unit/conftest.py` e `tests/integration/conftest.py`.
+- O repositório agora aceita `uv run mypy src tests`, mas isso foi fechado via override explícito do `mypy` para `tests` e `tests.*`, preservando o contrato strict no pacote `src/aignt_os`.
+
 - A `F09-supervisor-mvp` foi materializada com `SPEC.md`, `NOTES.md` e `CHECKLIST.md` proprios, mantendo o AIgnt-Synapse-Flow como a engine propria de pipeline do AIgnt OS e limitando o recorte a supervisor deterministico, pipeline linear ate `SECURITY` e persistencia de decisoes do supervisor.
 - A pipeline agora suporta `CODE_GREEN`, `REVIEW` e `SECURITY`; a state machine passou a aceitar `REVIEW -> CODE_GREEN` para rework, e o novo modulo `aignt_os.supervisor` decide entre `retry`, `reroute`, `return_to_code_green` e `fail` de forma deterministica.
 - A persistencia de runs da F09 passou a registrar eventos `supervisor_decision`, e a validacao local da feature fechou verde com `233` testes passando, `ruff check`, `uv run --no-sync python -m mypy`, `./scripts/security-gate.sh` e `./scripts/commit-check.sh --skip-docker`.
@@ -97,7 +100,6 @@
 - A ampliação de `TRANSPORT_NOISE_PREFIXES` para incluir prefixos como `[rpc]` deve ser decisão explícita documentada na SPEC da feature responsável — não uma adição silenciosa.
 - Os testes de `test_review_rework.py` exercitam a state machine diretamente para estados CODE_GREEN/REVIEW/SECURITY que ainda não estão implementados no `PipelineEngine`. Quando o Supervisor/pipeline for implementado para esses estados, esses testes servem como documentação de comportamento esperado e devem ser migrados para testes de integração.
 - O retry/reroute da F09 permanece restrito a uma unica execucao do AIgnt-Synapse-Flow; retomada persistida entre polls do worker e requeue duravel continuam fora de escopo.
-- A invocacao ampla `uv run mypy src tests` continua falhando por modulo duplicado `conftest`; o fluxo padrao do repositório segue sendo `uv run --no-sync python -m mypy`.
 - Em worktree fria, `pytest` e `uv run pytest` podem falhar na coleta ate que `uv sync --locked --extra dev` tenha sido executado.
 - H1 vs H2 nas SPECs F01–F05: checar se `## 1. Contexto` causa falha de validação no `SpecValidator` após a regra H1 ter sido documentada.
 

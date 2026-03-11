@@ -15,10 +15,10 @@
 - Contexto: validacao final da `F09-supervisor-mvp` antes do handoff.
 - Ação/comando relacionado: `env UV_CACHE_DIR=/home/g0dsssp33d/work/projects/aignt-os/.cache/uv uv run mypy src tests`
 - Erro observado: `tests/unit/conftest.py: error: Duplicate module named "conftest" (also at "tests/integration/conftest.py")`.
-- Causa identificada: a invocacao ampla `mypy src tests` conflita com os dois `conftest.py`; o fluxo oficial do repositório usa `uv run --no-sync python -m mypy`, que nao reproduz esse problema.
-- Ação tomada: a validacao da feature foi concluida pelo caminho padrao do repositório com `uv run --no-sync python -m mypy`, que passou verde.
-- Status: contornado na sessão; erro ainda reproduzivel fora do fluxo padrao.
-- Observação futura: decidir se o projeto vai endurecer `mypy` para aceitar `src tests` explicitamente ou manter apenas a invocacao padrao do repositório.
+- Causa identificada: a invocacao ampla `mypy src tests` conflitou primeiro com os dois `conftest.py` como modulos top-level e, apos resolver o namespace, expôs que a arvore `tests/` nao seguia o mesmo contrato strict aplicado a `src/aignt_os`.
+- Ação tomada: na branch `chore/test-layout-typecheck-hardening`, a arvore `tests/` recebeu package markers (`tests/`, `tests/unit/`, `tests/integration/`, `tests/pipeline/`) e o `pyproject.toml` passou a declarar override explícito de `mypy` para `tests` e `tests.*`. A revalidação com `uv run mypy src tests`, `uv run --no-sync python -m mypy`, `pytest` e `./scripts/commit-check.sh --sync-dev --skip-docker` fechou verde.
+- Status: resolvido.
+- Observação futura: manter o contrato strict de `mypy` centrado em `src/aignt_os`; tipagem estrita da arvore `tests/` só deve virar frente própria se houver benefício real.
 
 ## 2026-03-11 - `test_adapter_parser_flow` falhou por fixture ANSI como texto literal
 

@@ -86,3 +86,7 @@ disallow_untyped_defs = true
 no_implicit_optional = true
 check_untyped_defs = true
 packages = ["aignt_os"]
+
+[[tool.mypy.overrides]]
+module = ["tests", "tests.*"]
+ignore_errors = true
