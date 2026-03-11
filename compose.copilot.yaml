@@ -33,6 +33,8 @@ services:
       - .:/workspace
       # Binário do Copilot CLI — montado read-only do host (133 MB, não copiado na imagem)
       - ${COPILOT_BIN:-~/.local/bin/copilot}:/usr/local/bin/copilot:ro
+      # Pacotes Node.js do Copilot (~/.copilot/pkg/) — necessários para o binário funcionar
+      - ${COPILOT_HOME:-~/.copilot}/pkg:/home/codex/.copilot/pkg:ro
       - copilot-cache:/home/codex/.cache
       - copilot-state:/home/codex/.local/state
       - copilot-data:/home/codex/.local/share
