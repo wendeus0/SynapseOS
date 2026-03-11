@@ -81,11 +81,12 @@ up_cmd+=("${SERVICE}")
 echo "Subindo ${SERVICE}..."
 "${up_cmd[@]}"
 
-# Copia o config de auth para a tmpfs do container (o config desaparece ao parar o container)
+# Copia o config de auth para a tmpfs via stdin (docker exec respeita a tmpfs;
+# docker cp usa o overlay FS e falha com read_only: true)
 echo "Copiando config de autenticação do Copilot para o container..."
-"${compose_cmd[@]}" cp "${COPILOT_CONFIG}" "${SERVICE}:/home/codex/.copilot/config.json"
 "${compose_cmd[@]}" exec -T "${SERVICE}" \
-  chmod 600 /home/codex/.copilot/config.json
+  bash -c 'cat > /home/codex/.copilot/config.json && chmod 600 /home/codex/.copilot/config.json' \
+  < "${COPILOT_CONFIG}"
 
 # Executa o Copilot interativo
 exec_cmd=(
