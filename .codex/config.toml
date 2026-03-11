@@ -7,3 +7,36 @@ sandbox_mode = "danger-full-access"
 
 [sandbox_workspace_write]
 network_access = true
+
+# ---------------------------------------------------------------------------
+# MCP servers — essenciais para o fluxo operacional do projeto
+#
+# Pré-requisitos — exporte no shell antes de iniciar o Codex:
+#   export GITHUB_PERSONAL_ACCESS_TOKEN=ghp_...   # lido pelo servidor "github"
+#   export GITHUB_TOKEN=ghp_...                   # lido pelo servidor "github-actions"
+#   (ambos podem apontar para o mesmo PAT)
+#
+# Instalação única do binário do GitHub MCP Server (requer Go):
+#   go install github.com/github/github-mcp-server/cmd/github-mcp-server@latest
+#   cp ~/go/bin/github-mcp-server ~/.local/bin/
+#
+# Nota sobre o servidor "sqlite":
+#   O caminho ".aignt-os/aignt-os.db" aponta para o banco operacional padrão.
+#   Ajuste se a feature em desenvolvimento usar outro caminho de banco.
+# ---------------------------------------------------------------------------
+
+[mcp_servers.github]
+command = "github-mcp-server"
+args = ["stdio"]
+
+[mcp_servers.github-actions]
+command = "npx"
+args = ["-y", "github-actions-mcp"]
+
+[mcp_servers.docker]
+command = "uvx"
+args = ["docker-mcp"]
+
+[mcp_servers.sqlite]
+command = "uvx"
+args = ["mcp-sqlite", ".aignt-os/aignt-os.db"]
