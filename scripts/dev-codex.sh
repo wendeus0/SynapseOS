@@ -83,7 +83,21 @@ exec_cmd=(
   -lc
   'set -euo pipefail
 mkdir -p "$HOME/.codex"
-ln -snf /workspace/.codex/config.toml "$HOME/.codex/config.toml"
+if [[ -z "${GITHUB_PERSONAL_ACCESS_TOKEN:-}" && -n "${GITHUB_TOKEN:-}" ]]; then
+  export GITHUB_PERSONAL_ACCESS_TOKEN="$GITHUB_TOKEN"
+fi
+rm -f "$HOME/.codex/config.toml"
+cp /workspace/.codex/config.toml "$HOME/.codex/config.toml"
+if [[ -n "${GITHUB_PERSONAL_ACCESS_TOKEN:-}" ]]; then
+  cat >>"$HOME/.codex/config.toml" <<'"'"'EOF'"'"'
+
+[mcp_servers.github]
+command = "github-mcp-server"
+args = ["--toolsets=default,actions", "stdio"]
+EOF
+else
+  printf "%s\n" "Codex MCP note: GitHub MCP desabilitado; defina GITHUB_PERSONAL_ACCESS_TOKEN para habilitar GitHub e GitHub Actions." >&2
+fi
 exec codex -p "$CODEX_PROFILE" "$@"'
   bash
 )

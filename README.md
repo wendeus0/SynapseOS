@@ -206,3 +206,6 @@ Nenhuma feature avança para código sem `SPEC.md` aprovada e testes mínimos es
 - Para subir o ambiente e abrir o Codex dentro do container de desenvolvimento, use `./scripts/dev-codex.sh`.
 - Para subir também o runtime existente junto com o ambiente de desenvolvimento, use `./scripts/dev-codex.sh --with-runtime`.
 - O launcher aplica o profile `container_aggressive` de `.codex/config.toml` apenas dentro desse ambiente isolado.
+- Para habilitar o MCP oficial do GitHub dentro do `codex-dev`, exporte `GITHUB_PERSONAL_ACCESS_TOKEN` antes de rodar o launcher. Se apenas `GITHUB_TOKEN` estiver definido, o launcher o reutiliza como fallback.
+- O toolset `actions` do MCP oficial do GitHub cobre o caso de GitHub Actions; não há servidor `github-actions` separado no baseline atual.
+- O MCP de SQLite fica desabilitado por padrão até existir um banco real a ser exposto no workspace.

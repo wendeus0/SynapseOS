@@ -1,3 +1,9 @@
+FROM golang:1.24-bookworm AS github-mcp-builder
+
+ARG GITHUB_MCP_SERVER_VERSION=v0.32.0
+
+RUN GOBIN=/out go install github.com/github/github-mcp-server/cmd/github-mcp-server@"${GITHUB_MCP_SERVER_VERSION}"
+
 FROM python:3.12-slim-bookworm
 
 ARG DEV_UID=1000
@@ -36,6 +42,8 @@ RUN groupadd --gid "${DEV_GID}" codex \
 RUN python -m pip install --upgrade pip uv \
     && npm install --global "${CODEX_NPM_PACKAGE}" \
     && npm cache clean --force
+
+COPY --from=github-mcp-builder /out/github-mcp-server /usr/local/bin/github-mcp-server
 
 WORKDIR /workspace
 USER codex

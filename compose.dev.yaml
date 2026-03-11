@@ -10,10 +10,14 @@ services:
     command: ["sleep", "infinity"]
     environment:
       HOME: /home/codex
+      NPM_CONFIG_CACHE: /home/codex/.cache/npm
       UV_CACHE_DIR: /home/codex/.cache/uv
+      UV_TOOL_DIR: /home/codex/.local/share/uv/tools
       XDG_CACHE_HOME: /home/codex/.cache
       XDG_STATE_HOME: /home/codex/.local/state
       XDG_DATA_HOME: /home/codex/.local/share
+      GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_PERSONAL_ACCESS_TOKEN:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
     user: "${AIGNT_DEV_UID:-1000}:${AIGNT_DEV_GID:-1000}"
     volumes:
       - .:/workspace

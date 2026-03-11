@@ -1,0 +1,28 @@
+# .github/copilot/setup-steps.yml
+#
+# Environment setup for the GitHub Copilot coding agent.
+# Runs before the agent starts a task — analogous to .devcontainer/post-create.sh
+# for the Codex dev container.
+#
+# The setup mirrors the Codex devcontainer bootstrap:
+#   1. Install uv (Python package manager used throughout the repo)
+#   2. Bootstrap the dev environment with locked dependencies
+#   3. Run the lightweight Docker preflight check
+#
+# Reference: https://docs.github.com/en/copilot/customizing-copilot/customizing-the-development-environment-for-copilot-coding-agent
+
+steps:
+  - name: Install uv
+    run: |
+      curl -LsSf https://astral.sh/uv/install.sh | sh
+      echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+  - name: Bootstrap dev environment
+    run: uv sync --locked --extra dev
+
+  - name: Validate repository checks (light)
+    run: ./scripts/commit-check.sh --no-sync
+
+  - name: Docker preflight (light)
+    run: ./scripts/docker-preflight.sh

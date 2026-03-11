@@ -9,34 +9,20 @@ sandbox_mode = "danger-full-access"
 network_access = true
 
 # ---------------------------------------------------------------------------
-# MCP servers — essenciais para o fluxo operacional do projeto
+# MCP servers — baseline segura para o fluxo operacional do projeto
 #
-# Pré-requisitos — exporte no shell antes de iniciar o Codex:
-#   export GITHUB_PERSONAL_ACCESS_TOKEN=ghp_...   # lido pelo servidor "github"
-#   export GITHUB_TOKEN=ghp_...                   # lido pelo servidor "github-actions"
-#   (ambos podem apontar para o mesmo PAT)
+# O launcher `./scripts/dev-codex.sh` usa este arquivo como base e:
+#   - habilita o MCP oficial do GitHub quando houver token no ambiente;
+#   - reutiliza esse MCP para GitHub Actions via `--toolsets=default,actions`;
+#   - deixa o MCP de SQLite desabilitado por padrão até existir um banco real.
 #
-# Instalação única do binário do GitHub MCP Server (requer Go):
-#   go install github.com/github/github-mcp-server/cmd/github-mcp-server@latest
-#   cp ~/go/bin/github-mcp-server ~/.local/bin/
-#
-# Nota sobre o servidor "sqlite":
-#   O caminho ".aignt-os/aignt-os.db" aponta para o banco operacional padrão.
-#   Ajuste se a feature em desenvolvimento usar outro caminho de banco.
+# Pré-requisito para habilitar GitHub MCP:
+#   export GITHUB_PERSONAL_ACCESS_TOKEN=ghp_...
+# Compatibilidade:
+#   se apenas `GITHUB_TOKEN` estiver definido, o launcher o reaproveita como
+#   fallback para `GITHUB_PERSONAL_ACCESS_TOKEN`.
 # ---------------------------------------------------------------------------
-
-[mcp_servers.github]
-command = "github-mcp-server"
-args = ["stdio"]
-
-[mcp_servers.github-actions]
-command = "npx"
-args = ["-y", "github-actions-mcp"]
 
 [mcp_servers.docker]
 command = "uvx"
 args = ["docker-mcp"]
-
-[mcp_servers.sqlite]
-command = "uvx"
-args = ["mcp-sqlite", ".aignt-os/aignt-os.db"]

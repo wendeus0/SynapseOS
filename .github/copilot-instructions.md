@@ -20,6 +20,58 @@ Responda sempre em português em toda interação com o utilizador.
 
 Só responda em outro idioma se o utilizador pedir isso de forma explícita.
 
+## Escopo operacional
+
+O Copilot opera neste repositório com escopo restrito ao workspace do projeto.
+Estas regras são equivalentes ao `sandbox_mode = "workspace-write"` configurado para o Codex.
+
+**O que está dentro do escopo (permitido sem confirmação):**
+- Ler, criar e modificar arquivos dentro do repositório (`/workspace` ou o diretório raiz do projeto)
+- Executar comandos definidos nos scripts do repositório (`./scripts/`, `uv run`, `git`)
+- Consultar GitHub via MCP (issues, PRs, branches, workflows)
+- Sugerir mudanças, propor refatorações e explicar código
+
+**O que requer confirmação explícita antes de executar:**
+- Deletar arquivos ou diretórios
+- Fazer `git push`, `git force-push` ou operações destrutivas de histórico
+- Criar ou fazer merge de PRs
+- Modificar arquivos fora do repositório (configurações do sistema, `~/.bashrc`, etc.)
+- Instalar pacotes globalmente no sistema
+- Executar scripts com efeitos colaterais externos (`curl | sh`, instaladores)
+
+**O que está fora do escopo (nunca fazer):**
+- Acessar, ler ou modificar arquivos fora do diretório do repositório
+- Ler variáveis de ambiente que contenham credenciais não relacionadas ao projeto
+- Acessar `.env`, `*.pem`, `*secret*`, `*token*` fora do contexto explícito da tarefa
+- Executar operações de rede fora do contexto da tarefa (downloads, chamadas a APIs externas)
+- Montar ou referenciar caminhos do `$HOME` do host em containers
+
+## Política de aprovação
+
+Equivalente ao `approval_policy = "on-request"` do Codex: o Copilot deve pedir
+confirmação antes de qualquer ação com efeitos colaterais irreversíveis ou externos.
+
+- **Antes de `git push` / `gh pr create`**: confirmar branch, escopo e mensagem
+- **Antes de deletar arquivos**: listar o que será deletado e aguardar confirmação
+- **Antes de modificar workflows de CI**: explicar o impacto nos gates e aguardar
+- **Antes de alterações em `pyproject.toml`, `compose.yaml` ou `.devcontainer/`**: resumir o delta
+- **Em caso de ambiguidade de escopo**: parar e perguntar em vez de assumir
+
+Quando a tarefa já for explícita e o escopo estiver claro, execute sem perguntar
+repetidamente — o objetivo é fluidez, não burocracia.
+
+## Raciocínio e qualidade
+
+Equivalente ao `model_reasoning_effort = "high"` do Codex: aplique o máximo de
+raciocínio disponível antes de agir.
+
+- Leia os documentos de arquitetura (`SDD.md`, `TDD.md`) antes de mudanças estruturais
+- Verifique se o módulo-alvo está implementado antes de referenciar ou depender dele
+- Prefira a solução mais simples e direta que satisfaça os critérios de aceitação
+- Não antecipe funcionalidade fora do escopo da tarefa atual
+- Quando houver mais de uma abordagem válida, explique o trade-off antes de escolher
+- Sinalize explicitamente quando uma decisão for uma "Premissa" ou "Decisão proposta"
+
 ## Build, test, lint, and validation commands
 
 Prefer the repo scripts over ad hoc commands.
