@@ -2,6 +2,11 @@
 
 ## Decisões incorporadas recentemente
 
+- A `F05-cli-adapter-base` passou a ter `SPEC.md` propria, `NOTES.md`, um `BaseCLIAdapter` assíncrono via `asyncio.create_subprocess_exec` e a evolucao de `CLIExecutionResult` para incluir `tool_name`, `stdout/stderr` raw/clean, `duration_ms` e `timed_out`.
+- O recorte da `F05-cli-adapter-base` ficou deliberadamente restrito a contrato de execucao, subprocesso async, timeout e sanitizacao leve de ANSI, preservando o Parsing Engine da `F04` como responsavel por limpeza mais rica e extracao de artefatos antes dos hand-offs do AIgnt-Synapse-Flow.
+- A validacao local da `F05-cli-adapter-base` fechou verde com `SPEC` validada, `84` testes passando via `python -m pytest`, `ruff check`, `ruff format --check`, `mypy` e `./scripts/branch-sync-check.sh` em `ahead=0 behind=0`.
+- O `security-review` do delta da `F05-cli-adapter-base` foi concluido sem ressalvas: a implementacao usa `create_subprocess_exec` sem shell, preserva output bruto separado do output limpo, aplica timeout com encerramento explicito do processo e mantem a sanitizacao conservadora no adapter.
+
 - A `F04-parsing-engine-mvp` passou a ter `SPEC.md` propria, fixtures de output ruidoso e um Parsing Engine minimo com limpeza de ANSI, extracao de blocos fenced Markdown e validacao sintatica de artefatos Python.
 - O hardening final da `F04-parsing-engine-mvp` normalizou linguagem de fences para lowercase, canonizou `py` para `python`, preservou texto semantico generico ao remover apenas ruido de transporte explicito e adicionou limites fixos de tamanho/volume no parser.
 - A validacao local mais recente da `F04-parsing-engine-mvp` fechou verde com `./scripts/commit-check.sh --no-sync --skip-branch-validation --skip-docker --skip-security`, incluindo `81` testes verdes, `ruff` e `mypy`.
