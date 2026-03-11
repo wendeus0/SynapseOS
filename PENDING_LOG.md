@@ -2,6 +2,10 @@
 
 ## Decisões incorporadas recentemente
 
+- A `F04-parsing-engine-mvp` passou a ter `SPEC.md` propria, fixtures de output ruidoso e um Parsing Engine minimo com limpeza de ANSI, extracao de blocos fenced Markdown e validacao sintatica de artefatos Python.
+- O hardening final da `F04-parsing-engine-mvp` normalizou linguagem de fences para lowercase, canonizou `py` para `python`, preservou texto semantico generico ao remover apenas ruido de transporte explicito e adicionou limites fixos de tamanho/volume no parser.
+- A validacao local mais recente da `F04-parsing-engine-mvp` fechou verde com `./scripts/commit-check.sh --no-sync --skip-branch-validation --skip-docker --skip-security`, incluindo `81` testes verdes, `ruff` e `mypy`.
+- O `security-review` final da `F04-parsing-engine-mvp` foi reavaliado apos o hardening do parser e ficou aprovado sem ressalvas no recorte atual.
 - O fluxo de PR assistido pelo agente Git passou a exigir corpo de PR via `--body-file` em vez de `--body` inline quando houver Markdown com backticks, blocos de codigo ou outros caracteres shell-sensitive, evitando corrupção da descrição publicada por expansão acidental do shell.
 - A baseline MCP do `codex-dev` passou a ser segura por padrao: `.codex/config.toml` deixou de carregar `github-actions`, `sqlite` e `docker` no startup default, e o MCP oficial do GitHub passou a ser renderizado dinamicamente apenas quando houver token no ambiente.
 - O fallback de `GITHUB_TOKEN` para `GITHUB_PERSONAL_ACCESS_TOKEN` ficou centralizado em `scripts/render-codex-config.sh`, tornando o launcher do Codex testavel e removendo a dependencia de symlink persistida no volume `codex-home`.

@@ -1,0 +1,10 @@
+\u001b[32mINFO\u001b[0m Build summary follows
+[transport] adapter heartbeat
+Here is the generated artifact:
+
+```python
+def greet(name: str) -> str:
+    return f"Hello, {name}"
+```
+
+Done.
