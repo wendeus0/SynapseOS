@@ -1,17 +1,22 @@
-# Project-local Codex profiles used by the isolated development container.
+# Project-local Codex configuration for AIgnt OS.
+# Repo defaults should be safe for daily work and explicit about multi-agent roles.
+
+model = "gpt-5.4"
+personality = "pragmatic"
+model_reasoning_effort = "medium"
+plan_mode_reasoning_effort = "high"
+model_reasoning_summary = "auto"
+model_verbosity = "medium"
+
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+web_search = "cached"
 
 [features]
 multi_agent = true
-
-[profiles.container_planning]
-model = "gpt-5.2-codex"
-approval_policy = "on-request"
-sandbox_mode = "workspace-write"
-
-[profiles.container_aggressive]
-model = "gpt-5.2-codex"
-approval_policy = "never"
-sandbox_mode = "danger-full-access"
+prevent_idle_sleep = true
+runtime_metrics = true
+undo = true
 
 [sandbox_workspace_write]
 network_access = true
@@ -19,27 +24,47 @@ network_access = true
 [mcp_servers.openaiDeveloperDocs]
 url = "https://developers.openai.com/mcp"
 
-# ---------------------------------------------------------------------------
-# MCP servers — baseline segura para o fluxo operacional do projeto
-#
-# O launcher `./scripts/dev-codex.sh` usa este arquivo como base e:
-#   - usa o profile `container_planning` por padrao para favorecer discovery e
-#     planejamento com sandbox mais restrito;
-#   - mantem `container_aggressive` como profile explicito para execucao mais
-#     automatica dentro do ambiente isolado;
-#   - habilita o MCP oficial do GitHub quando houver token no ambiente;
-#   - reutiliza esse MCP para GitHub Actions via `--toolsets=default,actions`;
-#   - deixa MCPs dependentes de recursos ausentes no `codex-dev` fora do baseline.
-#
-# Pré-requisito para habilitar GitHub MCP:
-#   export GITHUB_PERSONAL_ACCESS_TOKEN=ghp_...
-# Compatibilidade:
-#   se apenas `GITHUB_TOKEN` estiver definido, o launcher o reaproveita como
-#   fallback para `GITHUB_PERSONAL_ACCESS_TOKEN`.
-#
-# Nota:
-#   o MCP `openaiDeveloperDocs` e parte fixa do baseline para consulta oficial
-#   de documentacao do OpenAI/Codex;
-#   o `codex-dev` permanece sem `docker.sock`; por isso o MCP de Docker nao faz
-#   parte do baseline seguro deste ambiente isolado.
-# ---------------------------------------------------------------------------
+[agents]
+max_threads = 6
+max_depth = 1
+
+[agents.explorer]
+description = "Read-only codebase explorer for mapping AIgnt OS architecture, affected code paths, specs, ADRs, and operational evidence before changes."
+config_file = "agents/explorer.toml"
+
+[agents.reviewer]
+description = "Read-only reviewer focused on correctness, regressions, security, missing tests, and technical debt risk."
+config_file = "agents/reviewer.toml"
+
+[agents.worker]
+description = "Implementation-focused agent for small, targeted changes after the task is understood and scoped."
+config_file = "agents/worker.toml"
+
+[agents.monitor]
+description = "Operational monitor for long-running commands, logs, CI evidence, runtime checks, and failure capture."
+config_file = "agents/monitor.toml"
+
+[profiles.container_planning]
+model = "gpt-5.4"
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+web_search = "cached"
+model_reasoning_effort = "medium"
+plan_mode_reasoning_effort = "high"
+model_reasoning_summary = "auto"
+model_verbosity = "medium"
+
+[profiles.container_aggressive]
+model = "gpt-5.4"
+approval_policy = "never"
+sandbox_mode = "danger-full-access"
+web_search = "live"
+model_reasoning_effort = "medium"
+model_reasoning_summary = "auto"
+model_verbosity = "medium"
+
+Notes
+# - container_planning is the default safe profile for discovery and implementation.
+# - container_aggressive is reserved for the isolated codex-dev environment only.
+# - openaiDeveloperDocs stays in the baseline because it is low-friction and
+#   useful for validating Codex/OpenAI behavior.
