@@ -4,6 +4,7 @@ from io import StringIO
 
 from rich.console import Console
 
+from aignt_os.cli.rendering import RunArtifactPreview
 from aignt_os.persistence import RunEventRecord, RunRecord, RunStepRecord
 
 
@@ -99,3 +100,42 @@ def test_render_run_detail_completed_at_spec_validation_guides_canonical_happy_p
     assert "SPEC_VALIDATION" in rendered
     assert "Canonical happy path is complete" in rendered
     assert "runs show" not in rendered.lower()
+
+
+def test_render_run_detail_surfaces_artifact_preview_panel() -> None:
+    cli_rendering = __import__("aignt_os.cli.rendering", fromlist=["render_run_detail"])
+    output = StringIO()
+    console = Console(file=output, force_terminal=False, color_system=None, width=160)
+
+    cli_rendering.render_run_detail(
+        RunRecord(
+            run_id="run-preview",
+            spec_path="SPEC.md",
+            stop_at="DOCUMENT",
+            status="completed",
+            current_state="DOCUMENT",
+            locked=False,
+            failure_message=None,
+            created_at="2026-03-12T00:00:00+00:00",
+            updated_at="2026-03-12T00:01:00+00:00",
+            completed_at="2026-03-12T00:02:00+00:00",
+        ),
+        steps=[],
+        events=[],
+        artifact_paths=["run-preview/RUN_REPORT.md"],
+        preview=RunArtifactPreview(
+            target="report",
+            source_path="run-preview/RUN_REPORT.md",
+            content="line 1\nline 2\n",
+            truncated=True,
+        ),
+        console=console,
+    )
+
+    rendered = output.getvalue()
+    assert "Artifact Preview" in rendered
+    assert "report" in rendered
+    assert "run-preview/RUN_REPORT.md" in rendered
+    assert "line 1" in rendered
+    assert "line 2" in rendered
+    assert "Preview truncated after 40 lines." in rendered

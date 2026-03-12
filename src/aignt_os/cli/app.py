@@ -2,7 +2,7 @@ import os
 import secrets
 import sys
 from collections.abc import Sequence
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Annotated
 
 import typer
@@ -19,6 +19,7 @@ from aignt_os.cli.errors import (
     validation_error,
 )
 from aignt_os.cli.rendering import (
+    RunArtifactPreview,
     render_environment_doctor,
     render_run_detail,
     render_run_submission,
@@ -218,6 +219,82 @@ def _artifact_store() -> ArtifactStore:
     return ArtifactStore(settings.artifacts_dir)
 
 
+def _validate_preview_target(preview_target: str) -> tuple[str, str | None]:
+    normalized = preview_target.strip()
+    if normalized.lower() == "report":
+        return ("report", None)
+    if normalized.lower().endswith(".clean"):
+        step_state = normalized[:-6].strip().upper()
+        if step_state:
+            return ("clean", step_state)
+    raise usage_error("preview must be `report` or `<STEP_STATE>.clean`.")
+
+
+def _relative_artifact_path(artifact_store: ArtifactStore, artifact_path: Path) -> str:
+    try:
+        return str(artifact_path.resolve().relative_to(artifact_store.base_path.resolve()))
+    except ValueError as exc:
+        raise not_found_error(
+            "Requested preview is outside the persisted artifacts directory."
+        ) from exc
+
+
+def _read_text_preview(artifact_path: Path, *, max_lines: int = 40) -> tuple[str, bool]:
+    try:
+        content = artifact_path.read_text(encoding="utf-8")
+    except FileNotFoundError as exc:
+        raise not_found_error(
+            f"Persisted artifact '{artifact_path.name}' is not available."
+        ) from exc
+
+    lines = content.splitlines()
+    preview_lines = lines[:max_lines]
+    truncated = len(lines) > max_lines
+    preview_content = "\n".join(preview_lines)
+    if content.endswith("\n") and preview_lines:
+        preview_content += "\n"
+    return (preview_content, truncated)
+
+
+def _resolve_run_preview(
+    *,
+    run_id: str,
+    preview_target: str,
+    repository: RunRepository,
+    artifact_store: ArtifactStore,
+) -> RunArtifactPreview:
+    preview_kind, step_state = _validate_preview_target(preview_target)
+
+    if preview_kind == "report":
+        relative_path = str(PurePosixPath(run_id) / "RUN_REPORT.md")
+        if relative_path not in artifact_store.list_artifact_paths(run_id):
+            raise not_found_error(f"Run '{run_id}' does not have a persisted report preview.")
+        artifact_path = artifact_store.base_path / Path(relative_path)
+        content, truncated = _read_text_preview(artifact_path)
+        return RunArtifactPreview(
+            target="report",
+            source_path=relative_path,
+            content=content,
+            truncated=truncated,
+        )
+
+    for step in repository.list_steps(run_id):
+        if step.state == step_state and step.clean_output_path is not None:
+            artifact_path = Path(step.clean_output_path)
+            relative_path = _relative_artifact_path(artifact_store, artifact_path)
+            content, truncated = _read_text_preview(artifact_path)
+            return RunArtifactPreview(
+                target=f"{step_state}.clean",
+                source_path=relative_path,
+                content=content,
+                truncated=truncated,
+            )
+
+    raise not_found_error(
+        f"Run '{run_id}' does not have a persisted clean preview for {step_state}."
+    )
+
+
 def _dispatch_service() -> RunDispatchService:
     settings = AppSettings()
     repository = RunRepository(settings.runs_db_path)
@@ -368,7 +445,10 @@ def runs_submit(
 
 
 @runs_app.command("show")
-def runs_show(run_id: str) -> None:
+def runs_show(
+    run_id: str,
+    preview: Annotated[str | None, typer.Option("--preview")] = None,
+) -> None:
     repository = _run_repository()
     artifact_store = _artifact_store()
 
@@ -377,9 +457,24 @@ def runs_show(run_id: str) -> None:
     except NoResultFound:
         exit_for_cli_error(not_found_error(f"Run '{run_id}' not found."))
 
+    try:
+        resolved_preview = (
+            _resolve_run_preview(
+                run_id=run_id,
+                preview_target=preview,
+                repository=repository,
+                artifact_store=artifact_store,
+            )
+            if preview is not None
+            else None
+        )
+    except CLIError as exc:
+        exit_for_cli_error(exc)
+
     render_run_detail(
         run,
         steps=repository.list_steps(run_id),
         events=repository.list_events(run_id),
         artifact_paths=artifact_store.list_artifact_paths(run_id),
+        preview=resolved_preview,
     )

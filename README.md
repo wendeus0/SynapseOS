@@ -174,14 +174,12 @@ aignt-os/
 
 ## Etapa 2 do projeto
 
-O cronograma de 10 dias acima descreve o MVP inicial já concluído. A etapa 2 do projeto ja consolidou `F15-public-run-submission`, `F16-run-detail-expansion`, `F21-cli-error-model-and-exit-codes` e `F18-canonical-happy-path` no baseline atual.
+O cronograma de 10 dias acima descreve o MVP inicial já concluído. A etapa 2 do projeto ja consolidou `F15-public-run-submission`, `F16-run-detail-expansion`, `F21-cli-error-model-and-exit-codes`, `F18-canonical-happy-path`, `F19-environment-doctor` e `F20-public-onboarding` no baseline atual.
 
 Próximas frentes da etapa 2:
 
-1. `F19-environment-doctor`
-2. `F20-public-onboarding`
-3. `F17-artifact-preview`
-4. `F22-release-readiness`
+1. `F17-artifact-preview`
+2. `F22-release-readiness`
 
 O roadmap completo e o contexto da etapa 2 seguem em `docs/architecture/PHASE_2_ROADMAP.md`.
 

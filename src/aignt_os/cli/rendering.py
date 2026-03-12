@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 
 from rich.console import Console, ConsoleRenderable, Group
 from rich.panel import Panel
@@ -10,6 +11,14 @@ from rich.text import Text
 from aignt_os.persistence import RunEventRecord, RunRecord, RunStepRecord
 from aignt_os.runtime.dispatch import RunDispatchResult
 from aignt_os.runtime.state import RuntimeState
+
+
+@dataclass(frozen=True, slots=True)
+class RunArtifactPreview:
+    target: str
+    source_path: str
+    content: str
+    truncated: bool
 
 
 def render_runtime_status(
@@ -82,6 +91,7 @@ def render_run_detail(
     steps: Sequence[RunStepRecord],
     events: Sequence[RunEventRecord],
     artifact_paths: Sequence[str],
+    preview: RunArtifactPreview | None = None,
     console: Console | None = None,
 ) -> None:
     output_console = console or Console(width=160)
@@ -128,6 +138,8 @@ def render_run_detail(
             title="Diagnostic Summary",
         ),
     ]
+    if preview is not None:
+        renderables.append(_artifact_preview_panel(preview))
     renderables.append(_steps_table(steps))
     renderables.append(_events_table(events))
     renderables.append(_artifacts_table(artifact_paths))
@@ -286,6 +298,24 @@ def _artifacts_table(artifact_paths: Sequence[str]) -> Table:
     for artifact_path in artifact_paths:
         table.add_row(_artifact_scope(artifact_path), artifact_path)
     return table
+
+
+def _artifact_preview_panel(preview: RunArtifactPreview) -> Panel:
+    preview_table = Table.grid(expand=False)
+    preview_table.add_column(style="dim")
+    preview_table.add_column()
+    preview_table.add_row("Target", preview.target)
+    preview_table.add_row("Source Path", preview.source_path)
+    preview_table.add_row("Content", preview.content.rstrip("\n") or "(empty file)")
+    if preview.truncated:
+        preview_table.add_row("Notice", "Preview truncated after 40 lines.")
+
+    return Panel.fit(
+        preview_table,
+        border_style="cyan",
+        padding=(0, 1),
+        title="Artifact Preview",
+    )
 
 
 def _latest_signal(event: RunEventRecord | None) -> str:

@@ -22,6 +22,11 @@
 - O baseline real atual tambem ja incorpora a `F16-run-detail-expansion`, a `F21-cli-error-model-and-exit-codes` e a `F18-canonical-happy-path`: as tres frentes tem `SPEC.md` propria, notes/checklists, comportamento materializado na CLI e cobertura dedicada em testes unitarios e de integracao.
 - A revalidacao focada do baseline da etapa 2 fechou verde com `uv run --no-sync python -m pytest tests/unit/test_cli_runs_rendering.py tests/integration/test_runs_submit_cli.py tests/integration/test_cli_error_model.py -q`, totalizando `12 passed`.
 - O handoff operacional foi realinhado para refletir a fila remanescente correta da etapa 2: `F19 -> F20 -> F17 -> F22`.
+- A `F19-environment-doctor` foi concluida e mergeada pela PR `#51`, consolidando `aignt doctor` como diagnostico local e advisory do fluxo publico atual.
+- A `F20-public-onboarding` foi concluida e mergeada pela PR `#52`, consolidando o quickstart publico sync-first e o boundary entre `aignt doctor` e `repo-preflight`.
+- Com a merge de `F19` e `F20`, a fila remanescente real da etapa 2 passou a ser `F17 -> F22`.
+- A `F17-artifact-preview` foi concluida localmente com preview textual controlado em `aignt runs show <run_id> --preview <target>`, suportando `report` e `<STEP_STATE>.clean` sem abrir leitura arbitraria do host.
+- O delta da F17 manteve o contrato de erros da F21 (`Usage error:`/`2`, `Not found:`/`3`) e limitou a leitura ao inicio do artifact, com truncamento explicito apos no maximo 40 linhas.
 
 - A `F10-run-report-one-real-adapter` foi concluida e mergeada em `main`, fechando o MVP inicial do AIgnt-Synapse-Flow com `DOCUMENT`, `RUN_REPORT.md` e o primeiro adapter real (`CodexCLIAdapter`).
 - A `F12-codex-adapter-operational-hardening` foi concluida e mergeada pela PR `#38`, com `main` local e `origin/main` sincronizados em `ahead=0 behind=0`.
@@ -114,7 +119,7 @@
 - Fixtures de testes aspiracionais marcadas como 🔜 no TDD.md: `tests/fixtures/worker/` (ainda ausente).
 - Property-based testing com `hypothesis` ainda não implementado (mencionado como evolução futura em TDD.md).
 - Nao abrir o pacote de guardrails proposto como novas `F14`/`F15`; manter a numeracao e a fila oficial ja documentadas.
-- Abrir a `F19-environment-doctor` como proxima feature da fila oficial da etapa 2.
+- Abrir a `F22-release-readiness` sobre a HEAD da `F17-artifact-preview`, mantendo PR empilhada e sem merge antecipado.
 
 ## Pontos de atenção futuros
 
@@ -153,10 +158,8 @@
 
 ## Fila oficial da etapa 2
 
-1. `F19-environment-doctor`
-2. `F20-public-onboarding`
-3. `F17-artifact-preview`
-4. `F22-release-readiness`
+1. `F17-artifact-preview`
+2. `F22-release-readiness`
 
 ## Guardrails candidatos fora da fila principal
 
