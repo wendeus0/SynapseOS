@@ -32,6 +32,7 @@ from aignt_os.pipeline import (
     StepExecutionResult,
     StepExecutor,
 )
+from aignt_os.security import sanitize_clean_text
 from aignt_os.supervisor import Supervisor, SupervisorDecision
 
 ARTIFACT_DIR_MODE = 0o700
@@ -294,8 +295,14 @@ class RunRepository:
 
 
 class ArtifactStore:
-    def __init__(self, base_path: Path) -> None:
+    def __init__(
+        self,
+        base_path: Path,
+        *,
+        secret_mask_patterns: tuple[str, ...] | list[str] | None = None,
+    ) -> None:
         self.base_path = base_path
+        self.secret_mask_patterns = tuple(secret_mask_patterns) if secret_mask_patterns else None
         _ensure_private_directory(self.base_path)
 
     def run_directory(self, run_id: str) -> Path:
@@ -321,7 +328,13 @@ class ArtifactStore:
 
         if clean_output is not None:
             clean_path = step_directory / "clean.txt"
-            _write_private_text(clean_path, clean_output)
+            _write_private_text(
+                clean_path,
+                sanitize_clean_text(
+                    clean_output,
+                    mask_patterns=self.secret_mask_patterns,
+                ),
+            )
 
         return SavedStepOutputs(raw_path=raw_path, clean_path=clean_path)
 
@@ -336,12 +349,24 @@ class ArtifactStore:
         step_directory = self._step_directory(run_id, step_state)
         safe_name = _safe_segment(artifact_name, fallback="artifact")
         artifact_path = step_directory / f"{safe_name}.txt"
-        _write_private_text(artifact_path, content)
+        _write_private_text(
+            artifact_path,
+            sanitize_clean_text(
+                content,
+                mask_patterns=self.secret_mask_patterns,
+            ),
+        )
         return artifact_path
 
     def save_run_report(self, *, run_id: str, content: str) -> Path:
         report_path = self.run_directory(run_id) / "RUN_REPORT.md"
-        _write_private_text(report_path, content)
+        _write_private_text(
+            report_path,
+            sanitize_clean_text(
+                content,
+                mask_patterns=self.secret_mask_patterns,
+            ),
+        )
         return report_path
 
     def list_artifact_paths(self, run_id: str) -> list[str]:

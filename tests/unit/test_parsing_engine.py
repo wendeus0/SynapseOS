@@ -102,6 +102,31 @@ def test_parse_cli_output_clean_output_strips_transport_noise() -> None:
     assert "[transport]" not in parsed_output.stdout_clean
 
 
+def test_parse_cli_output_normalizes_unicode_and_strips_bidi_controls() -> None:
+    parsing = _parsing_module()
+    raw_output = "e\u0301 \u202EＦ\n"
+
+    parsed_output = parsing.parse_cli_output(raw_output)
+
+    assert parsed_output.stdout_clean == "é F"
+
+
+def test_parse_cli_output_masks_secrets_in_clean_output_but_preserves_artifact_content() -> None:
+    parsing = _parsing_module()
+    raw_output = """Bearer secret-token
+```python
+token = "sk-secret123"
+```
+"""
+
+    parsed_output = parsing.parse_cli_output(raw_output)
+
+    assert "Bearer secret-token" not in parsed_output.stdout_clean
+    assert "sk-secret123" not in parsed_output.stdout_clean
+    assert "[REDACTED]" in parsed_output.stdout_clean
+    assert parsed_output.artifacts[0].content == 'token = "sk-secret123"'
+
+
 # ---------------------------------------------------------------------------
 # Python artifact validation
 # ---------------------------------------------------------------------------

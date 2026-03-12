@@ -219,7 +219,9 @@ def test_runs_show_preview_report_renders_truncated_content_and_source_path(
     )
     repository.acquire_lock(run_id)
     repository.mark_run_running(run_id, current_state="DOCUMENT")
-    report_content = "\n".join(f"line {index}" for index in range(1, 46)) + "\n"
+    report_content = "Bearer secret-token\n" + "\n".join(
+        f"line {index}" for index in range(1, 46)
+    ) + "\n"
     artifact_store.save_run_report(run_id=run_id, content=report_content)
     repository.mark_run_completed(run_id, current_state="DOCUMENT")
 
@@ -229,9 +231,11 @@ def test_runs_show_preview_report_renders_truncated_content_and_source_path(
     assert "artifact preview" in result.stdout.lower()
     assert "report" in result.stdout.lower()
     assert f"{run_id}/RUN_REPORT.md" in result.stdout
+    assert "Bearer secret-token" not in result.stdout
+    assert "[REDACTED]" in result.stdout
     assert "line 1" in result.stdout
-    assert "line 40" in result.stdout
-    assert "line 41" not in result.stdout
+    assert "line 39" in result.stdout
+    assert "line 40" not in result.stdout
     assert "preview truncated after 40 lines." in result.stdout.lower()
 
 
@@ -259,7 +263,7 @@ def test_runs_show_preview_clean_output_uses_requested_step_without_raw_content(
         run_id=run_id,
         step_state="PLAN",
         raw_output="RAW SECRET\n",
-        clean_output="clean line 1\nclean line 2\n",
+        clean_output="clean line 1\nsk-secret123\nclean line 2\n",
     )
     repository.record_step(
         run_id,
@@ -286,6 +290,8 @@ def test_runs_show_preview_clean_output_uses_requested_step_without_raw_content(
     assert f"{run_id}/PLAN/clean.txt" in result.stdout
     assert "clean line 1" in result.stdout
     assert "clean line 2" in result.stdout
+    assert "sk-secret123" not in result.stdout
+    assert "[REDACTED]" in result.stdout
     assert "RAW SECRET" not in result.stdout
 
 

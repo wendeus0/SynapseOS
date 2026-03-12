@@ -22,6 +22,7 @@ def test_settings_exposes_all_expected_default_paths() -> None:
     assert isinstance(settings.runtime_state_dir, Path)
     assert isinstance(settings.runs_db_path, Path)
     assert isinstance(settings.artifacts_dir, Path)
+    assert settings.secret_mask_patterns
 
 
 def test_settings_default_runs_db_path_is_sqlite_under_aignt_dir() -> None:
@@ -77,6 +78,16 @@ def test_settings_runtime_state_file_is_child_of_state_dir() -> None:
     settings = config_module.AppSettings()
 
     assert settings.runtime_state_file.parent == settings.runtime_state_dir
+
+
+def test_settings_exposes_default_secret_mask_patterns() -> None:
+    config_module = import_module("aignt_os.config")
+
+    settings = config_module.AppSettings()
+
+    assert any("ghp_" in pattern for pattern in settings.secret_mask_patterns)
+    assert any("ghs_" in pattern for pattern in settings.secret_mask_patterns)
+    assert any("sk-" in pattern for pattern in settings.secret_mask_patterns)
 
 
 def test_settings_rejects_invalid_environment_value() -> None:
