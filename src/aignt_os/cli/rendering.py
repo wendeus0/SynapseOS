@@ -8,6 +8,7 @@ from rich.table import Table
 from rich.text import Text
 
 from aignt_os.persistence import RunEventRecord, RunRecord, RunStepRecord
+from aignt_os.runtime.dispatch import RunDispatchResult
 from aignt_os.runtime.state import RuntimeState
 
 
@@ -112,6 +113,31 @@ def render_run_detail(
     renderables.append(_events_table(events))
     renderables.append(_artifacts_table(artifact_paths))
     output_console.print(Group(*renderables))
+
+
+def render_run_submission(
+    result: RunDispatchResult,
+    *,
+    console: Console | None = None,
+) -> None:
+    output_console = console or Console()
+    lines = [
+        Text.assemble(("run_id: ", "dim"), result.run_id),
+        Text.assemble(
+            ("status: ", "dim"),
+            (result.status, _status_style(result.status)),
+        ),
+        Text.assemble(("mode: ", "dim"), result.dispatch_mode_resolved),
+    ]
+
+    output_console.print(
+        Panel.fit(
+            Group(*lines),
+            border_style=_status_style(result.status),
+            padding=(0, 1),
+            title="Run Submission",
+        )
+    )
 
 
 def _status_style(status: str) -> str:
