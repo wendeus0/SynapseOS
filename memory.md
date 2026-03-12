@@ -5,6 +5,7 @@
 - AIgnt OS continua como meta-orquestrador CLI-first; o AIgnt-Synapse-Flow segue como a engine propria de pipeline do projeto.
 - A baseline operacional atual combina `DOCKER_PREFLIGHT` leve por padrao, fluxo container-first para o Codex, Branch Sync Gate e separacao entre memoria duravel (`memory.md`) e log operacional (`PENDING_LOG.md` e `ERROR_LOG.md`).
 - A governanca de prompts dos agents segue formato contextual explicito, com contexto, leituras obrigatorias, objetivo, escopo, nao-faca, criterios de aceite e formato de entrega.
+- O MVP de produto agora chega ate `DOCUMENT`: a F10 adicionou `RUN_REPORT.md` por run e o primeiro adapter real via `CodexCLIAdapter`.
 
 ## Local snapshot
 
@@ -36,6 +37,7 @@
 # Recurrent pitfalls
 
 - `memory.md` perde valor quando mistura decisao estavel com snapshot local ou log de conversa.
+- `memory.md` e `PENDING_LOG.md` ficam rapidamente obsoletos quando merges e PRs mudam o estado real do repositório e o handoff nao e consolidado em seguida.
 - `uv` pode falhar no sandbox por cache fora da workspace ou indisponibilidade de rede.
 - `branch-sync-update` nao e seguro com worktree suja, mesmo quando o drift contra `main` parece pequeno.
 - Subir `codex-dev` manualmente em paralelo ao launcher pode causar corrida operacional.
