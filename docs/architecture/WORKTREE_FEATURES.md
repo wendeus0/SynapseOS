@@ -89,14 +89,26 @@ Organizar o desenvolvimento do projeto em features pequenas, isoladas por branch
 **Entrega:** `aignt runs submit <spec_path>` com `--mode auto|sync|async` e `--stop-at`.
 **Branch/worktree:** `feature/f15-public-run-submission`
 
-## Próxima etapa pós-F20
+## Etapa 2 concluída
 
-A fila ativa do projeto deixou de ser o cronograma histórico do MVP inicial. A nova etapa segue o **cenário misto** definido na triagem, ja incorporou `F15-public-run-submission`, `F16-run-detail-expansion`, `F21-cli-error-model-and-exit-codes`, `F18-canonical-happy-path`, `F19-environment-doctor` e `F20-public-onboarding` no baseline atual e esta detalhada em `docs/architecture/PHASE_2_ROADMAP.md`.
+A fila ativa do projeto deixou de ser o cronograma histórico do MVP inicial. A etapa 2 definida no **cenário misto** foi concluída no baseline atual e está detalhada em `docs/architecture/PHASE_2_ROADMAP.md`.
 
-### Sequência oficial remanescente da etapa 2
+O baseline atual já incorpora:
 
-1. `F17-artifact-preview`
-2. `F22-release-readiness`
+1. `F15-public-run-submission`
+2. `F16-run-detail-expansion`
+3. `F21-cli-error-model-and-exit-codes`
+4. `F18-canonical-happy-path`
+5. `F19-environment-doctor`
+6. `F20-public-onboarding`
+7. `F17-artifact-preview`
+8. `F22-release-readiness`
+
+### Próxima decisão pós-`F22`
+
+- Abrir uma nova SPEC antes de qualquer implementação adicional.
+- Usar `docs/IDEAS.md` apenas como backlog candidato, não como fila ativa automática.
+- Considerar `IDEA-001 / G-02` como menor follow-up imediato apenas se houver risco real em observabilidade pública.
 
 ### Padrão mínimo de descrição por feature
 
@@ -109,12 +121,12 @@ Cada frente da etapa 2 deve ser documentada pelo menos com:
 - critério de pronto
 - risco principal
 
-### Guardrails candidatos antes da etapa 2
+### Guardrails candidatos após a etapa 2
 
-Propostas de hardening sobre input, secrets, rate limiting e audit trail foram avaliadas antes da abertura da etapa 2.
+Propostas de hardening sobre input, secrets, rate limiting e audit trail foram avaliadas antes da abertura da etapa 2 e permanecem como backlog candidato após o seu fechamento.
 
 Diretriz atual:
-- nao abrir essas propostas como features autonomas fora da fila principal da etapa 2;
+- nao abrir essas propostas como features autonomas sem antes promover uma nova SPEC;
 - nao reciclar IDs ja usados (`F14`) nem o ID reservado da `F15`;
 - permitir apenas um follow-up curto de mascaramento de secrets em saidas `_clean` e artifacts publicos se surgir risco real antes da `F21`;
 - absorver o restante dentro de `F21` ou de follow-up proprio curto, se houver necessidade concreta.

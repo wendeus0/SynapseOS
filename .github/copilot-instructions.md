@@ -195,18 +195,19 @@ The current runtime is a minimal dual-mode foundation:
 
 ### Current roadmap direction
 
-The active backlog after `F20-public-onboarding` is not the old MVP cronograma anymore. The current baseline already incorporates `F15-public-run-submission`, `F16-run-detail-expansion`, `F21-cli-error-model-and-exit-codes`, `F18-canonical-happy-path`, `F19-environment-doctor`, and `F20-public-onboarding`. The remaining ordered queue is:
+The active backlog is no longer the old MVP cronograma, and phase 2 is already closed in the current baseline. The repository already incorporates `F15-public-run-submission`, `F16-run-detail-expansion`, `F21-cli-error-model-and-exit-codes`, `F18-canonical-happy-path`, `F19-environment-doctor`, `F20-public-onboarding`, `F17-artifact-preview`, and `F22-release-readiness`.
 
-1. `F17-artifact-preview`
-2. `F22-release-readiness`
+Treat the current planning baseline as:
 
-Treat that sequence as the current planning baseline.
+- phase 2 completed in `main`
+- no remaining ordered queue inside phase 2
+- the next front must start from a new post-`F22` SPEC, not from reopening `F17` or `F22`
 
 Additional guardrail for future sessions:
 
 - Do not open a parallel pre-phase package for input/secrets/rate-limiting hardening by reusing `F14` or `F15`.
-- If an early hardening slice is needed before `F21`, keep it narrowly scoped to masking secrets in `_clean` outputs and public-readable artifacts.
-- Absorb broader input validation and CLI error-contract work into `F21-cli-error-model-and-exit-codes` or a narrowly scoped follow-up if needed.
+- If an early post-`F22` hardening slice is needed, keep it narrowly scoped to masking secrets in `_clean` outputs and public-readable artifacts.
+- Use `docs/IDEAS.md` as candidate backlog only; promote any next step to a real feature through a new SPEC before implementation.
 
 ### SPEC and contracts
 

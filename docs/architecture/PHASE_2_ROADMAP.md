@@ -13,12 +13,9 @@ Registrar a proxima etapa do projeto apos a conclusao do MVP inicial e dos follo
 
 ## Estrategia adotada
 
-A etapa 2 segue o **cenario misto** escolhido na triagem. O baseline real atual ja incorpora `F15-public-run-submission`, `F16-run-detail-expansion`, `F21-cli-error-model-and-exit-codes`, `F18-canonical-happy-path`, `F19-environment-doctor` e `F20-public-onboarding`. Com isso, a fila ativa remanescente passa a ser:
+A etapa 2 segue o **cenario misto** escolhido na triagem e foi concluida no baseline atual. O repositorio ja incorpora `F15-public-run-submission`, `F16-run-detail-expansion`, `F21-cli-error-model-and-exit-codes`, `F18-canonical-happy-path`, `F19-environment-doctor`, `F20-public-onboarding`, `F17-artifact-preview` e `F22-release-readiness`.
 
-1. `F17-artifact-preview`
-2. `F22-release-readiness`
-
-O objetivo desta ordem continua sendo fechar primeiro a leitura rica controlada dos sinais ja persistidos pela CLI publica e, em seguida, empacotar a etapa como release tecnica coerente.
+O objetivo desta ordem foi fechado com sucesso: primeiro a leitura rica controlada dos sinais persistidos pela CLI publica, depois o empacotamento da etapa como release tecnica coerente.
 
 ## Guardrails avaliados antes da etapa 2
 
@@ -98,7 +95,7 @@ Alocacao recomendada quando esses itens voltarem:
 - **Criterio de pronto**: alguem de fora consegue fazer a primeira run sem ajuda direta.
 - **Risco principal**: documentar fluxo ainda instavel e gerar drift rapido.
 
-## Fila ativa da etapa 2
+## Fechamento da etapa 2
 
 ### F17 — Artifact Preview
 - **Objetivo**: permitir consulta de report e outputs uteis pela CLI.
@@ -108,6 +105,7 @@ Alocacao recomendada quando esses itens voltarem:
 - **Fora de escopo**: dump irrestrito de arquivos e leitura arbitraria do host.
 - **Criterio de pronto**: o usuario le report e outputs-chave sem abrir arquivos manualmente.
 - **Risco principal**: ampliar cedo demais a superficie de leitura.
+- **Status no baseline atual**: concluida e mergeada em `main`.
 
 ### F22 — Release Readiness
 - **Objetivo**: empacotar a etapa como primeira release tecnica coerente.
@@ -117,6 +115,13 @@ Alocacao recomendada quando esses itens voltarem:
 - **Fora de escopo**: prometer escala ou validacao com usuarios se isso ainda nao existir.
 - **Criterio de pronto**: um terceiro consegue instalar, diagnosticar, submeter e inspecionar uma run.
 - **Risco principal**: rotular release acima da maturidade real.
+- **Status no baseline atual**: concluida e mergeada em `main`.
+
+## Proxima decisao apos a etapa 2
+
+- A etapa 2 nao tem mais fila ativa remanescente.
+- A proxima frente deve nascer de uma nova SPEC pos-`F22`, seguindo `SPEC -> TEST_RED -> CODE_GREEN -> REFACTOR -> QUALITY_GATE -> SECURITY_REVIEW -> REPORT -> COMMIT`.
+- `docs/IDEAS.md` permanece como backlog candidato; o menor recorte imediato registrado e `IDEA-001 / G-02` para mascaramento de secrets em campos `_clean` e artifacts de leitura publica, caso haja risco real.
 
 ## Arquivos a manter alinhados durante a etapa
 
@@ -137,4 +142,4 @@ Alocacao recomendada quando esses itens voltarem:
 - nao reabre o cronograma historico de 10 dias como roadmap atual
 - nao implica criacao imediata de SPEC detalhada para cada feature
 - nao abre `F14-tui-watch-command`
-- nao promove release publica antes do fechamento das frentes acima
+- nao reabre `F17` ou `F22` como backlog ativo depois do merge

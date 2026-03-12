@@ -170,18 +170,15 @@ aignt-os/
 3. **Contribuir com uma feature** → consulte `docs/architecture/WORKTREE_FEATURES.md` e use `docs/architecture/SPEC_TEMPLATE_v2.md` para criar sua `SPEC.md` antes de qualquer código
 4. **Entender a estratégia de testes** → leia `docs/architecture/TDD.md`
 5. **Ver o roadmap do MVP inicial** → `docs/architecture/CRONOGRAMA_10_DIAS.md`
-6. **Ver a fila ativa da etapa 2** → `docs/architecture/PHASE_2_ROADMAP.md`
+6. **Ver o fechamento da etapa 2 e a transição pós-release** → `docs/architecture/PHASE_2_ROADMAP.md`
 
 ## Etapa 2 do projeto
 
-O cronograma de 10 dias acima descreve o MVP inicial já concluído. A etapa 2 do projeto ja consolidou `F15-public-run-submission`, `F16-run-detail-expansion`, `F21-cli-error-model-and-exit-codes`, `F18-canonical-happy-path`, `F19-environment-doctor` e `F20-public-onboarding` no baseline atual.
+O cronograma de 10 dias acima descreve o MVP inicial já concluído. A etapa 2 do projeto também já foi consolidada no baseline atual com `F15-public-run-submission`, `F16-run-detail-expansion`, `F21-cli-error-model-and-exit-codes`, `F18-canonical-happy-path`, `F19-environment-doctor`, `F20-public-onboarding`, `F17-artifact-preview` e `F22-release-readiness`.
 
-Próximas frentes da etapa 2:
+No estado atual do repositório, não há feature remanescente da etapa 2 em aberto. A próxima frente deve ser definida por uma nova SPEC pós-`F22`.
 
-1. `F17-artifact-preview`
-2. `F22-release-readiness`
-
-O roadmap completo e o contexto da etapa 2 seguem em `docs/architecture/PHASE_2_ROADMAP.md`.
+O roadmap completo, o fechamento da etapa 2 e o boundary para a fila pós-release seguem em `docs/architecture/PHASE_2_ROADMAP.md`.
 
 ---
 

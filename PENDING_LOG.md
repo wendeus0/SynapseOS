@@ -2,6 +2,11 @@
 
 ## Decisões incorporadas recentemente
 
+- Em 2026-03-12, o baseline documental foi realinhado ao estado real do repositório: `main` já incorpora `F17-artifact-preview` e `F22-release-readiness`, fechando a etapa 2 no código, na CLI pública e na release técnica.
+- A `F17-artifact-preview` foi mergeada em `main`, consolidando `aignt runs show <run_id> --preview report` e `--preview <STEP_STATE>.clean` com leitura textual truncada e sem abrir leitura arbitrária do host.
+- A `F22-release-readiness` foi mergeada em `main`, consolidando `CHANGELOG.md`, `docs/release/phase-2-technical-release.md`, README alinhado ao quickstart `sync-first` e boundary explícito para artifact preview.
+- A próxima decisão do projeto deixou de ser fechar PRs da etapa 2 e passou a ser abrir a primeira SPEC pós-`F22`; `docs/IDEAS.md` permanece como backlog candidato, com `IDEA-001 / G-02` como menor recorte imediato se houver risco real em observabilidade pública.
+
 - A `F13-rich-cli-output` foi concluida localmente como frente pequena de UX na CLI, sem ampliar a arquitetura: `aignt runtime status` passou a renderizar painel Rich com status e PID, mantendo `stderr` e exit code de falha no estado inconsistente.
 - A F13 introduziu `src/aignt_os/cli/rendering.py` como helper minima de apresentacao e adicionou cobertura dedicada em `tests/unit/test_cli_rich_output.py` e `tests/integration/test_runtime_cli.py`.
 - A validacao local da F13 fechou verde com `validate_spec_file()` da SPEC, `pytest tests/unit/test_cli_rich_output.py tests/integration/test_runtime_cli.py`, `./scripts/commit-check.sh --no-sync --skip-branch-validation --skip-docker --skip-security` e `./scripts/security-gate.sh`.
@@ -120,8 +125,8 @@
 
 - Fixtures de testes aspiracionais marcadas como 🔜 no TDD.md: `tests/fixtures/worker/` (ainda ausente).
 - Property-based testing com `hypothesis` ainda não implementado (mencionado como evolução futura em TDD.md).
-- Nao abrir o pacote de guardrails proposto como novas `F14`/`F15`; manter a numeracao e a fila oficial ja documentadas.
-- Aguardar anuencia de merge da PR `#53` e da PR empilhada da `F22-release-readiness`.
+- Nao abrir o pacote de guardrails proposto como novas `F14`/`F15`; manter a numeração histórica e abrir qualquer frente nova apenas com SPEC pós-`F22`.
+- Definir a primeira feature pós-`F22` a partir de triagem explícita; `IDEA-001 / G-02` segue como menor candidato imediato se houver risco concreto.
 
 ## Pontos de atenção futuros
 
@@ -158,10 +163,10 @@
 - **TTY em container**: Rich degrada automaticamente sem TTY; Textual exige guarda `sys.stdout.isatty()`.
 - **Não implementar antes**: apesar da F14 resolver a observabilidade minima via CLI, TUI real continua dependendo de recorte proprio de watch/streaming e da camada `observability/`.
 
-## Fila oficial da etapa 2
+## Estado da etapa 2
 
-1. `F17-artifact-preview`
-2. `F22-release-readiness`
+- Etapa 2 concluída em `main` com `F17-artifact-preview` e `F22-release-readiness` já mergeadas.
+- A fila ativa passa a ser definida pela próxima SPEC pós-`F22`, não mais por features remanescentes da etapa 2.
 
 ## Guardrails candidatos fora da fila principal
 
