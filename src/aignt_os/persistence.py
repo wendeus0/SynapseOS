@@ -23,6 +23,7 @@ from sqlalchemy import (
 from sqlalchemy.engine import RowMapping
 from sqlalchemy.sql import update
 
+from aignt_os.parsing import validate_named_artifact_content
 from aignt_os.pipeline import (
     PRIMARY_EXECUTOR_ROUTE,
     PipelineContext,
@@ -352,6 +353,7 @@ class ArtifactStore:
             step_directory / f"{safe_name}.txt",
             root=self.base_path,
         )
+        validate_named_artifact_content(artifact_name, content)
         _write_private_text(
             artifact_path,
             sanitize_clean_text(
@@ -419,12 +421,16 @@ class PipelinePersistenceObserver(PipelineObserver):
         result: StepExecutionResult | None,
     ) -> None:
         run_id = self._run_id(context)
+        artifacts = self._artifacts_for_step(step, context, result)
+        for artifact_name, artifact_content in artifacts.items():
+            validate_named_artifact_content(artifact_name, artifact_content)
         saved_outputs = self.artifact_store.save_step_outputs(
             run_id=run_id,
             step_state=step.state,
             raw_output=None if result is None else result.raw_output,
             clean_output=None if result is None else result.clean_output,
         )
+
         self.repository.record_step(
             run_id,
             state=step.state,
@@ -436,8 +442,6 @@ class PipelinePersistenceObserver(PipelineObserver):
             duration_ms=None if result is None else result.duration_ms,
             timed_out=None if result is None else result.timed_out,
         )
-
-        artifacts = self._artifacts_for_step(step, context, result)
         for artifact_name, artifact_content in artifacts.items():
             self.artifact_store.save_named_artifact(
                 run_id=run_id,

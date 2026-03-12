@@ -20,6 +20,13 @@ MAX_RAW_OUTPUT_SIZE = 1024 * 1024
 MAX_ARTIFACT_COUNT = 32
 MAX_ARTIFACT_SIZE = 128 * 1024
 TRANSPORT_NOISE_PREFIXES = ("[transport]",)
+_UNSAFE_SUBPROCESS_FUNCTIONS = {
+    "run",
+    "call",
+    "check_call",
+    "check_output",
+    "Popen",
+}
 
 
 class ParsingArtifactError(ValueError):
@@ -56,10 +63,85 @@ def validate_python_artifact(artifact: ParsedArtifact) -> None:
     if artifact.language not in {"python", "py"}:
         return
 
+    _validate_python_source(artifact.content)
+
+
+def validate_named_artifact_content(artifact_name: str, content: str) -> None:
+    if not is_python_artifact_name(artifact_name):
+        return
+
+    _validate_python_source(content)
+
+
+def is_python_artifact_name(artifact_name: str) -> bool:
+    normalized_name = artifact_name.strip().lower()
+    return normalized_name.endswith((".py", "_py", "_python"))
+
+
+def _validate_python_source(source: str) -> None:
     try:
-        ast.parse(artifact.content)
+        tree = ast.parse(source)
     except SyntaxError as exc:
         raise ParsingArtifactError("Python artifact is invalid.") from exc
+
+    finding = _find_unsafe_python_construct(tree)
+    if finding is not None:
+        raise ParsingArtifactError(f"Python artifact is unsafe: {finding}.")
+
+
+def _find_unsafe_python_construct(tree: ast.AST) -> str | None:
+    module_aliases: dict[str, str] = {}
+    function_aliases: dict[str, tuple[str, str]] = {}
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name in {"os", "subprocess"}:
+                    module_aliases[alias.asname or alias.name] = alias.name
+        elif isinstance(node, ast.ImportFrom) and node.module in {"os", "subprocess"}:
+            for alias in node.names:
+                function_aliases[alias.asname or alias.name] = (node.module, alias.name)
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+
+        if isinstance(node.func, ast.Name):
+            if node.func.id in {"eval", "exec"}:
+                return node.func.id
+
+            aliased_function = function_aliases.get(node.func.id)
+            if aliased_function == ("os", "system"):
+                return "os.system"
+            if (
+                aliased_function is not None
+                and aliased_function[0] == "subprocess"
+                and aliased_function[1] in _UNSAFE_SUBPROCESS_FUNCTIONS
+                and _call_uses_shell_true(node)
+            ):
+                return f"subprocess.{aliased_function[1]}(..., shell=True)"
+
+        if isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name):
+            module_name = module_aliases.get(node.func.value.id)
+            if module_name == "os" and node.func.attr == "system":
+                return "os.system"
+            if (
+                module_name == "subprocess"
+                and node.func.attr in _UNSAFE_SUBPROCESS_FUNCTIONS
+                and _call_uses_shell_true(node)
+            ):
+                return f"subprocess.{node.func.attr}(..., shell=True)"
+
+    return None
+
+
+def _call_uses_shell_true(node: ast.Call) -> bool:
+    for keyword in node.keywords:
+        if keyword.arg != "shell":
+            continue
+        if isinstance(keyword.value, ast.Constant) and keyword.value.value is True:
+            return True
+    return False
 
 
 def _clean_output(raw_output: str) -> str:

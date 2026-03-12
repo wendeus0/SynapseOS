@@ -3,6 +3,8 @@ from __future__ import annotations
 from importlib import import_module
 from pathlib import Path
 
+import pytest
+
 
 def test_run_repository_persists_run_lifecycle(tmp_path: Path) -> None:
     persistence = import_module("aignt_os.persistence")
@@ -110,3 +112,20 @@ def test_run_repository_records_step_execution_metadata(tmp_path: Path) -> None:
     assert steps[0].return_code == 0
     assert steps[0].duration_ms == 45
     assert steps[0].timed_out is False
+
+
+def test_artifact_store_blocks_unsafe_python_named_artifact(tmp_path: Path) -> None:
+    persistence = import_module("aignt_os.persistence")
+    parsing = import_module("aignt_os.parsing")
+
+    store = persistence.ArtifactStore(tmp_path / "artifacts")
+
+    with pytest.raises(parsing.ParsingArtifactError, match="unsafe"):
+        store.save_named_artifact(
+            run_id="run-123",
+            step_state="CODE_GREEN",
+            artifact_name="code_py",
+            content='eval("danger")\n',
+        )
+
+    assert not (tmp_path / "artifacts" / "run-123" / "CODE_GREEN" / "code_py.txt").exists()

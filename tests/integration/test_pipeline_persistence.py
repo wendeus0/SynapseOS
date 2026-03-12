@@ -245,3 +245,76 @@ def test_persisted_pipeline_generates_run_report_until_document(tmp_path: Path) 
     assert "PLAN" in run_report_content
     assert steps[-1].state == "DOCUMENT"
     assert steps[1].tool_name == "codex"
+
+
+def test_persisted_pipeline_blocks_unsafe_python_artifact_promotion(tmp_path: Path) -> None:
+    persistence = import_module("aignt_os.persistence")
+    parsing = import_module("aignt_os.parsing")
+    pipeline = import_module("aignt_os.pipeline")
+
+    spec_path = tmp_path / "SPEC.md"
+    _write_valid_spec(spec_path)
+    repository = persistence.RunRepository(tmp_path / "runs.sqlite3")
+    artifact_store = persistence.ArtifactStore(tmp_path / "artifacts")
+
+    class _UnsafeCodeExecutor:
+        def execute(self, step, context):  # type: ignore[no-untyped-def]
+            del step, context
+            return pipeline.StepExecutionResult(
+                artifacts={"code_py": 'eval("danger")\n'},
+                raw_output="RAW CODE\n",
+                clean_output="eval('danger')\n",
+            )
+
+    runner = persistence.PersistedPipelineRunner(
+        repository=repository,
+        artifact_store=artifact_store,
+        executors={"PLAN": _UnsafeCodeExecutor()},
+    )
+
+    with pytest.raises(parsing.ParsingArtifactError, match="unsafe"):
+        runner.run(spec_path, stop_at="PLAN")
+
+    runs = repository.list_runs()
+    assert len(runs) == 1
+    run_record = runs[0]
+    step_directory = artifact_store.base_path / run_record.run_id / "PLAN"
+    assert run_record.status == "failed"
+    assert run_record.current_state == "PLAN"
+    assert not (step_directory / "raw.txt").exists()
+    assert not (step_directory / "clean.txt").exists()
+    assert not (step_directory / "code_py.txt").exists()
+    artifact_paths = artifact_store.list_artifact_paths(run_record.run_id)
+    plan_prefix = f"{run_record.run_id}/PLAN/"
+    assert all(plan_prefix not in artifact_path for artifact_path in artifact_paths)
+
+
+def test_persisted_pipeline_promotes_safe_python_artifact(tmp_path: Path) -> None:
+    persistence = import_module("aignt_os.persistence")
+    pipeline = import_module("aignt_os.pipeline")
+
+    spec_path = tmp_path / "SPEC.md"
+    _write_valid_spec(spec_path)
+    repository = persistence.RunRepository(tmp_path / "runs.sqlite3")
+    artifact_store = persistence.ArtifactStore(tmp_path / "artifacts")
+
+    class _SafeCodeExecutor:
+        def execute(self, step, context):  # type: ignore[no-untyped-def]
+            del step, context
+            return pipeline.StepExecutionResult(
+                artifacts={"code_py": 'import subprocess as sp\nsp.run(["python", "--version"])\n'},
+                raw_output="RAW CODE\n",
+                clean_output="safe code\n",
+            )
+
+    runner = persistence.PersistedPipelineRunner(
+        repository=repository,
+        artifact_store=artifact_store,
+        executors={"PLAN": _SafeCodeExecutor()},
+    )
+
+    context = runner.run(spec_path, stop_at="PLAN")
+
+    artifact_path = artifact_store.base_path / context.run_id / "PLAN" / "code_py.txt"
+    assert artifact_path.exists()
+    assert "sp.run" in artifact_path.read_text(encoding="utf-8")

@@ -161,6 +161,55 @@ def test_validate_python_artifact_rejects_corrupted_python_code() -> None:
         parsing.validate_python_artifact(parsed_output.artifacts[0])
 
 
+def test_validate_python_artifact_rejects_eval_calls() -> None:
+    parsing = _parsing_module()
+    raw_output = """```python
+value = eval("1 + 1")
+```"""
+    parsed_output = parsing.parse_cli_output(raw_output)
+
+    with pytest.raises(parsing.ParsingArtifactError, match="unsafe"):
+        parsing.validate_python_artifact(parsed_output.artifacts[0])
+
+
+def test_validate_python_artifact_rejects_os_system_alias_calls() -> None:
+    parsing = _parsing_module()
+    raw_output = """```python
+import os as platform_os
+
+platform_os.system("echo dangerous")
+```"""
+    parsed_output = parsing.parse_cli_output(raw_output)
+
+    with pytest.raises(parsing.ParsingArtifactError, match="unsafe"):
+        parsing.validate_python_artifact(parsed_output.artifacts[0])
+
+
+def test_validate_python_artifact_rejects_subprocess_alias_with_shell_true() -> None:
+    parsing = _parsing_module()
+    raw_output = """```python
+from subprocess import run as spawn
+
+spawn("echo dangerous", shell=True)
+```"""
+    parsed_output = parsing.parse_cli_output(raw_output)
+
+    with pytest.raises(parsing.ParsingArtifactError, match="unsafe"):
+        parsing.validate_python_artifact(parsed_output.artifacts[0])
+
+
+def test_validate_python_artifact_accepts_subprocess_run_without_shell_true() -> None:
+    parsing = _parsing_module()
+    raw_output = """```python
+import subprocess as sp
+
+sp.run(["python", "--version"])
+```"""
+    parsed_output = parsing.parse_cli_output(raw_output)
+
+    parsing.validate_python_artifact(parsed_output.artifacts[0])
+
+
 # ---------------------------------------------------------------------------
 # Size and count limits
 # ---------------------------------------------------------------------------
