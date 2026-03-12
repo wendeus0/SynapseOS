@@ -35,6 +35,23 @@ class _FakeProcess:
         self.killed = True
 
 
+class _BlockingProcess(_FakeProcess):
+    def __init__(
+        self,
+        *,
+        stdout: bytes,
+        stderr: bytes,
+        returncode: int,
+        release_event: asyncio.Event,
+    ) -> None:
+        super().__init__(stdout=stdout, stderr=stderr, returncode=returncode)
+        self.release_event = release_event
+
+    async def communicate(self) -> tuple[bytes, bytes]:
+        await self.release_event.wait()
+        return await super().communicate()
+
+
 def test_base_cli_adapter_executes_subprocess_and_sanitizes_streams(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -158,6 +175,117 @@ def test_base_cli_adapter_handles_timeout_and_kills_process(
     assert result.timed_out is True
     assert result.success is False
     assert result.stderr_clean == "timed out"
+
+
+def test_base_cli_adapter_waits_for_available_slot_when_limit_is_one(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    adapters = _adapters_module()
+    adapters._ADAPTER_EXECUTION_GUARDS.clear()
+
+    class FakeAdapter(_FakeAdapterMixin, adapters.BaseCLIAdapter):
+        pass
+
+    first_release = asyncio.Event()
+    second_release = asyncio.Event()
+    second_started = asyncio.Event()
+    spawn_order: list[str] = []
+
+    async def fake_create_subprocess_exec(*command: str, **kwargs: object) -> _FakeProcess:
+        del kwargs
+        prompt = command[-1]
+        spawn_order.append(prompt)
+        if prompt == "first":
+            return _BlockingProcess(
+                stdout=b"first\n",
+                stderr=b"",
+                returncode=0,
+                release_event=first_release,
+            )
+        second_started.set()
+        return _BlockingProcess(
+            stdout=b"second\n",
+            stderr=b"",
+            returncode=0,
+            release_event=second_release,
+        )
+
+    monkeypatch.setattr(adapters.asyncio, "create_subprocess_exec", fake_create_subprocess_exec)
+
+    async def scenario() -> None:
+        first_adapter = FakeAdapter(tool_name="fake-tool", max_concurrent_adapters=1)
+        second_adapter = FakeAdapter(tool_name="fake-tool", max_concurrent_adapters=1)
+
+        first_task = asyncio.create_task(first_adapter.execute("first"))
+        await asyncio.sleep(0)
+        second_task = asyncio.create_task(second_adapter.execute("second"))
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+
+        assert spawn_order == ["first"]
+        assert second_started.is_set() is False
+
+        first_release.set()
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+        assert spawn_order == ["first", "second"]
+
+        second_release.set()
+        first_result, second_result = await asyncio.gather(first_task, second_task)
+        assert first_result.stdout_clean == "first"
+        assert second_result.stdout_clean == "second"
+
+    asyncio.run(scenario())
+
+
+def test_base_cli_adapter_shares_guard_across_instances_in_same_process(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    adapters = _adapters_module()
+    adapters._ADAPTER_EXECUTION_GUARDS.clear()
+
+    class FakeAdapter(_FakeAdapterMixin, adapters.BaseCLIAdapter):
+        pass
+
+    release_event = asyncio.Event()
+    max_active = 0
+    active = 0
+
+    class _TrackedProcess(_BlockingProcess):
+        async def communicate(self) -> tuple[bytes, bytes]:
+            nonlocal active, max_active
+            active += 1
+            max_active = max(max_active, active)
+            try:
+                return await super().communicate()
+            finally:
+                active -= 1
+
+    async def fake_create_subprocess_exec(*command: str, **kwargs: object) -> _FakeProcess:
+        del command, kwargs
+        return _TrackedProcess(
+            stdout=b"ok\n",
+            stderr=b"",
+            returncode=0,
+            release_event=release_event,
+        )
+
+    monkeypatch.setattr(adapters.asyncio, "create_subprocess_exec", fake_create_subprocess_exec)
+
+    async def scenario() -> None:
+        first_adapter = FakeAdapter(tool_name="fake-tool", max_concurrent_adapters=1)
+        second_adapter = FakeAdapter(tool_name="fake-tool", max_concurrent_adapters=1)
+
+        first_task = asyncio.create_task(first_adapter.execute("first"))
+        await asyncio.sleep(0)
+        second_task = asyncio.create_task(second_adapter.execute("second"))
+        await asyncio.sleep(0)
+        release_event.set()
+        await asyncio.gather(first_task, second_task)
+
+    asyncio.run(scenario())
+
+    assert max_active == 1
 
 
 def test_codex_cli_adapter_builds_container_first_exec_command() -> None:

@@ -127,11 +127,26 @@ def test_settings_exposes_default_run_initiated_by() -> None:
     assert settings.run_initiated_by == "local_cli"
 
 
+def test_settings_exposes_default_max_concurrent_adapters() -> None:
+    config_module = import_module("aignt_os.config")
+
+    settings = config_module.AppSettings()
+
+    assert settings.max_concurrent_adapters == 4
+
+
 def test_settings_rejects_invalid_environment_value() -> None:
     config_module = import_module("aignt_os.config")
 
     with pytest.raises(ValidationError):
         config_module.AppSettings(environment="invalid")
+
+
+def test_settings_rejects_non_positive_max_concurrent_adapters() -> None:
+    config_module = import_module("aignt_os.config")
+
+    with pytest.raises(ValidationError):
+        config_module.AppSettings(max_concurrent_adapters=0)
 
 
 @pytest.mark.parametrize(
