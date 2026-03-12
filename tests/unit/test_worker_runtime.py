@@ -101,3 +101,34 @@ def test_runtime_worker_ignores_locked_or_finalized_runs(tmp_path: Path) -> None
     assert processed_run_id is None
     assert repository.get_run(locked_run_id).status == "pending"
     assert repository.get_run(completed_run_id).status == "completed"
+
+
+def test_runtime_worker_fails_pending_run_when_spec_hash_changes(tmp_path: Path) -> None:
+    persistence = import_module("aignt_os.persistence")
+    worker_module = import_module("aignt_os.runtime.worker")
+
+    repository = persistence.RunRepository(tmp_path / "runs.sqlite3")
+    artifact_store = persistence.ArtifactStore(tmp_path / "artifacts")
+    runner = persistence.PersistedPipelineRunner(
+        repository=repository,
+        artifact_store=artifact_store,
+    )
+    worker = worker_module.RuntimeWorker(repository=repository, runner=runner)
+
+    spec_path = tmp_path / "SPEC.md"
+    _write_valid_spec(spec_path, "F26-mismatch")
+    run_id = runner.create_pending_run(spec_path, stop_at="SPEC_VALIDATION")
+    spec_path.write_text(spec_path.read_text(encoding="utf-8") + "\n# tampered\n", encoding="utf-8")
+
+    processed_run_id = worker.poll_once()
+    run_record = repository.get_run(run_id)
+    events = repository.list_events(run_id)
+
+    assert processed_run_id == run_id
+    assert run_record.status == "failed"
+    assert run_record.current_state == "REQUEST"
+    assert [event.event_type for event in events] == [
+        "security_provenance_recorded",
+        "security_spec_hash_mismatch",
+        "run_failed",
+    ]

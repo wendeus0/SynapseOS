@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sqlite3
 from importlib import import_module
 from pathlib import Path
 
@@ -14,6 +15,8 @@ def test_run_repository_persists_run_lifecycle(tmp_path: Path) -> None:
         spec_path=tmp_path / "SPEC.md",
         initial_state="REQUEST",
         stop_at="PLAN",
+        spec_hash="abc123",
+        initiated_by="local_cli",
     )
 
     assert repository.acquire_lock(run_id) is True
@@ -27,6 +30,8 @@ def test_run_repository_persists_run_lifecycle(tmp_path: Path) -> None:
     assert run_record.status == "completed"
     assert run_record.current_state == "PLAN"
     assert run_record.locked is False
+    assert run_record.spec_hash == "abc123"
+    assert run_record.initiated_by == "local_cli"
     assert run_record.completed_at is not None
 
 
@@ -38,6 +43,8 @@ def test_run_repository_prevents_double_lock_for_same_run(tmp_path: Path) -> Non
         spec_path=tmp_path / "SPEC.md",
         initial_state="REQUEST",
         stop_at="PLAN",
+        spec_hash="hash-1",
+        initiated_by="system",
     )
 
     assert repository.acquire_lock(run_id) is True
@@ -93,6 +100,8 @@ def test_run_repository_records_step_execution_metadata(tmp_path: Path) -> None:
         spec_path=tmp_path / "SPEC.md",
         initial_state="REQUEST",
         stop_at="DOCUMENT",
+        spec_hash="hash-2",
+        initiated_by="system",
     )
 
     repository.record_step(
@@ -112,6 +121,74 @@ def test_run_repository_records_step_execution_metadata(tmp_path: Path) -> None:
     assert steps[0].return_code == 0
     assert steps[0].duration_ms == 45
     assert steps[0].timed_out is False
+
+
+def test_run_repository_upgrades_legacy_schema_with_provenance_columns(tmp_path: Path) -> None:
+    persistence = import_module("aignt_os.persistence")
+
+    database_path = tmp_path / "runs.sqlite3"
+    connection = sqlite3.connect(database_path)
+    try:
+        connection.execute(
+            """
+            CREATE TABLE runs (
+                run_id TEXT PRIMARY KEY,
+                spec_path TEXT NOT NULL,
+                stop_at TEXT NOT NULL,
+                status TEXT NOT NULL,
+                current_state TEXT NOT NULL,
+                locked BOOLEAN NOT NULL,
+                failure_message TEXT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                completed_at TEXT NULL
+            )
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO runs (
+                run_id,
+                spec_path,
+                stop_at,
+                status,
+                current_state,
+                locked,
+                failure_message,
+                created_at,
+                updated_at,
+                completed_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "legacy-run",
+                str(tmp_path / "SPEC.md"),
+                "SPEC_VALIDATION",
+                "completed",
+                "SPEC_VALIDATION",
+                0,
+                None,
+                "2026-03-12T00:00:00+00:00",
+                "2026-03-12T00:01:00+00:00",
+                "2026-03-12T00:02:00+00:00",
+            ),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+    repository = persistence.RunRepository(database_path)
+    run_record = repository.get_run("legacy-run")
+
+    schema_columns = {
+        row[1]: row[4]
+        for row in sqlite3.connect(database_path).execute("PRAGMA table_info(runs)").fetchall()
+    }
+
+    assert "spec_hash" in schema_columns
+    assert "initiated_by" in schema_columns
+    assert run_record.spec_hash is None
+    assert run_record.initiated_by == "unknown"
 
 
 def test_artifact_store_blocks_unsafe_python_named_artifact(tmp_path: Path) -> None:

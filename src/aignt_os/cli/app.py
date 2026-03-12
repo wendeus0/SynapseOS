@@ -322,6 +322,7 @@ def _dispatch_service() -> RunDispatchService:
         runner=runner,
         is_runtime_ready=runtime_service.ready,
         workspace_root=settings.workspace_root,
+        initiated_by=settings.run_initiated_by,
     )
 
 

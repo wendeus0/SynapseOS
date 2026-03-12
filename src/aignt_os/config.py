@@ -20,6 +20,7 @@ class AppSettings(BaseSettings):
     artifacts_dir: Path = Path(".aignt-os/artifacts")
     workspace_root: Path = Field(default_factory=Path.cwd)
     runtime_poll_interval_seconds: float = 0.5
+    run_initiated_by: str = "local_cli"
     secret_mask_patterns: list[str] = list(DEFAULT_SECRET_MASK_PATTERNS)
 
     @property

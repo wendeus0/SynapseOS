@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import os
 import re
 import subprocess
@@ -138,6 +139,8 @@ def test_runs_submit_sync_executes_inline_and_reports_contract(
     assert "sync" in result.stdout.lower()
     assert run_record.status == "completed"
     assert run_record.current_state == "SPEC_VALIDATION"
+    assert run_record.initiated_by == "local_cli"
+    assert run_record.spec_hash == hashlib.sha256(spec_path.read_bytes()).hexdigest()
 
 
 def test_canonical_happy_path_submit_then_show_is_auditable_via_public_cli(
@@ -168,7 +171,11 @@ def test_canonical_happy_path_submit_then_show_is_auditable_via_public_cli(
     assert "spec_validation" in show_result.stdout.lower()
     assert "latest signal" in show_result.stdout.lower()
     assert "spec path" in show_result.stdout.lower()
+    assert "spec hash" in show_result.stdout.lower()
+    assert "initiated by" in show_result.stdout.lower()
     assert str(spec_path) in show_result.stdout
+    assert hashlib.sha256(spec_path.read_bytes()).hexdigest() in show_result.stdout
+    assert "local_cli" in show_result.stdout
     assert "next action" in show_result.stdout.lower()
     assert "canonical happy path is complete" in show_result.stdout.lower()
 
@@ -206,6 +213,8 @@ def test_runs_submit_auto_queues_when_runtime_is_ready(
     assert "async" in result.stdout.lower()
     assert run_record.status == "pending"
     assert run_record.current_state == "REQUEST"
+    assert run_record.initiated_by == "local_cli"
+    assert run_record.spec_hash == hashlib.sha256(spec_path.read_bytes()).hexdigest()
 
 
 def test_runs_submit_fails_predictably_when_spec_is_missing(

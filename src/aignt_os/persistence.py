@@ -23,7 +23,7 @@ from sqlalchemy import (
 from sqlalchemy.engine import RowMapping
 from sqlalchemy.sql import update
 
-from aignt_os.parsing import validate_named_artifact_content
+from aignt_os.parsing import ParsingArtifactError, validate_named_artifact_content
 from aignt_os.pipeline import (
     PRIMARY_EXECUTOR_ROUTE,
     PipelineContext,
@@ -33,7 +33,7 @@ from aignt_os.pipeline import (
     StepExecutionResult,
     StepExecutor,
 )
-from aignt_os.security import resolve_path_within_root, sanitize_clean_text
+from aignt_os.security import compute_file_sha256, resolve_path_within_root, sanitize_clean_text
 from aignt_os.supervisor import Supervisor, SupervisorDecision
 
 ARTIFACT_DIR_MODE = 0o700
@@ -45,6 +45,8 @@ _SAFE_SEGMENT_PATTERN = re.compile(r"[^A-Za-z0-9._-]+")
 class RunRecord:
     run_id: str
     spec_path: str
+    spec_hash: str | None
+    initiated_by: str
     stop_at: str
     status: str
     current_state: str
@@ -97,6 +99,8 @@ class RunRepository:
             self.metadata,
             Column("run_id", String, primary_key=True),
             Column("spec_path", Text, nullable=False),
+            Column("spec_hash", String, nullable=True),
+            Column("initiated_by", String, nullable=False, server_default="unknown"),
             Column("stop_at", String, nullable=False),
             Column("status", String, nullable=False),
             Column("current_state", String, nullable=False),
@@ -132,8 +136,17 @@ class RunRepository:
             Column("created_at", String, nullable=False),
         )
         self.metadata.create_all(self.engine)
+        self._upgrade_runs_schema()
 
-    def create_run(self, *, spec_path: Path, initial_state: str, stop_at: str) -> str:
+    def create_run(
+        self,
+        *,
+        spec_path: Path,
+        initial_state: str,
+        stop_at: str,
+        spec_hash: str | None = None,
+        initiated_by: str = "unknown",
+    ) -> str:
         run_id = uuid4().hex
         timestamp = _timestamp()
         with self.engine.begin() as connection:
@@ -141,6 +154,8 @@ class RunRepository:
                 insert(self.runs).values(
                     run_id=run_id,
                     spec_path=str(spec_path),
+                    spec_hash=spec_hash,
+                    initiated_by=initiated_by,
                     stop_at=stop_at,
                     status="pending",
                     current_state=initial_state,
@@ -293,6 +308,21 @@ class RunRepository:
             connection.execute(
                 update(self.runs).where(self.runs.c.run_id == run_id).values(**values)
             )
+
+    def _upgrade_runs_schema(self) -> None:
+        with self.engine.begin() as connection:
+            existing_columns = {
+                row[1] for row in connection.exec_driver_sql("PRAGMA table_info(runs)").fetchall()
+            }
+            if "spec_hash" not in existing_columns:
+                connection.exec_driver_sql("ALTER TABLE runs ADD COLUMN spec_hash TEXT")
+            if "initiated_by" not in existing_columns:
+                connection.exec_driver_sql(
+                    "ALTER TABLE runs ADD COLUMN initiated_by TEXT NOT NULL DEFAULT 'unknown'"
+                )
+                connection.exec_driver_sql(
+                    "UPDATE runs SET initiated_by = 'unknown' WHERE initiated_by IS NULL"
+                )
 
 
 class ArtifactStore:
@@ -475,6 +505,14 @@ class PipelinePersistenceObserver(PipelineObserver):
     ) -> None:
         run_id = self._run_id(context)
         state = context.current_state if step is None else step.state
+        guardrail_event = _security_guardrail_event(error)
+        if guardrail_event is not None:
+            self.repository.record_event(
+                run_id,
+                state=state,
+                event_type=guardrail_event,
+                message=str(error),
+            )
         self.repository.mark_run_failed(run_id, current_state=state, failure_message=str(error))
         self.repository.record_event(
             run_id,
@@ -540,21 +578,42 @@ class PersistedPipelineRunner:
         self.executors = dict(executors or {})
         self.supervisor = supervisor
 
-    def create_pending_run(self, spec_path: Path, *, stop_at: str = "TEST_RED") -> str:
-        return self.repository.create_run(
-            spec_path=spec_path,
-            initial_state="REQUEST",
+    def run(
+        self,
+        spec_path: Path,
+        *,
+        stop_at: str = "TEST_RED",
+        initiated_by: str = "system",
+        spec_hash: str | None = None,
+    ) -> PipelineContext:
+        run_id = self.create_pending_run(
+            spec_path,
             stop_at=stop_at,
+            initiated_by=initiated_by,
+            spec_hash=spec_hash,
         )
-
-    def run(self, spec_path: Path, *, stop_at: str = "TEST_RED") -> PipelineContext:
-        run_id = self.create_pending_run(spec_path, stop_at=stop_at)
         return self.run_existing(run_id)
+
+    def create_pending_run(
+        self,
+        spec_path: Path,
+        *,
+        stop_at: str = "TEST_RED",
+        initiated_by: str = "system",
+        spec_hash: str | None = None,
+    ) -> str:
+        return self._create_pending_run_with_provenance(
+            spec_path=spec_path,
+            stop_at=stop_at,
+            initiated_by=initiated_by,
+            spec_hash=spec_hash,
+        )
 
     def run_existing(self, run_id: str, *, assume_locked: bool = False) -> PipelineContext:
         run_record = self.repository.get_run(run_id)
         if not assume_locked and not self.repository.acquire_lock(run_id):
             raise RuntimeError(f"Could not acquire lock for run '{run_id}'.")
+        self._validate_run_provenance(run_record)
 
         executors = dict(self.executors)
         executors.setdefault(
@@ -573,6 +632,81 @@ class PersistedPipelineRunner:
             Path(run_record.spec_path),
             stop_at=run_record.stop_at,
             run_id=run_id,
+        )
+
+    def _create_pending_run_with_provenance(
+        self,
+        *,
+        spec_path: Path,
+        stop_at: str,
+        initiated_by: str = "system",
+        spec_hash: str | None = None,
+    ) -> str:
+        resolved_spec_path = spec_path.resolve()
+        persisted_spec_hash = spec_hash if spec_hash is not None else compute_file_sha256(
+            resolved_spec_path
+        )
+        run_id = self.repository.create_run(
+            spec_path=resolved_spec_path,
+            initial_state="REQUEST",
+            stop_at=stop_at,
+            spec_hash=persisted_spec_hash,
+            initiated_by=initiated_by,
+        )
+        self.repository.record_event(
+            run_id,
+            state="REQUEST",
+            event_type="security_provenance_recorded",
+            message=(
+                f"Provenance recorded for initiated_by={initiated_by} "
+                f"spec_hash={persisted_spec_hash}."
+            ),
+        )
+        return run_id
+
+    def _validate_run_provenance(self, run_record: RunRecord) -> None:
+        if run_record.spec_hash is None:
+            return
+
+        spec_path = Path(run_record.spec_path)
+        try:
+            current_spec_hash = compute_file_sha256(spec_path)
+        except OSError as exc:
+            self._fail_run_for_provenance(
+                run_id=run_record.run_id,
+                message=f"SPEC hash mismatch for run '{run_record.run_id}': {exc}.",
+            )
+            raise RuntimeError("SPEC hash mismatch.") from exc
+
+        if current_spec_hash == run_record.spec_hash:
+            return
+
+        self._fail_run_for_provenance(
+            run_id=run_record.run_id,
+            message=(
+                f"SPEC hash mismatch for run '{run_record.run_id}': "
+                f"expected {run_record.spec_hash}, got {current_spec_hash}."
+            ),
+        )
+        raise RuntimeError("SPEC hash mismatch.")
+
+    def _fail_run_for_provenance(self, *, run_id: str, message: str) -> None:
+        self.repository.record_event(
+            run_id,
+            state="REQUEST",
+            event_type="security_spec_hash_mismatch",
+            message=message,
+        )
+        self.repository.mark_run_failed(
+            run_id,
+            current_state="REQUEST",
+            failure_message=message,
+        )
+        self.repository.record_event(
+            run_id,
+            state="REQUEST",
+            event_type="run_failed",
+            message=message,
         )
 
 
@@ -602,6 +736,8 @@ def _run_record_from_row(row: RowMapping) -> RunRecord:
     return RunRecord(
         run_id=_string_value(row, "run_id"),
         spec_path=_string_value(row, "spec_path"),
+        spec_hash=_optional_string_value(row, "spec_hash"),
+        initiated_by=_string_value(row, "initiated_by"),
         stop_at=_string_value(row, "stop_at"),
         status=_string_value(row, "status"),
         current_state=_string_value(row, "current_state"),
@@ -686,6 +822,12 @@ def _optional_bool_value(row: RowMapping, key: str) -> bool | None:
     if not isinstance(value, bool):
         raise TypeError(f"Expected '{key}' to be a boolean or None.")
     return value
+
+
+def _security_guardrail_event(error: Exception) -> str | None:
+    if isinstance(error, ParsingArtifactError) and "unsafe" in str(error).lower():
+        return "security_guardrail_triggered"
+    return None
 
 
 class _RunReportStepExecutor:

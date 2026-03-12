@@ -4,6 +4,8 @@
 
 - **Status**: completed
 - **Estado final**: DOCUMENT
+- **Initiated By**: local_cli
+- **Spec Hash**: abc123
 - **SPEC ID**: F06-pipeline-engine-linear
 - **SPEC Summary**: Implementar a primeira engine linear do AIgnt-Synapse-Flow
 
@@ -17,6 +19,7 @@
 
 ## Eventos relevantes
 
+- `security_provenance_recorded` @ `REQUEST`: Provenance recorded for initiated_by=local_cli spec_hash=abc123.
 - `run_started` @ `REQUEST`: Run started at REQUEST.
 - `step_completed` @ `SPEC_VALIDATION`: Step SPEC_VALIDATION completed.
 - `step_completed` @ `PLAN`: Step PLAN completed.

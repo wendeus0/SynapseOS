@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Literal
 
 from aignt_os.persistence import PersistedPipelineRunner, RunRepository
-from aignt_os.security import resolve_path_within_root
+from aignt_os.security import compute_file_sha256, resolve_path_within_root
 from aignt_os.specs import validate_spec_file
 
 DispatchMode = Literal["sync", "async", "auto"]
@@ -29,11 +29,13 @@ class RunDispatchService:
         runner: PersistedPipelineRunner,
         is_runtime_ready: Callable[[], bool],
         workspace_root: Path,
+        initiated_by: str = "local_cli",
     ) -> None:
         self.repository = repository
         self.runner = runner
         self.is_runtime_ready = is_runtime_ready
         self.workspace_root = workspace_root
+        self.initiated_by = initiated_by
 
     def dispatch(
         self,
@@ -45,7 +47,12 @@ class RunDispatchService:
         resolved_spec_path = self._validate_dispatch_inputs(spec_path, mode=mode)
         resolved_mode = self._resolve_mode(mode)
         if resolved_mode == "sync":
-            context = self.runner.run(resolved_spec_path, stop_at=stop_at)
+            context = self.runner.run(
+                resolved_spec_path,
+                stop_at=stop_at,
+                initiated_by=self.initiated_by,
+                spec_hash=compute_file_sha256(resolved_spec_path),
+            )
             if context.run_id is None:
                 raise RuntimeError("Synchronous dispatch completed without a run_id.")
             return RunDispatchResult(
@@ -54,7 +61,12 @@ class RunDispatchService:
                 dispatch_mode_resolved="sync",
             )
 
-        run_id = self.runner.create_pending_run(resolved_spec_path, stop_at=stop_at)
+        run_id = self.runner.create_pending_run(
+            resolved_spec_path,
+            stop_at=stop_at,
+            initiated_by=self.initiated_by,
+            spec_hash=compute_file_sha256(resolved_spec_path),
+        )
         return RunDispatchResult(
             run_id=run_id,
             status="queued",
