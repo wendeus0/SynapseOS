@@ -21,6 +21,7 @@ class AppSettings(BaseSettings):
     workspace_root: Path = Field(default_factory=Path.cwd)
     runtime_poll_interval_seconds: float = 0.5
     run_initiated_by: str = "local_cli"
+    max_concurrent_adapters: int = Field(default=4, gt=0)
     secret_mask_patterns: list[str] = list(DEFAULT_SECRET_MASK_PATTERNS)
 
     @property
