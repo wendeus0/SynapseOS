@@ -37,6 +37,7 @@ class CodexExecutionAssessment(BaseModel):
         "success",
         "timeout",
         "return_code_nonzero",
+        "circuit_open",
         "launcher_unavailable",
         "container_unavailable",
         "authentication_unavailable",

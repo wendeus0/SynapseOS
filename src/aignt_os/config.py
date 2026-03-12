@@ -22,8 +22,14 @@ class AppSettings(BaseSettings):
     runtime_poll_interval_seconds: float = 0.5
     run_initiated_by: str = "local_cli"
     max_concurrent_adapters: int = Field(default=4, gt=0)
+    adapter_circuit_breaker_failure_threshold: int = Field(default=2, gt=0)
+    adapter_circuit_breaker_cooldown_seconds: float = Field(default=60.0, gt=0)
     secret_mask_patterns: list[str] = list(DEFAULT_SECRET_MASK_PATTERNS)
 
     @property
     def runtime_state_file(self) -> Path:
         return self.runtime_state_dir / "runtime-state.json"
+
+    @property
+    def adapter_circuit_breaker_state_file(self) -> Path:
+        return self.runtime_state_dir / "adapter-circuit-breakers.json"

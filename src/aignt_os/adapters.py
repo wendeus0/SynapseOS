@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 
 from aignt_os.config import AppSettings
 from aignt_os.contracts import CLIExecutionResult, CodexExecutionAssessment
+from aignt_os.runtime.circuit_breaker import AdapterCircuitBreakerStore
 from aignt_os.security import sanitize_clean_text
 
 _LAUNCHER_UNAVAILABLE_PATTERNS = (
@@ -26,6 +27,7 @@ _AUTHENTICATION_UNAVAILABLE_PATTERNS = (
     "api key",
     "missing bearer or basic authentication",
 )
+_CIRCUIT_OPEN_PATTERNS = ("circuit breaker open",)
 _ADAPTER_EXECUTION_GUARDS: dict[int, asyncio.Semaphore] = {}
 
 
@@ -164,6 +166,43 @@ class CodexCLIAdapter(BaseCLIAdapter):
             prompt,
         ]
 
+    async def execute(self, prompt: str) -> CLIExecutionResult:
+        settings = AppSettings()
+        command = self.build_command(prompt)
+        self._validate_command(command)
+
+        breaker_store = AdapterCircuitBreakerStore(settings.adapter_circuit_breaker_state_file)
+        if breaker_store.is_open(self.tool_name, now=time.time()):
+            return CLIExecutionResult(
+                tool_name=self.tool_name,
+                command=command,
+                return_code=75,
+                stdout_raw="",
+                stderr_raw="Circuit breaker open for codex.\n",
+                stdout_clean="",
+                stderr_clean="Circuit breaker open for codex.",
+                duration_ms=0,
+                timed_out=False,
+                success=False,
+            )
+
+        result = await super().execute(prompt)
+        assessment = classify_codex_execution(result)
+        if assessment.category in {
+            "launcher_unavailable",
+            "container_unavailable",
+            "authentication_unavailable",
+        }:
+            breaker_store.record_operational_failure(
+                self.tool_name,
+                threshold=settings.adapter_circuit_breaker_failure_threshold,
+                cooldown_seconds=settings.adapter_circuit_breaker_cooldown_seconds,
+                now=time.time(),
+            )
+        else:
+            breaker_store.reset(self.tool_name)
+        return result
+
 
 def classify_codex_execution(result: CLIExecutionResult) -> CodexExecutionAssessment:
     stderr_lower = result.stderr_clean.lower()
@@ -173,6 +212,12 @@ def classify_codex_execution(result: CLIExecutionResult) -> CodexExecutionAssess
             category="success",
             is_operational_block=False,
             detail="Codex CLI completed successfully.",
+        )
+    if _contains_any(stderr_lower, _CIRCUIT_OPEN_PATTERNS):
+        return CodexExecutionAssessment(
+            category="circuit_open",
+            is_operational_block=True,
+            detail=result.stderr_clean or "Codex circuit breaker is open.",
         )
     if result.timed_out:
         return CodexExecutionAssessment(
