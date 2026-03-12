@@ -126,16 +126,16 @@ artifacts/<run_id>/
 
 ```
 aignt-os/
-├── architecture/          # Documentação técnica de referência
-│   ├── SDD.md             # Software Design Document — arquitetura completa
-│   ├── TDD.md             # Estratégia de testes e ordem de implementação
-│   ├── IMPLEMENTATION_STACK.md   # Stack e justificativas
-│   ├── CRONOGRAMA_10_DIAS.md     # Roadmap do MVP feature a feature
-│   ├── WORKTREE_FEATURES.md      # Sequência e escopo de cada feature
-│   ├── SPEC_FORMAT.md            # Formato oficial da SPEC híbrida
-│   └── SPEC_TEMPLATE_v2.md       # Template de SPEC para novas features
-│
 ├── docs/
+│   ├── architecture/      # Documentação técnica de referência
+│   │   ├── SDD.md             # Software Design Document — arquitetura completa
+│   │   ├── TDD.md             # Estratégia de testes e ordem de implementação
+│   │   ├── IMPLEMENTATION_STACK.md   # Stack e justificativas
+│   │   ├── CRONOGRAMA_10_DIAS.md     # Roadmap do MVP feature a feature
+│   │   ├── WORKTREE_FEATURES.md      # Sequência e escopo de cada feature
+│   │   ├── SPEC_FORMAT.md            # Formato oficial da SPEC híbrida
+│   │   └── SPEC_TEMPLATE_v2.md       # Template de SPEC para novas features
+│   │
 │   └── adr/               # Architecture Decision Records
 │       ├── 001-cli-orchestration.md
 │       ├── 002-python-orchestrator.md
@@ -146,9 +146,11 @@ aignt-os/
 │       ├── 007-local-llms-offline-reasoning.md
 │       ├── 008-spec-driven-development.md
 │       ├── 009-runtime-dual-cli-worker.md
-│       └── 010-adopt-aignt-synapse-flow-name.md
+│       ├── 010-adopt-aignt-synapse-flow-name.md
+│       ├── 011-lightweight-docker-preflight-default.md
+│       └── 012-mandatory-integration-tests.md
 │
-├── features/              # SPECs e notas por feature do MVP
+├── features/              # SPECs e notas por feature
 │   └── init_feature_worktrees.sh  # Script para criar worktrees das features
 │
 ├── src/
@@ -163,29 +165,39 @@ aignt-os/
 
 ### Por onde começar
 
-1. **Entender o sistema** → leia `architecture/SDD.md`
+1. **Entender o sistema** → leia `docs/architecture/SDD.md`
 2. **Entender as decisões** → navegue pelos ADRs em `docs/adr/`
-3. **Contribuir com uma feature** → consulte `architecture/WORKTREE_FEATURES.md` e use `architecture/SPEC_TEMPLATE_v2.md` para criar sua `SPEC.md` antes de qualquer código
-4. **Entender a estratégia de testes** → leia `architecture/TDD.md`
-5. **Ver o roadmap do MVP** → `architecture/CRONOGRAMA_10_DIAS.md`
+3. **Contribuir com uma feature** → consulte `docs/architecture/WORKTREE_FEATURES.md` e use `docs/architecture/SPEC_TEMPLATE_v2.md` para criar sua `SPEC.md` antes de qualquer código
+4. **Entender a estratégia de testes** → leia `docs/architecture/TDD.md`
+5. **Ver o roadmap do MVP** → `docs/architecture/CRONOGRAMA_10_DIAS.md`
 
 ---
 
 ## Desenvolvimento por feature
 
-O desenvolvimento segue o ciclo **Spec → Red → Green → Refactor → Security Review → Report → Commit**, com uma feature por worktree:
+O desenvolvimento segue o ciclo **Spec → Red → Green → Refactor → Security Review → Report → Commit**, com uma feature por worktree.
+
+### Features do MVP (concluídas)
 
 ```
-feature/f01-bootstrap-contracts
-feature/f02-spec-engine-mvp
-feature/f03-state-machine-mvp
-feature/f04-parsing-engine-mvp
-feature/f05-cli-adapter-base
-feature/f06-pipeline-engine-linear
-feature/f07-persistence-artifacts
-feature/f08-worker-runtime-dual
-feature/f09-supervisor-mvp
-feature/f10-run-report-one-real-adapter
+feature/f01-bootstrap-contracts         — contratos base e configuração
+feature/f02-spec-engine-mvp             — engine de validação de SPEC
+feature/f03-state-machine-mvp           — máquina de estados do AIgnt-Synapse-Flow
+feature/f04-parsing-engine-mvp          — parsing robusto de outputs de CLIs
+feature/f05-cli-adapter-base            — adapter base assíncrono
+feature/f06-pipeline-engine-linear      — pipeline linear state-driven
+feature/f07-persistence-artifacts       — persistência SQLite + filesystem
+feature/f08-worker-runtime-dual         — runtime dual CLI efêmero + worker leve
+feature/f09-supervisor-mvp              — supervisor com retry e reroute
+feature/f10-run-report-one-real-adapter — RUN_REPORT.md + CodexCLIAdapter
+```
+
+### Features pós-MVP (concluídas)
+
+```
+feature/f11-repo-automation             — infraestrutura Docker, CI e scripts operacionais
+feature/f12-codex-adapter-operational-hardening — hardening do CodexCLIAdapter container-first
+feature/f13-rich-cli-output             — saída enriquecida com Rich no `aignt runtime status`
 ```
 
 Nenhuma feature avança para código sem `SPEC.md` aprovada e testes mínimos escritos. O `DOCKER_PREFLIGHT` entra quando a mudança exigir validação prática em Docker.

@@ -4,8 +4,10 @@ import sys
 from typing import Annotated
 
 import typer
+from rich.console import Console
 
 from aignt_os import __version__
+from aignt_os.cli.rendering import render_runtime_status
 from aignt_os.config import AppSettings
 from aignt_os.runtime.service import RuntimeLifecycleError, RuntimeService
 from aignt_os.runtime.worker import build_runtime_worker
@@ -54,10 +56,10 @@ def runtime_status() -> None:
     state = service.status()
 
     if state.status == "inconsistent":
-        typer.echo("Runtime status: inconsistent", err=True)
+        render_runtime_status(state, console=Console(stderr=True))
         raise typer.Exit(code=1)
 
-    typer.echo(f"Runtime status: {state.status}")
+    render_runtime_status(state)
 
 
 @runtime_app.command("run")

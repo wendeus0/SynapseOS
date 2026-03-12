@@ -6,12 +6,13 @@
 - A baseline operacional atual combina `DOCKER_PREFLIGHT` leve por padrao, fluxo container-first para o Codex, Branch Sync Gate e separacao entre memoria duravel (`memory.md`) e log operacional (`PENDING_LOG.md` e `ERROR_LOG.md`).
 - A governanca de prompts dos agents segue formato contextual explicito, com contexto, leituras obrigatorias, objetivo, escopo, nao-faca, criterios de aceite e formato de entrega.
 - O MVP de produto agora chega ate `DOCUMENT`: a F10 adicionou `RUN_REPORT.md` por run e o primeiro adapter real via `CodexCLIAdapter`.
+- A F13 introduziu a primeira saida enriquecida com Rich em `src/`, mantendo o AIgnt-Synapse-Flow como a engine propria de pipeline do AIgnt OS e limitando o recorte a `aignt runtime status`.
 
 ## Local snapshot
 
-- `main` local esta limpo e sincronizado com `origin/main` apos os merges das PRs `#38` e `#39`, no commit `68892b1`.
-- Nao ha branch ativa de produto nem delta local pendente; a proxima sessao deve partir de `main` limpa.
-- O MVP inicial de 10 features foi concluido; o follow-up `F12` tambem foi mergeado, fechando o hardening operacional do primeiro adapter real e o handoff pos-F12.
+- `main` local esta limpa e a frente de `origin/main` apos o fechamento Git local da `F13-rich-cli-output`, sem nova branch de produto aberta para frente paralela.
+- A F13 fechou verde localmente com SPEC validada, testes focados de CLI/runtime e `security-gate`, sem exigir `DOCKER_PREFLIGHT`.
+- O MVP inicial de 10 features segue concluido, com `F12` mergeada e `F13` agora encerrada tambem no fechamento Git local como follow-up pequeno de UX na CLI.
 
 # Stable decisions
 
@@ -27,12 +28,12 @@
 
 # Active fronts
 
-- Abrir a proxima frente pequena de produto, com `F13-rich-cli-output` como candidata principal.
+- Nenhuma nova frente foi aberta apos a F13; o repositório esta pronto para nova triagem de prioridade.
 - Manter apenas follow-ups operacionais realmente bloqueantes fora da trilha principal de produto.
 
 # Open decisions
 
-- Decidir se `F13-rich-cli-output` fica restrita a enriquecer `aignt runtime status` com Rich ou se tambem inclui pequenos componentes visuais em outras saidas CLI.
+- Decidir qual e a proxima frente apos a F13; `F14-tui-watch-command` continua apenas como candidata futura e nao deve ser aberta automaticamente.
 - Decidir em momento futuro se o smoke autenticado do Codex deve virar gate obrigatorio; por ora o `401 Unauthorized` ficou classificado como bloqueio operacional externo e nao como requisito de produto.
 
 # Recurrent pitfalls
@@ -46,13 +47,13 @@
 
 # Next recommended steps
 
-- Abrir a `F13-rich-cli-output` via `spec-editor` como proxima frente de produto de baixo risco.
-- Validar o recorte minimo da F13 em torno de `aignt runtime status`, sem misturar TUI completa ou Textual nesta abertura.
+- Retriajar a proxima frente a partir do estado real pos-F13 e decidir se ha motivo concreto para abrir produto novo ou fechar um ajuste pequeno de baseline.
+- Nao abrir `F14-tui-watch-command` antes de uma decisao explicita sobre observabilidade e recorte de TUI.
 - Manter revisoes amplas de docs antigas fora do caminho critico, salvo quando bloquearem validacao real.
 
 # Last handoff summary
 
 - Read before acting: releia `AGENTS.md`, `CONTEXT.md`, `memory.md`, `PENDING_LOG.md`, `ERROR_LOG.md`, `git status` e `git diff --stat`.
-- Current state: `main` esta limpa e sincronizada apos os merges das PRs `#38` e `#39`; nao ha delta local pendente nem ADR nova requerida pelo estado atual da obra.
-- Open points: definir o recorte exato da `F13-rich-cli-output` e manter o smoke autenticado do Codex como follow-up operacional nao bloqueante.
-- Recommended next front: `F13-rich-cli-output`, mantendo o recorte inicial pequeno e centrado em melhoria visual da CLI com Rich.
+- Current state: a `F13-rich-cli-output` fechou em Git local com helper de rendering em Rich, ajuste de `runtime status` e testes verdes; o repositório esta limpo e pronto para reavaliar a fila.
+- Open points: escolher a proxima frente apos a F13 e manter o smoke autenticado do Codex como follow-up operacional nao bloqueante.
+- Recommended next front: executar nova triagem apos o handoff da F13; `F14-tui-watch-command` segue apenas como candidata futura.

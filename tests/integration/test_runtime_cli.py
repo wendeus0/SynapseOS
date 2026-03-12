@@ -113,7 +113,10 @@ def test_runtime_status_reports_running_for_active_runtime(tmp_path: Path) -> No
     status_result = invoke_runtime_command(tmp_path, "status")
 
     assert status_result.exit_code == 0
+    assert "aignt os runtime" in status_result.stdout.lower()
+    assert "status" in status_result.stdout.lower()
     assert "running" in status_result.stdout.lower()
+    assert "pid" in status_result.stdout.lower()
 
 
 def test_runtime_start_rejects_second_active_process(tmp_path: Path) -> None:
@@ -161,6 +164,9 @@ def test_runtime_status_reports_inconsistent_for_invalid_persisted_pid(
     result = invoke_runtime_command(tmp_path, "status")
 
     assert result.exit_code != 0
+    assert (
+        "aignt os runtime" in result.stderr.lower() or "aignt os runtime" in result.stdout.lower()
+    )
     assert "inconsistent" in result.stdout.lower() or "inconsistent" in result.stderr.lower()
 
 

@@ -2,6 +2,11 @@
 
 ## Decisões incorporadas recentemente
 
+- A `F13-rich-cli-output` foi concluida localmente como frente pequena de UX na CLI, sem ampliar a arquitetura: `aignt runtime status` passou a renderizar painel Rich com status e PID, mantendo `stderr` e exit code de falha no estado inconsistente.
+- A F13 introduziu `src/aignt_os/cli/rendering.py` como helper minima de apresentacao e adicionou cobertura dedicada em `tests/unit/test_cli_rich_output.py` e `tests/integration/test_runtime_cli.py`.
+- A validacao local da F13 fechou verde com `validate_spec_file()` da SPEC, `pytest tests/unit/test_cli_rich_output.py tests/integration/test_runtime_cli.py`, `./scripts/commit-check.sh --no-sync --skip-branch-validation --skip-docker --skip-security` e `./scripts/security-gate.sh`.
+- O recorte da F13 permaneceu deliberadamente restrito a `aignt runtime status`, sem `Textual`, sem watch mode, sem novo subcomando publico e sem necessidade de `DOCKER_PREFLIGHT`.
+
 - A `F10-run-report-one-real-adapter` foi concluida e mergeada em `main`, fechando o MVP inicial do AIgnt-Synapse-Flow com `DOCUMENT`, `RUN_REPORT.md` e o primeiro adapter real (`CodexCLIAdapter`).
 - A `F12-codex-adapter-operational-hardening` foi concluida e mergeada pela PR `#38`, com `main` local e `origin/main` sincronizados em `ahead=0 behind=0`.
 - O hardening da F12 manteve `CLIExecutionResult` como contrato de execucao e adicionou classificacao operacional explicita do Codex (`timeout`, `return_code_nonzero`, `launcher_unavailable`, `container_unavailable`, `authentication_unavailable`) sem reabrir a pipeline.
@@ -90,12 +95,9 @@
 
 ## Pendências abertas
 
-- Promover a chore `chore/post-f12-handoff-logs-memory` para alinhar `PENDING_LOG.md`, `ERROR_LOG.md` e `memory.md` com o estado real pos-PR `#38`.
-- Abrir a proxima frente pequena de produto so depois desse handoff; a candidata principal no momento e `F13-rich-cli-output`.
-- Revisão dos `NOTES.md` de cada feature (F01–F07) para verificar se referenciam conceitos obsoletos (estados `INIT`/`RETRYING`, `parser_confidence`, `REQUEST.md` como artefato).
-- Verificar se SPECs F01–F05 usam `## 1. Contexto` (H2) em vez de `# Contexto` (H1) — o validator exige H1. Ainda não foi confirmado se esses SPECs passam no `validate_spec_file()`. Pode exigir atualização das SPECs ou confirmação de que a regra H1 se aplica apenas ao validator e não ao formato de seções do corpo da SPEC.
 - Fixtures de testes aspiracionais marcadas como 🔜 no TDD.md: `tests/fixtures/worker/` (ainda ausente).
 - Property-based testing com `hypothesis` ainda não implementado (mencionado como evolução futura em TDD.md).
+- Retriajar a proxima frente agora que a F13 foi fechada em Git local; `F14-tui-watch-command` continua apenas como candidata futura e nao deve ser aberta por inercia.
 
 ## Pontos de atenção futuros
 
@@ -107,7 +109,6 @@
 - Os testes de `test_review_rework.py` exercitam a state machine diretamente para estados CODE_GREEN/REVIEW/SECURITY que ainda não estão implementados no `PipelineEngine`. Quando o Supervisor/pipeline for implementado para esses estados, esses testes servem como documentação de comportamento esperado e devem ser migrados para testes de integração.
 - O retry/reroute da F09 permanece restrito a uma unica execucao do AIgnt-Synapse-Flow; retomada persistida entre polls do worker e requeue duravel continuam fora de escopo.
 - Em worktree fria, `pytest` e `uv run pytest` podem falhar na coleta ate que `uv sync --locked --extra dev` tenha sido executado.
-- H1 vs H2 nas SPECs F01–F05: checar se `## 1. Contexto` causa falha de validação no `SpecValidator` após a regra H1 ter sido documentada.
 
 - O fallback de `GITHUB_TOKEN` para `GITHUB_PERSONAL_ACCESS_TOKEN` continua aceitavel para o baseline atual, mas pode merecer opt-in explicito se gerar ambiguidade operacional em ambientes com tokens preexistentes.
 - O helper `scripts/render-codex-config.sh` continua restrito ao launcher atual; se passar a ser reutilizado fora desse fluxo, vale endurecer os paths aceitos.
@@ -126,7 +127,7 @@
 
 ## TUI — Ideia de feature futura (análise de viabilidade concluída)
 
-- **Rich enriquecido (F13-rich-cli-output)**: Rich `>=13.9.4` já é dependência de produção e nunca foi usado em `src/`. Substituir `typer.echo()` por `Console`/`Table`/`Panel` em `aignt runtime status` é de baixo risco e sem nova dependência. Indicado como F13.
+- **Rich enriquecido (F13-rich-cli-output)**: concluida localmente como primeira adocao de Rich em `src/`, restrita a `aignt runtime status` e sem abrir TUI completa.
 - **TUI watch (F14-tui-watch-command)**: `aignt tui` como subcomando opcional usando Textual. Pré-requisito: F13 + implementação de `observability/` (diretório vazio). Hook ideal já existe: `PipelineObserver` em `pipeline.py`.
 - **Constraint Typer×asyncio**: `asyncio.run(app.run_async())` dentro do comando Typer é a forma de coexistência; funcional mas exige cuidado com event loop.
 - **TTY em container**: Rich degrada automaticamente sem TTY; Textual exige guarda `sys.stdout.isatty()`.
