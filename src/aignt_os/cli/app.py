@@ -9,8 +9,16 @@ import typer
 from sqlalchemy.exc import NoResultFound
 
 from aignt_os import __version__
+from aignt_os.auth import (
+    AuthConfigurationError,
+    AuthRegistryStore,
+    Permission,
+    is_authorized,
+)
 from aignt_os.cli.errors import (
     CLIError,
+    authentication_error,
+    authorization_error,
     environment_error,
     execution_error,
     exit_for_cli_error,
@@ -308,7 +316,7 @@ def _resolve_run_preview(
     )
 
 
-def _dispatch_service() -> RunDispatchService:
+def _dispatch_service(*, initiated_by: str | None = None) -> RunDispatchService:
     settings = AppSettings()
     repository = RunRepository(settings.runs_db_path)
     artifact_store = ArtifactStore(settings.artifacts_dir)
@@ -322,13 +330,44 @@ def _dispatch_service() -> RunDispatchService:
         runner=runner,
         is_runtime_ready=runtime_service.ready,
         workspace_root=settings.workspace_root,
-        initiated_by=settings.run_initiated_by,
+        initiated_by=initiated_by or settings.run_initiated_by,
     )
 
 
-@runtime_app.command("start")
-def runtime_start() -> None:
+def _resolve_principal_id(
+    *,
+    permission: Permission,
+    auth_token: str | None,
+) -> str | None:
+    settings = AppSettings()
+    if not settings.auth_enabled:
+        return None
+
+    if auth_token is None or not auth_token.strip():
+        raise authentication_error("Authentication token is required for this command.")
+
+    store = AuthRegistryStore(settings.auth_registry_file)
     try:
+        principal = store.authenticate(auth_token)
+    except AuthConfigurationError as exc:
+        raise environment_error(str(exc)) from exc
+
+    if principal is None:
+        raise authentication_error("Authentication token is invalid.")
+    if not is_authorized(principal, permission=permission):
+        raise authorization_error("Authenticated principal is not allowed to execute this command.")
+    return principal.principal_id
+
+
+@runtime_app.command("start")
+def runtime_start(
+    auth_token: Annotated[
+        str | None,
+        typer.Option("--auth-token", envvar="AIGNT_OS_AUTH_TOKEN"),
+    ] = None,
+) -> None:
+    try:
+        _resolve_principal_id(permission="runtime.manage", auth_token=auth_token)
         service = _runtime_service()
         state = service.start()
     except CLIError as exc:
@@ -355,12 +394,24 @@ def runtime_status() -> None:
 
 @runtime_app.command("run")
 def runtime_run(
+    auth_token: Annotated[
+        str | None,
+        typer.Option("--auth-token", envvar="AIGNT_OS_AUTH_TOKEN"),
+    ] = None,
     process_identity: Annotated[
         str | None,
         typer.Option("--process-identity", hidden=True),
     ] = None,
 ) -> None:
+    try:
+        _resolve_principal_id(permission="runtime.manage", auth_token=auth_token)
+    except CLIError as exc:
+        exit_for_cli_error(exc)
+
     if process_identity is None:
+        exec_env = os.environ.copy()
+        if auth_token is not None:
+            exec_env["AIGNT_OS_AUTH_TOKEN"] = auth_token
         os.execvpe(
             sys.executable,
             [
@@ -372,7 +423,7 @@ def runtime_run(
                 "--process-identity",
                 secrets.token_hex(16),
             ],
-            os.environ.copy(),
+            exec_env,
         )
 
     try:
@@ -399,8 +450,14 @@ def runtime_ready() -> None:
 
 
 @runtime_app.command("stop")
-def runtime_stop() -> None:
+def runtime_stop(
+    auth_token: Annotated[
+        str | None,
+        typer.Option("--auth-token", envvar="AIGNT_OS_AUTH_TOKEN"),
+    ] = None,
+) -> None:
     try:
+        _resolve_principal_id(permission="runtime.manage", auth_token=auth_token)
         service = _runtime_service()
         state = service.stop()
     except CLIError as exc:
@@ -437,9 +494,18 @@ def runs_submit(
     spec_path: Path,
     mode: Annotated[str, typer.Option("--mode")] = "auto",
     stop_at: Annotated[str, typer.Option("--stop-at")] = "SPEC_VALIDATION",
+    auth_token: Annotated[
+        str | None,
+        typer.Option("--auth-token", envvar="AIGNT_OS_AUTH_TOKEN"),
+    ] = None,
 ) -> None:
     try:
-        dispatch_service = _dispatch_service()
+        principal_id = _resolve_principal_id(permission="runs.submit", auth_token=auth_token)
+        dispatch_service = (
+            _dispatch_service(initiated_by=principal_id)
+            if principal_id is not None
+            else _dispatch_service()
+        )
         result = dispatch_service.dispatch(
             spec_path,
             mode=_validate_mode(mode),  # type: ignore[arg-type]

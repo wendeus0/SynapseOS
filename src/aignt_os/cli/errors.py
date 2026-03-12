@@ -14,6 +14,8 @@ class CLIExitCode(IntEnum):
     VALIDATION = 4
     ENVIRONMENT = 5
     EXECUTION = 6
+    AUTHENTICATION = 7
+    AUTHORIZATION = 8
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,6 +56,14 @@ def execution_error(detail: str) -> CLIError:
     return CLIError(CLIExitCode.EXECUTION, detail)
 
 
+def authentication_error(detail: str) -> CLIError:
+    return CLIError(CLIExitCode.AUTHENTICATION, detail)
+
+
+def authorization_error(detail: str) -> CLIError:
+    return CLIError(CLIExitCode.AUTHORIZATION, detail)
+
+
 def _error_prefix(exit_code: CLIExitCode) -> str:
     if exit_code == CLIExitCode.USAGE:
         return "Usage error"
@@ -65,4 +75,8 @@ def _error_prefix(exit_code: CLIExitCode) -> str:
         return "Environment error"
     if exit_code == CLIExitCode.EXECUTION:
         return "Execution error"
+    if exit_code == CLIExitCode.AUTHENTICATION:
+        return "Authentication error"
+    if exit_code == CLIExitCode.AUTHORIZATION:
+        return "Authorization error"
     return "CLI error"

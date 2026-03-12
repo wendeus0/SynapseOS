@@ -24,6 +24,7 @@ class AppSettings(BaseSettings):
     max_concurrent_adapters: int = Field(default=4, gt=0)
     adapter_circuit_breaker_failure_threshold: int = Field(default=2, gt=0)
     adapter_circuit_breaker_cooldown_seconds: float = Field(default=60.0, gt=0)
+    auth_enabled: bool = False
     secret_mask_patterns: list[str] = list(DEFAULT_SECRET_MASK_PATTERNS)
 
     @property
@@ -33,3 +34,7 @@ class AppSettings(BaseSettings):
     @property
     def adapter_circuit_breaker_state_file(self) -> Path:
         return self.runtime_state_dir / "adapter-circuit-breakers.json"
+
+    @property
+    def auth_registry_file(self) -> Path:
+        return self.runtime_state_dir / "auth-registry.json"

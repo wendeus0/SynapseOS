@@ -146,6 +146,16 @@ def test_settings_exposes_default_adapter_circuit_breaker_controls() -> None:
     assert settings.adapter_circuit_breaker_state_file.parent == settings.runtime_state_dir
 
 
+def test_settings_exposes_default_auth_controls() -> None:
+    config_module = import_module("aignt_os.config")
+
+    settings = config_module.AppSettings()
+
+    assert settings.auth_enabled is False
+    assert settings.auth_registry_file.name == "auth-registry.json"
+    assert settings.auth_registry_file.parent == settings.runtime_state_dir
+
+
 def test_settings_rejects_invalid_environment_value() -> None:
     config_module = import_module("aignt_os.config")
 
