@@ -27,6 +27,8 @@
 - Com a merge de `F19` e `F20`, a fila remanescente real da etapa 2 passou a ser `F17 -> F22`.
 - A `F17-artifact-preview` foi concluida localmente com preview textual controlado em `aignt runs show <run_id> --preview <target>`, suportando `report` e `<STEP_STATE>.clean` sem abrir leitura arbitraria do host.
 - O delta da F17 manteve o contrato de erros da F21 (`Usage error:`/`2`, `Not found:`/`3`) e limitou a leitura ao inicio do artifact, com truncamento explicito apos no maximo 40 linhas.
+- A PR `#53` da `F17-artifact-preview` foi aberta contra `main`, deixando a frente pronta para revisao sem merge antecipado.
+- A `F22-release-readiness` foi concluida localmente como frente documental e de validacao final, adicionando `CHANGELOG.md`, release notes versionada e boundary explicito entre quickstart sync-first e artifact preview.
 
 - A `F10-run-report-one-real-adapter` foi concluida e mergeada em `main`, fechando o MVP inicial do AIgnt-Synapse-Flow com `DOCUMENT`, `RUN_REPORT.md` e o primeiro adapter real (`CodexCLIAdapter`).
 - A `F12-codex-adapter-operational-hardening` foi concluida e mergeada pela PR `#38`, com `main` local e `origin/main` sincronizados em `ahead=0 behind=0`.
@@ -119,7 +121,7 @@
 - Fixtures de testes aspiracionais marcadas como 🔜 no TDD.md: `tests/fixtures/worker/` (ainda ausente).
 - Property-based testing com `hypothesis` ainda não implementado (mencionado como evolução futura em TDD.md).
 - Nao abrir o pacote de guardrails proposto como novas `F14`/`F15`; manter a numeracao e a fila oficial ja documentadas.
-- Abrir a `F22-release-readiness` sobre a HEAD da `F17-artifact-preview`, mantendo PR empilhada e sem merge antecipado.
+- Aguardar anuencia de merge da PR `#53` e da PR empilhada da `F22-release-readiness`.
 
 ## Pontos de atenção futuros
 

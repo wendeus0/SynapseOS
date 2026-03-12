@@ -11,6 +11,8 @@
 - A fila oficial da etapa seguinte foi definida pelo cenario misto e documentada em `docs/architecture/PHASE_2_ROADMAP.md`. O baseline atual ja consolidou `F15 -> F16 -> F21 -> F18 -> F19 -> F20`, e a fila remanescente passou a ser `F17 -> F22`.
 - Uma proposta de guardrails pre-etapa-2 sobre input, secrets, rate limiting e audit trail foi avaliada e nao virou nova frente autonoma; por ora, so um endurecimento curto de mascaramento de secrets em campos `_clean` segue como candidato excepcional.
 - A `F15-public-run-submission` foi concluida e mergeada em `main`: a CLI agora expõe `aignt runs submit <spec_path>` com `--mode auto|sync|async` e `--stop-at`, reaproveitando o `RunDispatchService` interno sem alterar schema nem abrir nova service layer.
+- A `F17-artifact-preview` foi concluida localmente e publicada na PR `#53`, adicionando preview textual controlado de `RUN_REPORT.md` e `clean_output` por step em `aignt runs show <run_id> --preview <target>`.
+- A `F22-release-readiness` foi concluida localmente como fechamento da etapa 2, com `CHANGELOG.md`, release notes versionada e README alinhado ao boundary entre quickstart `sync-first` e artifact preview.
 
 ## Local snapshot
 
@@ -32,13 +34,13 @@
 
 # Active fronts
 
-- A frente ativa atual continua sendo a `F17-artifact-preview`, agora pronta para fechamento Git e abertura de PR.
+- As frentes ativas da etapa 2 foram fechadas localmente; no momento restam apenas as PRs empilhadas aguardando revisao e anuencia de merge.
 - Nao ha frente autonoma extra antes da etapa 2; os guardrails propostos seguem reabsorvidos em `F15`/`F21`, salvo necessidade real de mascaramento de secrets em observabilidade.
 
 # Open decisions
 
-- A sequencia da etapa 2 continua decidida; a proxima decisao pratica em aberto e materializar a `F22-release-readiness` em branch empilhada sobre a `F17`.
-- Decidir durante a F22 se a release tecnica permanece apenas documental/de readiness ou se algum ajuste minimo adicional de wiring precisa entrar para fechar o fluxo publico final.
+- A sequencia da etapa 2 foi fechada localmente; a proxima decisao pratica em aberto e o merge ordenado das PRs empilhadas, primeiro `F17`, depois `F22`.
+- Se a revisao da `F22` pedir ajuste funcional, manter o recorte minimo e nao reabrir escopo de produto alem da readiness tecnica.
 - Decidir em momento futuro se o smoke autenticado do Codex deve virar gate obrigatorio; por ora o `401 Unauthorized` ficou classificado como bloqueio operacional externo e nao como requisito de produto.
 
 # Recurrent pitfalls
@@ -55,12 +57,12 @@
 - Manter `docs/architecture/PHASE_2_ROADMAP.md`, `WORKTREE_FEATURES.md`, `README.md`, `memory.md`, `PENDING_LOG.md` e `.github/copilot-instructions.md` coerentes entre si.
 - Nao abrir features paralelas de hardening pre-etapa-2; se surgir risco concreto depois da F15, limitar o recorte a mascaramento de secrets em observabilidade.
 - Consolidar o handoff documental da etapa 2 parcial sempre que a fila oficial mudar por merge ou validacao tardia.
-- Abrir a `F22-release-readiness` apenas depois do fechamento tecnico da `F17` e com PR empilhada, sem merge antecipado.
+- Manter a ordem de merge da pilha: primeiro `F17-artifact-preview`, depois `F22-release-readiness`.
 - Nao abrir `F14-tui-watch-command` por inercia; a etapa 2 prioriza caminho publico de execucao, diagnostico e onboarding.
 
 # Last handoff summary
 
 - Read before acting: releia `AGENTS.md`, `CONTEXT.md`, `memory.md`, `PENDING_LOG.md`, `ERROR_LOG.md`, `git status` e `git diff --stat`.
-- Current state: a etapa 2 parcial ja consolidou `F15`, `F16`, `F21`, `F18`, `F19` e `F20` no baseline atual; a fila remanescente oficial agora e `F17 -> F22`, e a `F17-artifact-preview` ja foi fechada tecnicamente com preview controlado.
-- Open points: abrir a branch e a SPEC da `F22-release-readiness` sem transformar a frente em nova feature de produto.
-- Recommended next front: abrir a `F22-release-readiness` em branch empilhada sobre a `F17`.
+- Current state: a etapa 2 foi fechada localmente ate a `F22`; a `F17` esta na PR `#53` contra `main`, e a `F22` deve permanecer como PR empilhada sobre a `F17` ate o merge autorizado.
+- Open points: coletar revisao final das PRs e manter o boundary da release tecnica sem abrir follow-up de produto na mesma pilha.
+- Recommended next front: nenhuma nova feature; concluir apenas o fluxo Git da `F22` e aguardar anuencia de merge.
