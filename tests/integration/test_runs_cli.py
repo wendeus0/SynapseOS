@@ -417,6 +417,5 @@ def test_runs_show_preview_returns_execution_error_for_non_utf8_artifact(
 
     assert result.exit_code == 6
     assert (
-        "execution error:" in result.stdout.lower()
-        or "execution error:" in result.stderr.lower()
+        "execution error:" in result.stdout.lower() or "execution error:" in result.stderr.lower()
     )
