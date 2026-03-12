@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
 import time
@@ -48,6 +49,13 @@ def _submit_env(tmp_path: Path) -> dict[str, str]:
     env["AIGNT_OS_ARTIFACTS_DIR"] = str(tmp_path / "artifacts")
     env["AIGNT_OS_RUNTIME_POLL_INTERVAL_SECONDS"] = "0.05"
     return env
+
+
+def _extract_run_id(stdout: str) -> str:
+    match = re.search(r"run_id:\s+([a-f0-9-]+)", stdout, re.IGNORECASE)
+    if match is None:
+        raise AssertionError(f"run_id not found in CLI output:\n{stdout}")
+    return match.group(1)
 
 
 def _spawn_runtime_foreground(tmp_path: Path) -> subprocess.Popen[str]:
@@ -129,6 +137,39 @@ def test_runs_submit_sync_executes_inline_and_reports_contract(
     assert "sync" in result.stdout.lower()
     assert run_record.status == "completed"
     assert run_record.current_state == "SPEC_VALIDATION"
+
+
+def test_canonical_happy_path_submit_then_show_is_auditable_via_public_cli(
+    tmp_path: Path,
+    cli_runner,
+    cli_app,
+) -> None:
+    spec_path = tmp_path / "SPEC.md"
+    _write_valid_spec(spec_path)
+    env = _submit_env(tmp_path)
+
+    submit_result = cli_runner.invoke(
+        cli_app,
+        ["runs", "submit", str(spec_path), "--mode", "sync", "--stop-at", "SPEC_VALIDATION"],
+        env=env,
+    )
+
+    assert submit_result.exit_code == 0
+    run_id = _extract_run_id(submit_result.stdout)
+
+    show_result = cli_runner.invoke(cli_app, ["runs", "show", run_id], env=env)
+
+    assert show_result.exit_code == 0
+    assert run_id in show_result.stdout
+    assert "status" in show_result.stdout.lower()
+    assert "completed" in show_result.stdout.lower()
+    assert "current state" in show_result.stdout.lower()
+    assert "spec_validation" in show_result.stdout.lower()
+    assert "latest signal" in show_result.stdout.lower()
+    assert "spec path" in show_result.stdout.lower()
+    assert str(spec_path) in show_result.stdout
+    assert "next action" in show_result.stdout.lower()
+    assert "canonical happy path is complete" in show_result.stdout.lower()
 
 
 def test_runs_submit_auto_queues_when_runtime_is_ready(

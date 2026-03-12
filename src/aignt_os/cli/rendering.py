@@ -112,7 +112,7 @@ def render_run_detail(
         "Latest Timestamp",
         _latest_timestamp(run, latest_event),
     )
-    diagnostic_table.add_row("Next Action", _next_action(run.status))
+    diagnostic_table.add_row("Next Action", _next_action(run))
 
     renderables: list[ConsoleRenderable] = [
         Panel.fit(
@@ -246,14 +246,16 @@ def _latest_timestamp(run: RunRecord, event: RunEventRecord | None) -> str:
     return run.updated_at
 
 
-def _next_action(status: str) -> str:
-    if status == "failed":
+def _next_action(run: RunRecord) -> str:
+    if run.status == "failed":
         return "Inspect failure details and latest step outputs."
-    if status == "pending":
+    if run.status == "pending":
         return "Start the runtime or wait for the worker to pick up this run."
-    if status == "running":
+    if run.status == "running":
         return "Monitor the current state and latest event for progress."
-    if status == "completed":
+    if run.status == "completed" and run.current_state == "SPEC_VALIDATION":
+        return "Canonical happy path is complete. Inspect persisted signals for audit."
+    if run.status == "completed":
         return "Inspect generated artifacts or report for outputs."
     return "Inspect the latest persisted signals for the next action."
 
