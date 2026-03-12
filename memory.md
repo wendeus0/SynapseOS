@@ -8,12 +8,15 @@
 - O MVP de produto agora chega ate `DOCUMENT`: a F10 adicionou `RUN_REPORT.md` por run e o primeiro adapter real via `CodexCLIAdapter`.
 - A F13 introduziu a primeira saida enriquecida com Rich em `src/`, mantendo o AIgnt-Synapse-Flow como a engine propria de pipeline do AIgnt OS e limitando o recorte a `aignt runtime status`.
 - A F14 adicionou observabilidade CLI-first sobre runs persistidas com `aignt runs list` e `aignt runs show <run_id>`, reaproveitando `RunRepository` e `ArtifactStore` sem abrir TUI.
+- A fila oficial da etapa seguinte foi definida pelo cenario misto e documentada em `docs/architecture/PHASE_2_ROADMAP.md`: `F15 -> F16 -> F21 -> F18 -> F19 -> F20 -> F17 -> F22`.
+- Uma proposta de guardrails pre-etapa-2 sobre input, secrets, rate limiting e audit trail foi avaliada e nao virou nova frente autonoma; por ora, so um endurecimento curto de mascaramento de secrets em campos `_clean` segue como candidato excepcional.
+- A `F15-public-run-submission` foi concluida e mergeada em `main`: a CLI agora expõe `aignt runs submit <spec_path>` com `--mode auto|sync|async` e `--stop-at`, reaproveitando o `RunDispatchService` interno sem alterar schema nem abrir nova service layer.
 
 ## Local snapshot
 
-- `main` local esta limpa apos o fechamento Git local da `F14-runs-observability-cli`, pronta para o fluxo de push/PR da feature.
-- A F14 fechou verde localmente com SPEC validada, testes focados de CLI/persistencia, `commit-check` e `security-gate`, sem exigir `DOCKER_PREFLIGHT`.
-- O MVP inicial de 10 features segue concluido, com F13 e F14 fechadas localmente como follow-ups pequenos de UX/observabilidade na CLI.
+- `main` local esta sincronizada com `origin/main` apos o merge da PR `#43` da `F15-public-run-submission`.
+- A F15 esta concluida em `main`; a worktree atual esta suja apenas com a chore documental separada da etapa 2.
+- O foco imediato nao e mais fechar a F15, e sim consolidar a documentacao pos-merge e preparar a proxima frente (`F16`).
 
 # Stable decisions
 
@@ -29,12 +32,14 @@
 
 # Active fronts
 
-- Nenhuma nova frente de produto esta aberta apos a F14; o repositório fica pronto para push/PR da feature e nova triagem depois disso.
-- Manter apenas follow-ups operacionais realmente bloqueantes fora da trilha principal de produto.
+- Nenhuma nova frente de produto esta aberta neste momento.
+- A frente ativa no momento e documental: consolidar o estado pos-F15 nas fontes de verdade da etapa 2.
+- Nao ha frente autonoma extra antes da etapa 2; os guardrails propostos seguem reabsorvidos em `F15`/`F21`, salvo necessidade real de mascaramento de secrets em observabilidade.
 
 # Open decisions
 
-- Decidir qual e a proxima frente apos a F14; `F14-tui-watch-command` continua apenas como candidata futura e nao deve ser aberta automaticamente.
+- A sequencia da etapa 2 ja foi decidida; a decisao imediata em aberto passa a ser quando abrir a SPEC da `F16-run-detail-expansion` apos a chore documental.
+- Decidir depois do fechamento da F15 se o follow-up de mascaramento de secrets precisa virar frente propria curta ou se pode esperar a `F21`.
 - Decidir em momento futuro se o smoke autenticado do Codex deve virar gate obrigatorio; por ora o `401 Unauthorized` ficou classificado como bloqueio operacional externo e nao como requisito de produto.
 
 # Recurrent pitfalls
@@ -48,13 +53,15 @@
 
 # Next recommended steps
 
-- Executar o fluxo Git da `F14-runs-observability-cli` (push/PR) e retriajar a proxima frente a partir do estado pos-merge.
-- Nao abrir `F14-tui-watch-command` por inercia; a base de observabilidade CLI existe, mas watch/TUI ainda exigem decisao explicita de recorte.
-- Manter revisoes amplas de docs antigas fora do caminho critico, salvo quando bloquearem validacao real.
+- Manter `docs/architecture/PHASE_2_ROADMAP.md`, `WORKTREE_FEATURES.md`, `README.md`, `memory.md`, `PENDING_LOG.md` e `.github/copilot-instructions.md` coerentes entre si.
+- Fechar a chore documental da etapa 2 (`README.md`, roadmap, handoff e contexto operacional) agora que a F15 ja esta mergeada.
+- Nao abrir features paralelas de hardening pre-etapa-2; se surgir risco concreto depois da F15, limitar o recorte a mascaramento de secrets em observabilidade.
+- Quando a chore documental estiver mergeada, abrir a SPEC da `F16-run-detail-expansion`.
+- Nao abrir `F14-tui-watch-command` por inercia; a etapa 2 prioriza caminho publico de execucao, diagnostico e onboarding.
 
 # Last handoff summary
 
 - Read before acting: releia `AGENTS.md`, `CONTEXT.md`, `memory.md`, `PENDING_LOG.md`, `ERROR_LOG.md`, `git status` e `git diff --stat`.
-- Current state: a `F14-runs-observability-cli` fechou em Git local com novos comandos `runs list/show`, rendering Rich para listagem/detalhe e testes verdes; o repositório fica pronto para push/PR.
-- Open points: escolher a proxima frente apos a F14 e manter o smoke autenticado do Codex como follow-up operacional nao bloqueante.
-- Recommended next front: concluir o fluxo Git da F14 e retriajar a fila; `F14-tui-watch-command` segue apenas como candidata futura.
+- Current state: a `F15-public-run-submission` foi mergeada em `main`; a documentacao da etapa 2 ainda precisa ser atualizada para refletir esse novo baseline.
+- Open points: fechar a chore documental pos-F15 e decidir se ha follow-up curto de mascaramento de secrets antes da `F16`.
+- Recommended next front: concluir a chore documental; a proxima frente de produto continua sendo `F16-run-detail-expansion`.

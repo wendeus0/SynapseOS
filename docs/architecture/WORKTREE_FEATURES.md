@@ -1,7 +1,7 @@
 # Worktree de Features — AIgnt OS
 
 ## Objetivo
-Organizar o desenvolvimento do MVP em features pequenas, isoladas por branch/worktree, seguindo a esteira definida no SDD e a ordem recomendada no TDD.
+Organizar o desenvolvimento do projeto em features pequenas, isoladas por branch/worktree, seguindo a esteira definida no SDD e a ordem recomendada no TDD.
 
 ## Princípios
 - Trabalhar **uma feature por vez**.
@@ -10,7 +10,7 @@ Organizar o desenvolvimento do MVP em features pequenas, isoladas por branch/wor
 - O MVP de 10 dias deve priorizar **núcleo funcional**: SPEC, state machine, parser, adapter base, AIgnt-Synapse-Flow linear como engine própria de pipeline, persistência, worker leve e `RUN_REPORT.md`.
 - Adapters reais ficam limitados a **1 adapter real prioritário** no prazo de 10 dias.
 
-## Sequência recomendada de features
+## Sequência recomendada de features do MVP inicial
 
 ### F01 — Project Bootstrap & Contracts
 **Objetivo:** preparar base do repositório, pyproject, lint, typing, modelos Pydantic e estrutura de testes.
@@ -61,6 +61,68 @@ Organizar o desenvolvimento do MVP em features pequenas, isoladas por branch/wor
 **Objetivo:** fechar o MVP com auditoria local e uma integração real mínima.
 **Entrega:** `RUN_REPORT.md`, 1 adapter real (ex.: Codex CLI ou Gemini CLI), happy path de ponta a ponta.
 **Branch/worktree:** `feature/f10-run-report-one-real-adapter`
+
+## Follow-ups pós-MVP já concluídos
+
+### F11 — Repo Automation
+**Objetivo:** endurecer fluxo operacional do repositório, Docker e CI.
+**Entrega:** scripts operacionais, `DOCKER_PREFLIGHT`, checks locais e governança contra drift.
+**Branch/worktree:** `feature/f11-repo-automation`
+
+### F12 — Codex Adapter Operational Hardening
+**Objetivo:** endurecer o adapter real do Codex no fluxo container-first.
+**Entrega:** classificação operacional de falhas e validação prática do caminho do launcher.
+**Branch/worktree:** `feature/f12-codex-adapter-operational-hardening`
+
+### F13 — Rich CLI Output
+**Objetivo:** melhorar a UX inicial da CLI sem abrir TUI.
+**Entrega:** saída enriquecida com Rich para `aignt runtime status`.
+**Branch/worktree:** `feature/f13-rich-cli-output`
+
+### F14 — Runs Observability CLI
+**Objetivo:** expor inspeção pública de runs persistidas.
+**Entrega:** `aignt runs list` e `aignt runs show <run_id>`.
+**Branch/worktree:** `feature/f14-runs-observability-cli`
+
+### F15 — Public Run Submission
+**Objetivo:** expor submissao publica de runs pela CLI a partir de uma SPEC validada.
+**Entrega:** `aignt runs submit <spec_path>` com `--mode auto|sync|async` e `--stop-at`.
+**Branch/worktree:** `feature/f15-public-run-submission`
+
+## Próxima etapa pós-F14
+
+A fila ativa do projeto deixou de ser o cronograma histórico do MVP inicial. A nova etapa segue o **cenário misto** definido na triagem e está detalhada em `docs/architecture/PHASE_2_ROADMAP.md`.
+
+### Sequência oficial remanescente da etapa 2
+
+1. `F16-run-detail-expansion`
+2. `F21-cli-error-model-and-exit-codes`
+3. `F18-canonical-happy-path`
+4. `F19-environment-doctor`
+5. `F20-public-onboarding`
+6. `F17-artifact-preview`
+7. `F22-release-readiness`
+
+### Padrão mínimo de descrição por feature
+
+Cada frente da etapa 2 deve ser documentada pelo menos com:
+- objetivo
+- valor para a fase
+- superfície pública afetada
+- dependências
+- fora de escopo
+- critério de pronto
+- risco principal
+
+### Guardrails candidatos antes da etapa 2
+
+Propostas de hardening sobre input, secrets, rate limiting e audit trail foram avaliadas antes da abertura da etapa 2.
+
+Diretriz atual:
+- nao abrir essas propostas como features autonomas fora da fila principal da etapa 2;
+- nao reciclar IDs ja usados (`F14`) nem o ID reservado da `F15`;
+- permitir apenas um follow-up curto de mascaramento de secrets em saidas `_clean` e artifacts publicos se surgir risco real antes da `F21`;
+- absorver o restante dentro de `F21` ou de follow-up proprio curto, se houver necessidade concreta.
 
 ## Features que ficam fora do MVP de 10 dias
 - DAG real com fan-out/fan-in
