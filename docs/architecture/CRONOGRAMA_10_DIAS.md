@@ -1,5 +1,7 @@
 # Cronograma de 10 dias — AIgnt OS MVP
 
+> Documento histórico do MVP inicial. O roadmap ativo da etapa 2, agora pos-F15, está em `docs/architecture/PHASE_2_ROADMAP.md`.
+
 ## Premissa de carga
 Cronograma pensado para uma rotina apertada, com **3 a 4 horas líquidas por dia**, priorizando foco profundo e escopo pequeno. O objetivo aqui não é terminar "a plataforma inteira", mas **entregar um MVP funcional do núcleo**.
 

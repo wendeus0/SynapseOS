@@ -169,7 +169,24 @@ aignt-os/
 2. **Entender as decisões** → navegue pelos ADRs em `docs/adr/`
 3. **Contribuir com uma feature** → consulte `docs/architecture/WORKTREE_FEATURES.md` e use `docs/architecture/SPEC_TEMPLATE_v2.md` para criar sua `SPEC.md` antes de qualquer código
 4. **Entender a estratégia de testes** → leia `docs/architecture/TDD.md`
-5. **Ver o roadmap do MVP** → `docs/architecture/CRONOGRAMA_10_DIAS.md`
+5. **Ver o roadmap do MVP inicial** → `docs/architecture/CRONOGRAMA_10_DIAS.md`
+6. **Ver a fila ativa da etapa 2** → `docs/architecture/PHASE_2_ROADMAP.md`
+
+## Etapa 2 do projeto
+
+O cronograma de 10 dias acima descreve o MVP inicial já concluído. A etapa 2 do projeto já foi iniciada e a `F15-public-run-submission` foi concluída em `main`.
+
+Próximas frentes da etapa 2:
+
+1. `F16-run-detail-expansion`
+2. `F21-cli-error-model-and-exit-codes`
+3. `F18-canonical-happy-path`
+4. `F19-environment-doctor`
+5. `F20-public-onboarding`
+6. `F17-artifact-preview`
+7. `F22-release-readiness`
+
+O roadmap completo e o contexto da etapa 2 seguem em `docs/architecture/PHASE_2_ROADMAP.md`.
 
 ---
 
@@ -198,6 +215,8 @@ feature/f10-run-report-one-real-adapter — RUN_REPORT.md + CodexCLIAdapter
 feature/f11-repo-automation             — infraestrutura Docker, CI e scripts operacionais
 feature/f12-codex-adapter-operational-hardening — hardening do CodexCLIAdapter container-first
 feature/f13-rich-cli-output             — saída enriquecida com Rich no `aignt runtime status`
+feature/f14-runs-observability-cli      — `aignt runs list/show` para observabilidade CLI-first
+feature/f15-public-run-submission       — `aignt runs submit <spec_path>` para submissão pública de runs
 ```
 
 Nenhuma feature avança para código sem `SPEC.md` aprovada e testes mínimos escritos. O `DOCKER_PREFLIGHT` entra quando a mudança exigir validação prática em Docker.

@@ -10,6 +10,15 @@
 - A F14 reaproveitou `RunRepository` e `ArtifactStore`, estendeu `src/aignt_os/cli/rendering.py` para listagem/detalhe de runs e manteve o AIgnt-Synapse-Flow como a engine propria de pipeline do AIgnt OS.
 - A validacao local da F14 fechou verde com `validate_spec_file()` da SPEC, `pytest` focado de CLI/persistencia, `./scripts/commit-check.sh --no-sync --skip-branch-validation --skip-docker --skip-security` e `./scripts/security-gate.sh`.
 - O recorte da F14 permaneceu deliberadamente restrito a leitura de runs persistidas: sem watch mode, sem streaming, sem Textual e sem `DOCKER_PREFLIGHT`.
+- A PR `#42` da `F14-runs-observability-cli` foi mergeada em `main`, consolidando `aignt runs list` e `aignt runs show <run_id>` como superficie publica atual do projeto.
+- A etapa seguinte do projeto foi definida e documentada como fila oficial em `docs/architecture/PHASE_2_ROADMAP.md`, seguindo o cenario misto: `F15 -> F16 -> F21 -> F18 -> F19 -> F20 -> F17 -> F22`.
+- Uma proposta posterior de guardrails pre-etapa-2 (input, secrets, rate limiting e audit trail) foi triada e nao foi promovida a duas features autonomas; o backlog oficial preserva a etapa 2 como proxima trilha principal.
+- O unico recorte excepcional aceito antes da etapa 2, se houver risco real, e mascaramento de secrets em campos `_clean` e artifacts de leitura publica; o restante deve ser absorvido em `F15` e `F21`.
+- A `F15-public-run-submission` foi implementada localmente com `aignt runs submit <spec_path>`, `--mode auto|sync|async` e `--stop-at`, reaproveitando o `RunDispatchService` interno e fixando `SPEC_VALIDATION` como default operacional seguro.
+- O hardening principal da F15 ficou no proprio dispatch: a SPEC e validada antes de qualquer submit, inclusive em `async`, para evitar persistencia de runs invalidas.
+- A validacao local da F15 fechou verde com `validate_spec_file()` da SPEC, `pytest` focado de dispatch/runs/runtime, `./scripts/commit-check.sh --no-sync --skip-branch-validation --skip-docker --skip-security` e `./scripts/security-gate.sh`.
+- A PR `#43` da `F15-public-run-submission` foi mergeada em `main`, consolidando `aignt runs submit <spec_path>` como superficie publica atual junto de `aignt runs list/show`.
+- O passo seguinte deixou de ser fechar Git da F15 e passou a ser uma chore documental separada para promover o estado pos-F15 nas fontes de verdade do projeto.
 
 - A `F10-run-report-one-real-adapter` foi concluida e mergeada em `main`, fechando o MVP inicial do AIgnt-Synapse-Flow com `DOCUMENT`, `RUN_REPORT.md` e o primeiro adapter real (`CodexCLIAdapter`).
 - A `F12-codex-adapter-operational-hardening` foi concluida e mergeada pela PR `#38`, com `main` local e `origin/main` sincronizados em `ahead=0 behind=0`.
@@ -101,7 +110,9 @@
 
 - Fixtures de testes aspiracionais marcadas como 🔜 no TDD.md: `tests/fixtures/worker/` (ainda ausente).
 - Property-based testing com `hypothesis` ainda não implementado (mencionado como evolução futura em TDD.md).
-- Fechar o fluxo Git da `F14-runs-observability-cli` com push/PR antes de abrir a proxima frente.
+- Manter a etapa 2 documentada de forma coerente em `PHASE_2_ROADMAP.md`, `WORKTREE_FEATURES.md`, `README.md`, `memory.md`, `PENDING_LOG.md` e `.github/copilot-instructions.md` agora que a `F15` ja foi mergeada.
+- Nao abrir o pacote de guardrails proposto como novas `F14`/`F15`; manter a numeracao e a fila oficial ja documentadas.
+- Fechar a chore documental pos-F15 antes de abrir a `F16`.
 
 ## Pontos de atenção futuros
 
@@ -137,6 +148,21 @@
 - **Constraint Typer×asyncio**: `asyncio.run(app.run_async())` dentro do comando Typer é a forma de coexistência; funcional mas exige cuidado com event loop.
 - **TTY em container**: Rich degrada automaticamente sem TTY; Textual exige guarda `sys.stdout.isatty()`.
 - **Não implementar antes**: apesar da F14 resolver a observabilidade minima via CLI, TUI real continua dependendo de recorte proprio de watch/streaming e da camada `observability/`.
+
+## Fila oficial da etapa 2
+
+1. `F16-run-detail-expansion`
+2. `F21-cli-error-model-and-exit-codes`
+3. `F18-canonical-happy-path`
+4. `F19-environment-doctor`
+5. `F20-public-onboarding`
+6. `F17-artifact-preview`
+7. `F22-release-readiness`
+
+## Guardrails candidatos fora da fila principal
+
+- Mascaramento de secrets em saidas `_clean` e artifacts publicos pode virar follow-up curto apenas se houver risco concreto apos a F15 e antes de a `F21` absorver esse contrato de forma mais ampla.
+- Rate limiting por adapter, audit trail adicional com `initiated_by` e hardening amplo de config nao devem abrir frente propria agora; reavaliar como follow-up proprio curto ou dentro da `F21`.
 
 ## Itens que podem virar novas features ou ajustes futuros
 
