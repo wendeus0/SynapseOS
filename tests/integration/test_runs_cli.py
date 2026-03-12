@@ -120,18 +120,71 @@ def test_runs_show_reports_run_metadata_steps_events_and_artifacts(
 
     assert result.exit_code == 0
     assert run_id in result.stdout
+    assert "diagnostic summary" in result.stdout.lower()
+    assert "latest signal" in result.stdout.lower()
+    assert "step_completed @ PLAN" in result.stdout
+    assert "latest timestamp" in result.stdout.lower()
     assert "spec path" in result.stdout.lower()
     assert str(spec_path) in result.stdout
     assert "completed" in result.stdout.lower()
     assert "document" in result.stdout.lower()
+    assert "next action" in result.stdout.lower()
+    assert "inspect generated artifacts or report" in result.stdout.lower()
     assert "steps" in result.stdout.lower()
     assert "plan" in result.stdout.lower()
     assert "codex" in result.stdout.lower()
+    assert f"{run_id}/PLAN/raw.txt" in result.stdout
+    assert f"{run_id}/PLAN/clean.txt" in result.stdout
     assert "events" in result.stdout.lower()
     assert "step_completed" in result.stdout
+    assert "created at" in result.stdout.lower()
     assert "artifacts" in result.stdout.lower()
     assert f"{run_id}/PLAN/plan_md.txt" in result.stdout
     assert f"{run_id}/RUN_REPORT.md" in result.stdout
+
+
+def test_runs_show_reports_failure_diagnostic_summary(
+    tmp_path: Path,
+    cli_runner,
+    cli_app,
+) -> None:
+    persistence = import_module("aignt_os.persistence")
+
+    env = _runs_env(tmp_path)
+    repository = persistence.RunRepository(Path(env["AIGNT_OS_RUNS_DB_PATH"]))
+    spec_path = tmp_path / "SPEC.md"
+    spec_path.write_text("# Fixture\n", encoding="utf-8")
+
+    run_id = repository.create_run(
+        spec_path=spec_path,
+        initial_state="REQUEST",
+        stop_at="DOCUMENT",
+    )
+    repository.acquire_lock(run_id)
+    repository.mark_run_running(run_id, current_state="CODE_GREEN")
+    repository.record_event(
+        run_id,
+        state="CODE_GREEN",
+        event_type="supervisor_decision",
+        message="Supervisor requested fail after review rejection.",
+    )
+    repository.mark_run_failed(
+        run_id,
+        current_state="CODE_GREEN",
+        failure_message="review rejection persisted",
+    )
+
+    result = cli_runner.invoke(cli_app, ["runs", "show", run_id], env=env)
+
+    assert result.exit_code == 0
+    assert "diagnostic summary" in result.stdout.lower()
+    assert "failed" in result.stdout.lower()
+    assert "supervisor_decision @ CODE_GREEN" in result.stdout
+    assert "review rejection persisted" in result.stdout
+    assert "inspect failure details and latest step outputs" in result.stdout.lower()
+    assert "no persisted steps" in result.stdout.lower()
+    assert "supervisor_decision" in result.stdout
+    assert "created at" in result.stdout.lower()
 
 
 def test_runs_show_fails_predictably_when_run_is_missing(

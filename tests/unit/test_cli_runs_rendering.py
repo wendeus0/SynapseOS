@@ -10,7 +10,7 @@ from aignt_os.persistence import RunEventRecord, RunRecord, RunStepRecord
 def test_render_run_detail_is_legible_without_tty() -> None:
     cli_rendering = __import__("aignt_os.cli.rendering", fromlist=["render_run_detail"])
     output = StringIO()
-    console = Console(file=output, force_terminal=False, color_system=None, width=100)
+    console = Console(file=output, force_terminal=False, color_system=None, width=160)
 
     cli_rendering.render_run_detail(
         RunRecord(
@@ -56,7 +56,16 @@ def test_render_run_detail_is_legible_without_tty() -> None:
 
     rendered = output.getvalue()
     assert "Run Detail" in rendered
+    assert "Diagnostic Summary" in rendered
     assert "run-123" in rendered
+    assert "Latest Signal" in rendered
+    assert "step_completed @ PLAN" in rendered
+    assert "Latest Timestamp" in rendered
+    assert "Next Action" in rendered
+    assert "Inspect generated artifacts or report" in rendered
     assert "PLAN" in rendered
+    assert "run-123/PLAN/raw.txt" in rendered
+    assert "run-123/PLAN/clean.txt" in rendered
     assert "step_completed" in rendered
+    assert "2026-03-12T00:00:11+00:00" in rendered
     assert "RUN_REPORT.md" in rendered

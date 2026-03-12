@@ -85,6 +85,7 @@ def render_run_detail(
     console: Console | None = None,
 ) -> None:
     output_console = console or Console(width=160)
+    latest_event = events[-1] if events else None
     summary_table = Table.grid(expand=False)
     summary_table.add_column(style="dim")
     summary_table.add_column()
@@ -101,13 +102,31 @@ def render_run_detail(
     if run.failure_message is not None:
         summary_table.add_row("Failure", run.failure_message)
 
+    diagnostic_table = Table.grid(expand=False)
+    diagnostic_table.add_column(style="dim")
+    diagnostic_table.add_column()
+    diagnostic_table.add_row("Status", Text(run.status, style=_status_style(run.status)))
+    diagnostic_table.add_row("Current State", run.current_state)
+    diagnostic_table.add_row("Latest Signal", _latest_signal(latest_event))
+    diagnostic_table.add_row(
+        "Latest Timestamp",
+        _latest_timestamp(run, latest_event),
+    )
+    diagnostic_table.add_row("Next Action", _next_action(run.status))
+
     renderables: list[ConsoleRenderable] = [
         Panel.fit(
             summary_table,
             border_style=_status_style(run.status),
             padding=(0, 1),
             title="Run Detail",
-        )
+        ),
+        Panel.fit(
+            diagnostic_table,
+            border_style=_status_style(run.status),
+            padding=(0, 1),
+            title="Diagnostic Summary",
+        ),
     ]
     renderables.append(_steps_table(steps))
     renderables.append(_events_table(events))
@@ -162,9 +181,11 @@ def _steps_table(steps: Sequence[RunStepRecord]) -> Table:
     table.add_column("Return Code")
     table.add_column("Duration (ms)")
     table.add_column("Timed Out")
+    table.add_column("Raw Output")
+    table.add_column("Clean Output")
 
     if not steps:
-        table.add_row("-", "No persisted steps.", "-", "-", "-", "-")
+        table.add_row("-", "No persisted steps.", "-", "-", "-", "-", "-", "-")
         return table
 
     for step in steps:
@@ -175,6 +196,8 @@ def _steps_table(steps: Sequence[RunStepRecord]) -> Table:
             "-" if step.return_code is None else str(step.return_code),
             "-" if step.duration_ms is None else str(step.duration_ms),
             "-" if step.timed_out is None else ("yes" if step.timed_out else "no"),
+            step.raw_output_path or "-",
+            step.clean_output_path or "-",
         )
     return table
 
@@ -184,24 +207,61 @@ def _events_table(events: Sequence[RunEventRecord]) -> Table:
     table.add_column("State", style="bold")
     table.add_column("Event Type")
     table.add_column("Message")
+    table.add_column("Created At")
 
     if not events:
-        table.add_row("-", "No persisted events.", "-")
+        table.add_row("-", "No persisted events.", "-", "-")
         return table
 
     for event in events:
-        table.add_row(event.state, event.event_type, event.message)
+        table.add_row(event.state, event.event_type, event.message, event.created_at)
     return table
 
 
 def _artifacts_table(artifact_paths: Sequence[str]) -> Table:
     table = Table(title="Artifacts")
+    table.add_column("Scope", style="bold")
     table.add_column("Path")
 
     if not artifact_paths:
-        table.add_row("No persisted artifacts.")
+        table.add_row("-", "No persisted artifacts.")
         return table
 
     for artifact_path in artifact_paths:
-        table.add_row(artifact_path)
+        table.add_row(_artifact_scope(artifact_path), artifact_path)
     return table
+
+
+def _latest_signal(event: RunEventRecord | None) -> str:
+    if event is None:
+        return "No persisted events yet."
+    return f"{event.event_type} @ {event.state}"
+
+
+def _latest_timestamp(run: RunRecord, event: RunEventRecord | None) -> str:
+    if event is not None:
+        return event.created_at
+    if run.completed_at is not None:
+        return run.completed_at
+    return run.updated_at
+
+
+def _next_action(status: str) -> str:
+    if status == "failed":
+        return "Inspect failure details and latest step outputs."
+    if status == "pending":
+        return "Start the runtime or wait for the worker to pick up this run."
+    if status == "running":
+        return "Monitor the current state and latest event for progress."
+    if status == "completed":
+        return "Inspect generated artifacts or report for outputs."
+    return "Inspect the latest persisted signals for the next action."
+
+
+def _artifact_scope(artifact_path: str) -> str:
+    parts = artifact_path.split("/")
+    if len(parts) < 2:
+        return "RUN"
+    if parts[-1] == "RUN_REPORT.md":
+        return "RUN"
+    return parts[1]
