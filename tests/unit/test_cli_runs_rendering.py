@@ -17,6 +17,8 @@ def test_render_run_detail_is_legible_without_tty() -> None:
         RunRecord(
             run_id="run-123",
             spec_path="SPEC.md",
+            spec_hash="abc123",
+            initiated_by="local_cli",
             stop_at="DOCUMENT",
             status="completed",
             current_state="DOCUMENT",
@@ -63,6 +65,10 @@ def test_render_run_detail_is_legible_without_tty() -> None:
     assert "step_completed @ PLAN" in rendered
     assert "Latest Timestamp" in rendered
     assert "Next Action" in rendered
+    assert "Spec Hash" in rendered
+    assert "abc123" in rendered
+    assert "Initiated By" in rendered
+    assert "local_cli" in rendered
     assert "Inspect generated artifacts or report" in rendered
     assert "PLAN" in rendered
     assert "run-123/PLAN/raw.txt" in rendered
@@ -81,6 +87,8 @@ def test_render_run_detail_completed_at_spec_validation_guides_canonical_happy_p
         RunRecord(
             run_id="run-spec-validation",
             spec_path="SPEC.md",
+            spec_hash="abc123",
+            initiated_by="local_cli",
             stop_at="SPEC_VALIDATION",
             status="completed",
             current_state="SPEC_VALIDATION",
@@ -111,6 +119,8 @@ def test_render_run_detail_surfaces_artifact_preview_panel() -> None:
         RunRecord(
             run_id="run-preview",
             spec_path="SPEC.md",
+            spec_hash="abc123",
+            initiated_by="local_cli",
             stop_at="DOCUMENT",
             status="completed",
             current_state="DOCUMENT",

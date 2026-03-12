@@ -17,6 +17,8 @@ def test_run_report_generator_matches_expected_fixture(tmp_path: Path) -> None:
         spec_path=spec_path,
         initial_state="REQUEST",
         stop_at="DOCUMENT",
+        spec_hash="abc123",
+        initiated_by="local_cli",
     )
     repository.acquire_lock(run_id)
     repository.mark_run_running(run_id, current_state="SPEC_VALIDATION")
@@ -49,6 +51,12 @@ def test_run_report_generator_matches_expected_fixture(tmp_path: Path) -> None:
         content="# Plan\n",
     )
     repository.record_step(run_id, state="DOCUMENT", status="completed")
+    repository.record_event(
+        run_id,
+        state="REQUEST",
+        event_type="security_provenance_recorded",
+        message="Provenance recorded for initiated_by=local_cli spec_hash=abc123.",
+    )
     repository.record_event(
         run_id,
         state="REQUEST",

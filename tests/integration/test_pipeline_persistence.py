@@ -78,6 +78,7 @@ def test_persisted_pipeline_records_steps_events_and_artifacts_until_plan(
     assert run_record.current_state == "PLAN"
     assert [step.state for step in steps] == ["SPEC_VALIDATION", "PLAN"]
     assert [event.event_type for event in events] == [
+        "security_provenance_recorded",
         "run_started",
         "step_completed",
         "step_completed",
@@ -117,7 +118,11 @@ def test_persisted_pipeline_marks_failed_run_when_spec_validation_blocks_plan(
     assert run_record.status == "failed"
     assert run_record.current_state == "SPEC_VALIDATION"
     assert run_record.failure_message is not None
-    assert [event.event_type for event in events] == ["run_started", "run_failed"]
+    assert [event.event_type for event in events] == [
+        "security_provenance_recorded",
+        "run_started",
+        "run_failed",
+    ]
     assert not (artifact_store.base_path / run_record.run_id / "PLAN").exists()
 
 
@@ -171,6 +176,7 @@ def test_persisted_pipeline_records_supervisor_decision_events(tmp_path: Path) -
     events = repository.list_events(context.run_id)
 
     assert [event.event_type for event in events] == [
+        "security_provenance_recorded",
         "run_started",
         "step_completed",
         "step_completed",
@@ -182,9 +188,9 @@ def test_persisted_pipeline_records_supervisor_decision_events(tmp_path: Path) -
         "step_completed",
         "run_completed",
     ]
-    assert events[3].state == "TEST_RED"
-    assert events[4].state == "CODE_GREEN"
-    assert "retry" in events[4].message
+    assert events[4].state == "TEST_RED"
+    assert events[5].state == "CODE_GREEN"
+    assert "retry" in events[5].message
 
 
 def test_persisted_pipeline_generates_run_report_until_document(tmp_path: Path) -> None:
@@ -278,6 +284,7 @@ def test_persisted_pipeline_blocks_unsafe_python_artifact_promotion(tmp_path: Pa
     runs = repository.list_runs()
     assert len(runs) == 1
     run_record = runs[0]
+    events = repository.list_events(run_record.run_id)
     step_directory = artifact_store.base_path / run_record.run_id / "PLAN"
     assert run_record.status == "failed"
     assert run_record.current_state == "PLAN"
@@ -287,6 +294,13 @@ def test_persisted_pipeline_blocks_unsafe_python_artifact_promotion(tmp_path: Pa
     artifact_paths = artifact_store.list_artifact_paths(run_record.run_id)
     plan_prefix = f"{run_record.run_id}/PLAN/"
     assert all(plan_prefix not in artifact_path for artifact_path in artifact_paths)
+    assert [event.event_type for event in events] == [
+        "security_provenance_recorded",
+        "run_started",
+        "step_completed",
+        "security_guardrail_triggered",
+        "run_failed",
+    ]
 
 
 def test_persisted_pipeline_promotes_safe_python_artifact(tmp_path: Path) -> None:

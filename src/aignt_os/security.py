@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import re
 import unicodedata
 from collections.abc import Sequence
@@ -65,3 +66,7 @@ def resolve_path_within_root(path: Path, *, root: Path) -> Path:
     except ValueError as exc:
         raise ValueError(f"Path escapes trusted root: {path}") from exc
     return resolved_path
+
+
+def compute_file_sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()

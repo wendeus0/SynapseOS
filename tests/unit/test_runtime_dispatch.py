@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from importlib import import_module
 from pathlib import Path
 
@@ -59,6 +60,8 @@ def test_run_dispatch_service_executes_inline_when_mode_is_sync(tmp_path: Path) 
     assert result.dispatch_mode_resolved == "sync"
     assert run_record.status == "completed"
     assert run_record.current_state == "SPEC_VALIDATION"
+    assert run_record.initiated_by == "local_cli"
+    assert run_record.spec_hash == hashlib.sha256(spec_path.read_bytes()).hexdigest()
 
 
 def test_run_dispatch_service_auto_queues_when_runtime_is_ready(tmp_path: Path) -> None:
@@ -88,6 +91,8 @@ def test_run_dispatch_service_auto_queues_when_runtime_is_ready(tmp_path: Path) 
     assert run_record.status == "pending"
     assert run_record.current_state == "REQUEST"
     assert run_record.locked is False
+    assert run_record.initiated_by == "local_cli"
+    assert run_record.spec_hash == hashlib.sha256(spec_path.read_bytes()).hexdigest()
 
 
 def test_run_dispatch_service_explicit_async_queues_pending_run(tmp_path: Path) -> None:
@@ -116,6 +121,8 @@ def test_run_dispatch_service_explicit_async_queues_pending_run(tmp_path: Path) 
     assert result.dispatch_mode_resolved == "async"
     assert run_record.status == "pending"
     assert run_record.current_state == "REQUEST"
+    assert run_record.initiated_by == "local_cli"
+    assert run_record.spec_hash == hashlib.sha256(spec_path.read_bytes()).hexdigest()
 
 
 def test_run_dispatch_service_rejects_missing_spec_path(tmp_path: Path) -> None:

@@ -119,6 +119,14 @@ def test_settings_exposes_default_secret_mask_patterns() -> None:
     assert any("sk-" in pattern for pattern in settings.secret_mask_patterns)
 
 
+def test_settings_exposes_default_run_initiated_by() -> None:
+    config_module = import_module("aignt_os.config")
+
+    settings = config_module.AppSettings()
+
+    assert settings.run_initiated_by == "local_cli"
+
+
 def test_settings_rejects_invalid_environment_value() -> None:
     config_module = import_module("aignt_os.config")
 
