@@ -4,6 +4,8 @@
 Este repositório implementa o AIgnt OS, um meta-orquestrador de agentes de IA via CLI.
 A implementação deve seguir a arquitetura e decisões já documentadas, sem reinventar o projeto a cada feature.
 
+O runtime interno deve ser referido como **AIgnt-Synapse-Flow**, deixando claro que ele é a **engine própria de pipeline** do AIgnt OS.
+
 ## Fontes de verdade
 Antes de iniciar qualquer trabalho, leia nesta ordem:
 1. `CONTEXT.md`
@@ -21,163 +23,312 @@ Em caso de conflito:
 ## Regras gerais
 - Trabalhe **uma feature por vez**.
 - Não misture escopo de duas features na mesma mudança.
-- Sempre siga o fluxo oficial:
-  1. `SPEC`
-  2. `TEST_RED`
-  3. `CODE_GREEN`
-  4. `REFACTOR`
-  5. `SECURITY_REVIEW`
-  6. `REPORT`
-  7. `COMMIT`
+- Sempre siga o fluxo oficial do projeto.
 - Nunca invente requisitos ausentes. Se faltar informação, reduza escopo e registre a lacuna em `NOTES.md`.
 - Prefira mudanças pequenas, localizadas e reversíveis.
 - Nunca altere docs centrais sem necessidade real da feature.
-- Use sempre o nome **AIgnt-Synapse-Flow** ao se referir ao runtime interno do AIgnt OS. Ao menos uma vez por documento, deixe claro que ele é a **engine própria de pipeline** do AIgnt OS.
 - Preserve o caráter **CLI-first**, **spec-first** e **feature-by-feature** do projeto.
+- Use sempre o nome **AIgnt-Synapse-Flow** ao se referir ao runtime interno do AIgnt OS, deixando explícito ao menos uma vez por documento que ele é a **engine própria de pipeline** do AIgnt OS.
 
 ## Convenção de nomes para agents/skills
 - Use o padrão `<domínio>-<papel>`.
 - Mantenha nomes em inglês.
 - Famílias preferidas: `repo-*`, `git-*`, `security-*`, `session-*`, `technical-*`, `adr-*`, `debug-*`, `spec-*`, `test-*`, `green-*`.
 
-## Branch Sync Gate
-- Em qualquer branch diferente de `main`, verifique drift com `origin/main` antes de trabalho relevante, antes de `commit`/`push`/`PR` e depois de mudanças estruturais com risco de drift.
-- Use `./scripts/branch-sync-check.sh` para detectar atraso sempre.
-- Use `./scripts/branch-sync-update.sh` apenas como atualização conservadora/best effort: só quando a branch não for `main`, a working tree estiver limpa e não houver conflito imediato detectável.
-- Mesmo após essa checagem, `rebase` ou `merge` ainda podem exigir intervenção manual.
-- Se a branch estiver atrasada e não for seguro atualizar, pare e reporte explicitamente.
-
 ## Fluxo oficial do projeto
 
-```text
-SPEC → TEST_RED → CODE_GREEN → REFACTOR → SECURITY_REVIEW → REPORT → COMMIT
-```
+SPEC → TEST_RED → CODE_GREEN → REFACTOR → QUALITY_GATE → SECURITY_REVIEW → REPORT → COMMIT
+Regras do fluxo
 
-- `DOCKER_PREFLIGHT` é gate operacional condicional, obrigatório antes de execução prática que dependa de Docker, imagem, boot, ciclo de vida, persistência ou integração.
-- O preflight operacional de Docker/container é responsabilidade da skill `repo-automation`.
-- Em CI e no fluxo local, o `DOCKER_PREFLIGHT` deve permanecer leve por padrão: validar `compose config` sem subir o container completo; build fica explícito quando necessário.
-- Hooks locais podem executar checks leves de repositório, mas isso não substitui o `DOCKER_PREFLIGHT` operacional real quando a tarefa exigir validação prática em Docker.
-- O container completo só sobe em workflow dedicado de runtime/integração ou quando houver pedido explícito ligado a boot, ciclo de vida, persistência ou integração.
-- `security-review` atua como gate de segurança antes de `REPORT` e `COMMIT`.
-- `SPEC` pode conter subetapas internas como descoberta, normalização e validação, sem alterar o fluxo oficial acima.
+DOCKER_PREFLIGHT é gate operacional condicional.
 
-## Escopo do MVP
-No MVP:
-- 1 workspace por run
-- memória semântica apenas advisory/read-only
-- observabilidade local
-- `RUN_REPORT.md` por execução
-- pipeline linear state-driven
-- runtime dual simples: CLI efêmero + worker leve
-- sem DAG distribuída real
-- sem vector DB obrigatório
-- sem roteamento automático por memória semântica
+DOCKER_PREFLIGHT é obrigatório antes de execução prática que dependa de Docker, imagem, boot, ciclo de vida, persistência ou integração.
 
-## Critérios de parada
-Pare imediatamente e peça revisão quando:
-- a `SPEC.md` estiver ambígua
-- os testes contradisserem a SPEC
-- a mudança exigir refatoração ampla fora da feature
-- a mudança pedir alteração arquitetural não coberta pelos ADRs
-- a saída esperada não puder ser validada de forma clara
+O preflight operacional de Docker/container deve permanecer leve por padrão: validar compose config sem subir runtime completo.
 
-## Política de desenvolvimento
-- Faça TDD de forma explícita.
-- Escreva testes antes do código de produção.
-- Não refatore antes de os testes ficarem verdes.
-- Não inicie execução prática dependente de Docker sem `DOCKER_PREFLIGHT` validado.
-- Mantenha baixo acoplamento e contratos explícitos com Pydantic.
-- Trate parsing como componente crítico.
-- Separe output bruto de output limpo.
-- Não use abstrações prematuras.
+Build de imagem é explícito quando necessário.
 
-## Execução local do Codex
-- Neste repositório, a operação do Codex deve ser **container-first** via `./scripts/dev-codex.sh`.
-- O serviço `codex-dev` existe só para desenvolvimento assistido; o serviço `aignt-os` continua sendo o container de runtime da aplicação e do AIgnt-Synapse-Flow, a engine própria de pipeline do AIgnt OS.
-- Não rode o Codex diretamente no host quando a tarefa exigir execução prática em container.
-- O fluxo padrão do Codex deve montar apenas o repositório em `/workspace` e usar a configuração versionada em `.codex/config.toml`.
-- Não monte `docker.sock`, não use `privileged` e não monte o `$HOME` do host no ambiente isolado do Codex.
-- No ambiente atual do Codex com `network-access = true`, tente `git push` e `gh pr create` normalmente no sandbox como caminho padrão.
-- Reexecute fora do sandbox apenas como contingência quando houver falha real de rede/sandbox ou bloqueio operacional equivalente.
-- Trate autenticação, permissão no GitHub e conectividade real do host como problemas distintos; não masque esses casos com fallback automático.
+Runtime completo é exceção e só deve ocorrer em workflow dedicado ou quando a tarefa tocar boot, ciclo de vida, persistência ou integração.
 
-## Agentes recomendados
-### 1. repo-automation
-Responsável por:
-- executar `DOCKER_PREFLIGHT` quando houver validação operacional real ligada a Docker/container
-- validar build/rebuild do container
-- validar alinhamento operacional com `main`
-- preparar workflows e scripts operacionais
-- distinguir checks leves de hook do `DOCKER_PREFLIGHT` operacional real
-- manter o preflight leve por padrão, promovendo runtime completo apenas quando explicitamente necessário
-Não inicia lógica de produto.
-Não faz diagnóstico inicial de falhas; use `debug-failure` antes quando o problema ainda não estiver classificado.
+QUALITY_GATE ocorre depois de REFACTOR e antes de SECURITY_REVIEW.
 
-### debug-failure
-Responsável por:
-- investigar falhas reais em CI, scripts, testes, Docker, runtime, Git e ambiente local
-- reproduzir a falha quando possível
-- classificar a falha por tipo e indicar o próximo agent responsável
-Não implementa a correção, não decide backlog e não substitui `repo-automation`.
+SECURITY_REVIEW atua como gate de segurança antes de REPORT e COMMIT.
 
-### memory-curator
-Responsável por:
-- manter `memory.md` como memória durável e reaproveitável do projeto
-- consolidar decisões, trade-offs, estado da frente e próximos passos
-- gerar handoff de sessão quando explicitamente invocada para encerramento
-Não substitui `session-logger`, não decide backlog e não cria ADR.
+REPORT consolida escopo alterado, validações, riscos residuais e próximos passos.
 
-### 2. spec-editor
-Responsável por:
-- melhorar o pedido do usuário
-- transformar o pedido em `SPEC.md`
-- ajustar `SPEC_FORMAT.md` apenas se necessário
-- reduzir ambiguidade
+COMMIT só deve ocorrer ao final do fluxo, com gates anteriores satisfeitos.
+
+SPEC pode conter subetapas internas como descoberta, normalização e validação, sem alterar o fluxo oficial acima.
+
+Mandatory skill usage
+
+Use as skills abaixo como padrão operacional do repositório:
+
+technical-triage
+
+Use quando o pedido ainda estiver difuso, amplo ou mal classificado.
+Não substitui spec-editor.
+
+spec-editor
+
+Use quando a demanda ainda não estiver convertida em SPEC.md clara, estável e validável.
 Não implementa código de produção.
 
-### 3. test-red
-Responsável por:
-- ler `SPEC.md`
-- criar testes que falham
-- validar critérios de aceite da feature
+test-red
+
+Use quando a SPEC.md já estiver estável e for hora de escrever testes que falham.
 Não implementa código de produção.
 
-### 4. green-refactor
-Responsável por:
-- implementar o mínimo para passar nos testes
-- refatorar após os testes ficarem verdes
-- manter compatibilidade com a arquitetura
+green-refactor
+
+Use quando já existir etapa RED validada e for hora de passar os testes com a menor mudança possível.
+Refatora somente após os testes ficarem verdes.
 Não altera a SPEC sem motivo explícito.
 
-### 5. security-review
-Responsável por:
-- revisar riscos de Docker, scripts, workflows, skills e código alterado
-- atuar como gate de segurança antes de `REPORT` e `COMMIT`
-- registrar mitigação objetiva quando houver ressalvas
-Não substitui `repo-automation` na execução operacional.
+repo-preflight
 
-## Alternativas de operação
+Use antes de execução prática dependente de Docker/container.
+É responsável por DOCKER_PREFLIGHT.
+Não inicia lógica de produto.
+Não substitui debug-failure quando o problema ainda não estiver classificado.
+
+branch-sync-guard
+
+Use:
+
+antes de trabalho relevante em branch diferente de main
+
+antes de commit / push / PR
+
+depois de mudanças estruturais com risco de drift
+
+quality-gate
+
+Use depois de REFACTOR e antes de SECURITY_REVIEW,
+para validar testes, lint, typecheck e regressão funcional.
+
+security-review
+
+Use depois de quality-gate e antes de REPORT / COMMIT.
+Revisa riscos de Docker, scripts, workflows, skills e código alterado.
+Registra mitigação objetiva quando houver ressalvas.
+
+report-writer
+
+Use depois de security-review,
+para consolidar escopo alterado, validações, riscos residuais e próximos passos.
+
+git-flow-manager
+
+Use somente no final do fluxo,
+depois de branch-sync-guard, quality-gate, security-review e report-writer.
+
+ci-automation
+
+Use quando a tarefa envolver GitHub Actions, hooks, scripts operacionais, gatilhos de rebuild ou automação de repositório.
+
+debug-failure
+
+Use quando houver falha real ainda não classificada.
+Investiga, reproduz quando possível, classifica e indica o próximo agent responsável.
+Não implementa a correção.
+
+session-logger
+
+Use para fechamento operacional da sessão corrente.
+
+memory-curator
+
+Use para memória durável, handoff e consolidação de contexto.
+Mantém memory.md como memória reutilizável do projeto.
+Não substitui session-logger.
+
+adr-manager
+
+Use apenas quando a mudança exigir decisão arquitetural nova ou ajuste real de ADR.
+
+Agent roles
+
+Os papéis de multi-agent deste projeto são:
+
+explorer
+
+mapeia arquitetura, arquivos afetados, ADRs, SPECs, execução e evidências
+
+não propõe mudanças cedo demais
+
+reviewer
+
+revisa correção, regressão, segurança, cobertura e risco técnico
+
+não implementa código
+
+worker
+
+implementa mudanças pequenas e focadas depois que a frente estiver entendida
+
+monitor
+
+acompanha comandos longos, logs, runtime, CI e evidências operacionais
+
+não assume ownership da implementação
+
+Branch Sync Gate
+
+Em qualquer branch diferente de main:
+
+use ./scripts/branch-sync-check.sh para detectar drift com origin/main
+
+use ./scripts/branch-sync-update.sh apenas como atualização conservadora:
+
+somente fora de main
+
+somente com working tree limpa
+
+somente quando não houver conflito imediato detectável
+
+mesmo após a checagem, rebase ou merge ainda podem exigir intervenção manual
+
+se a branch estiver atrasada e não for seguro atualizar, pare e reporte explicitamente
+
+Escopo do MVP
+
+No MVP:
+
+1 workspace por run
+
+memória semântica apenas advisory/read-only
+
+observabilidade local
+
+RUN_REPORT.md por execução
+
+pipeline linear state-driven
+
+runtime dual simples: CLI efêmero + worker leve
+
+sem DAG distribuída real
+
+sem vector DB obrigatório
+
+sem roteamento automático por memória semântica
+
+Critérios de parada
+
+Pare e reporte quando:
+
+a SPEC.md estiver ambígua
+
+os testes contradisserem a SPEC
+
+a mudança exigir refatoração ampla fora da feature
+
+a mudança pedir alteração arquitetural não coberta pelos ADRs
+
+a saída esperada não puder ser validada de forma clara
+
+Política de desenvolvimento
+
+Faça TDD de forma explícita.
+
+Escreva testes antes do código de produção.
+
+Não refatore antes de os testes ficarem verdes.
+
+Não inicie execução prática dependente de Docker sem DOCKER_PREFLIGHT validado.
+
+Mantenha baixo acoplamento e contratos explícitos com Pydantic.
+
+Trate parsing como componente crítico.
+
+Separe output bruto de output limpo.
+
+Não use abstrações prematuras.
+
+Execução local do Codex
+
+Neste repositório, a operação do Codex deve ser container-first via ./scripts/dev-codex.sh.
+
+O serviço codex-dev existe só para desenvolvimento assistido.
+
+O serviço aignt-os continua sendo o container de runtime da aplicação e do AIgnt-Synapse-Flow, a engine própria de pipeline do AIgnt OS.
+
+Não rode o Codex diretamente no host quando a tarefa exigir execução prática em container.
+
+O fluxo padrão do Codex deve montar apenas o repositório em /workspace e usar a configuração versionada em .codex/config.toml.
+
+Não monte docker.sock, não use privileged e não monte o $HOME do host no ambiente isolado do Codex.
+
+No ambiente atual com network_access = true, tente git push e gh pr create normalmente no sandbox como caminho padrão.
+
+Reexecute fora do sandbox apenas como contingência quando houver falha real de rede/sandbox ou bloqueio operacional equivalente.
+
+Trate autenticação, permissão no GitHub e conectividade real do host como problemas distintos; não masque esses casos com fallback automático.
+
+Alternativas de operação
+
 Se multi-agent não estiver disponível:
-- execute `spec-editor` primeiro
-- depois `test-red`
-- depois `green-refactor`
-- execute `repo-automation` quando a feature exigir execução prática dependente de Docker
-- depois `security-review`
+
+execute technical-triage quando a demanda ainda estiver difusa
+
+execute spec-editor
+
+execute test-red
+
+execute green-refactor
+
+execute repo-preflight quando a feature exigir execução prática dependente de Docker
+
+execute quality-gate
+
+execute security-review
+
+execute report-writer
+
+execute git-flow-manager no encerramento
+
+execute session-logger e memory-curator quando necessário
 
 Se multi-agent estiver disponível:
-- `spec-editor` pode abrir a frente e estabilizar a SPEC sem depender de preflight inicial
-- `test-red` e leituras auxiliares podem rodar em paralelo apenas quando a SPEC estiver estável
-- `green-refactor` só começa após a etapa RED estar validada
-- `repo-automation` entra antes de validação prática que dependa de Docker, imagem ou runtime
-- `security-review` roda depois de `REFACTOR` e antes de `REPORT`/`COMMIT`
 
-## Entregáveis por feature
+explorer pode abrir a frente e estabilizar contexto, arquivos afetados e evidências
+
+spec-editor estabiliza a SPEC sem depender de preflight inicial
+
+test-red e leituras auxiliares podem rodar em paralelo apenas quando a SPEC estiver estável
+
+worker só começa após a etapa RED estar validada
+
+repo-preflight entra antes de validação prática que dependa de Docker, imagem ou runtime
+
+monitor acompanha logs, runtime e evidências operacionais
+
+reviewer atua em correção, regressão, cobertura e segurança após a implementação
+
+quality-gate roda depois de REFACTOR
+
+security-review roda depois de quality-gate e antes de REPORT / COMMIT
+
+Entregáveis por feature
+
 Cada feature deve terminar com:
-- `SPEC.md` atualizado
-- testes cobrindo a feature
-- implementação mínima funcional
-- refatoração concluída
-- revisão de segurança concluída
-- `NOTES.md` com decisões locais
-- checklist de aceite da feature
-- `DOCKER_PREFLIGHT` validado ou explicitamente aprovado quando houver execução prática dependente de Docker
+
+SPEC.md atualizado
+
+testes cobrindo a feature
+
+implementação mínima funcional
+
+refatoração concluída
+
+revisão de qualidade concluída
+
+revisão de segurança concluída
+
+NOTES.md com decisões locais
+
+checklist de aceite da feature
+
+RUN_REPORT.md ou relatório equivalente quando aplicável
+
+DOCKER_PREFLIGHT validado ou explicitamente aprovado quando houver execução prática dependente de Docker
