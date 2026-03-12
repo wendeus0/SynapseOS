@@ -89,16 +89,14 @@ Organizar o desenvolvimento do projeto em features pequenas, isoladas por branch
 **Entrega:** `aignt runs submit <spec_path>` com `--mode auto|sync|async` e `--stop-at`.
 **Branch/worktree:** `feature/f15-public-run-submission`
 
-## Próxima etapa pós-F18
+## Próxima etapa pós-F20
 
-A fila ativa do projeto deixou de ser o cronograma histórico do MVP inicial. A nova etapa segue o **cenário misto** definido na triagem, ja incorporou `F15-public-run-submission`, `F16-run-detail-expansion`, `F21-cli-error-model-and-exit-codes` e `F18-canonical-happy-path` no baseline atual e esta detalhada em `docs/architecture/PHASE_2_ROADMAP.md`.
+A fila ativa do projeto deixou de ser o cronograma histórico do MVP inicial. A nova etapa segue o **cenário misto** definido na triagem, ja incorporou `F15-public-run-submission`, `F16-run-detail-expansion`, `F21-cli-error-model-and-exit-codes`, `F18-canonical-happy-path`, `F19-environment-doctor` e `F20-public-onboarding` no baseline atual e esta detalhada em `docs/architecture/PHASE_2_ROADMAP.md`.
 
 ### Sequência oficial remanescente da etapa 2
 
-1. `F19-environment-doctor`
-2. `F20-public-onboarding`
-3. `F17-artifact-preview`
-4. `F22-release-readiness`
+1. `F17-artifact-preview`
+2. `F22-release-readiness`
 
 ### Padrão mínimo de descrição por feature
 

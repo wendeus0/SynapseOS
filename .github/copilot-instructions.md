@@ -195,12 +195,10 @@ The current runtime is a minimal dual-mode foundation:
 
 ### Current roadmap direction
 
-The active backlog after `F18-canonical-happy-path` is not the old MVP cronograma anymore. The current baseline already incorporates `F15-public-run-submission`, `F16-run-detail-expansion`, `F21-cli-error-model-and-exit-codes`, and `F18-canonical-happy-path`. The remaining ordered queue is:
+The active backlog after `F20-public-onboarding` is not the old MVP cronograma anymore. The current baseline already incorporates `F15-public-run-submission`, `F16-run-detail-expansion`, `F21-cli-error-model-and-exit-codes`, `F18-canonical-happy-path`, `F19-environment-doctor`, and `F20-public-onboarding`. The remaining ordered queue is:
 
-1. `F19-environment-doctor`
-2. `F20-public-onboarding`
-3. `F17-artifact-preview`
-4. `F22-release-readiness`
+1. `F17-artifact-preview`
+2. `F22-release-readiness`
 
 Treat that sequence as the current planning baseline.
 

@@ -13,14 +13,12 @@ Registrar a proxima etapa do projeto apos a conclusao do MVP inicial e dos follo
 
 ## Estrategia adotada
 
-A etapa 2 segue o **cenario misto** escolhido na triagem. A `F15-public-run-submission` ja foi concluida e mergeada em `main`, e o baseline real atual ja incorpora `F16-run-detail-expansion`, `F21-cli-error-model-and-exit-codes` e `F18-canonical-happy-path`. Com isso, a fila ativa remanescente passa a ser:
+A etapa 2 segue o **cenario misto** escolhido na triagem. O baseline real atual ja incorpora `F15-public-run-submission`, `F16-run-detail-expansion`, `F21-cli-error-model-and-exit-codes`, `F18-canonical-happy-path`, `F19-environment-doctor` e `F20-public-onboarding`. Com isso, a fila ativa remanescente passa a ser:
 
-1. `F19-environment-doctor`
-2. `F20-public-onboarding`
-3. `F17-artifact-preview`
-4. `F22-release-readiness`
+1. `F17-artifact-preview`
+2. `F22-release-readiness`
 
-O objetivo desta ordem continua sendo abrir primeiro o caminho publico principal de execucao, depois endurecer diagnostico e contrato operacional, e so entao expandir demo, onboarding e leitura rica de artifacts.
+O objetivo desta ordem continua sendo fechar primeiro a leitura rica controlada dos sinais ja persistidos pela CLI publica e, em seguida, empacotar a etapa como release tecnica coerente.
 
 ## Guardrails avaliados antes da etapa 2
 
@@ -82,12 +80,10 @@ Alocacao recomendada quando esses itens voltarem:
 - **Criterio de pronto**: existe uma execucao canonica reproduzivel e auditavel.
 - **Risco principal**: acoplar a demo a pre-requisitos externos frageis.
 
-## Fila ativa da etapa 2
-
 ### F19 — Environment Doctor
 - **Objetivo**: oferecer diagnostico local para os pre-requisitos do fluxo publico.
 - **Valor para a fase**: reduz troubleshooting antes da primeira run real.
-- **Superficie publica afetada**: `aignt doctor` ou `aignt runtime doctor`.
+- **Superficie publica afetada**: `aignt doctor`.
 - **Dependencias**: happy path ja conhecido o suficiente para virar checklist.
 - **Fora de escopo**: auto-correcao de ambiente.
 - **Criterio de pronto**: o usuario entende o que falta para executar o fluxo oficial.
@@ -102,10 +98,12 @@ Alocacao recomendada quando esses itens voltarem:
 - **Criterio de pronto**: alguem de fora consegue fazer a primeira run sem ajuda direta.
 - **Risco principal**: documentar fluxo ainda instavel e gerar drift rapido.
 
+## Fila ativa da etapa 2
+
 ### F17 — Artifact Preview
 - **Objetivo**: permitir consulta de report e outputs uteis pela CLI.
 - **Valor para a fase**: melhora conforto de operacao depois do caminho principal estar estavel.
-- **Superficie publica afetada**: extensoes de `runs show` para preview controlado de report e output por step.
+- **Superficie publica afetada**: extensoes de `aignt runs show <run_id>` para preview controlado de `RUN_REPORT.md` e de output limpo por step.
 - **Dependencias**: F16 e caminho canonico ja consolidados.
 - **Fora de escopo**: dump irrestrito de arquivos e leitura arbitraria do host.
 - **Criterio de pronto**: o usuario le report e outputs-chave sem abrir arquivos manualmente.
