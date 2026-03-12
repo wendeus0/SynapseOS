@@ -63,7 +63,7 @@ model_reasoning_effort = "medium"
 model_reasoning_summary = "auto"
 model_verbosity = "medium"
 
-Notes
+#Notes
 # - container_planning is the default safe profile for discovery and implementation.
 # - container_aggressive is reserved for the isolated codex-dev environment only.
 # - openaiDeveloperDocs stays in the baseline because it is low-friction and
