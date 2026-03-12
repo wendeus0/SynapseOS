@@ -104,11 +104,21 @@ O baseline atual já incorpora:
 7. `F17-artifact-preview`
 8. `F22-release-readiness`
 
-### Próxima decisão pós-`F22`
+## Guardrails pós-release já concluídos
+
+O baseline atual também já incorpora a primeira onda de guardrails pós-release:
+
+1. `F23-security-sanitization-foundation`
+2. `F24-workspace-boundary-hardening`
+3. `F25-generated-artifact-ast-guard`
+4. `F26-run-provenance-integrity`
+5. `F27-adapter-concurrency-guard`
+
+### Próxima decisão pós-`F27`
 
 - Abrir uma nova SPEC antes de qualquer implementação adicional.
 - Usar `docs/IDEAS.md` apenas como backlog candidato, não como fila ativa automática.
-- Considerar `IDEA-001 / G-02` como menor follow-up imediato apenas se houver risco real em observabilidade pública.
+- Triar explicitamente os itens remanescentes da `IDEA-001`, com viés pragmático para `G-09` antes de `G-11`.
 
 ### Padrão mínimo de descrição por feature
 
@@ -123,13 +133,13 @@ Cada frente da etapa 2 deve ser documentada pelo menos com:
 
 ### Guardrails candidatos após a etapa 2
 
-Propostas de hardening sobre input, secrets, rate limiting e audit trail foram avaliadas antes da abertura da etapa 2 e permanecem como backlog candidato após o seu fechamento.
+Propostas de hardening sobre input, secrets, rate limiting e audit trail foram avaliadas antes da abertura da etapa 2. Parte desse pacote já foi absorvida entre `F23` e `F27`; o restante continua como backlog candidato após esse fechamento.
 
 Diretriz atual:
 - nao abrir essas propostas como features autonomas sem antes promover uma nova SPEC;
 - nao reciclar IDs ja usados (`F14`) nem o ID reservado da `F15`;
-- permitir apenas um follow-up curto de mascaramento de secrets em saidas `_clean` e artifacts publicos se surgir risco real antes da `F21`;
-- absorver o restante dentro de `F21` ou de follow-up proprio curto, se houver necessidade concreta.
+- nao reabrir como backlog ativo itens ja absorvidos por `F23 -> F27`;
+- tratar `G-09` e `G-11` como os principais candidatos remanescentes para a proxima frente.
 
 ## Features que ficam fora do MVP de 10 dias
 - DAG real com fan-out/fan-in

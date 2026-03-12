@@ -68,7 +68,7 @@ de absorção correspondente ser alcançada. A decisão do `PHASE_2_ROADMAP.md` 
 
 Indica em qual feature da fila ativa a ideia faz mais sentido entrar.
 
-Valores válidos: `F16`, `F17`, `F18`, `F19`, `F20`, `F21`, `F22`, `pós-F22`, `imediato`.
+Valores válidos: `F16`, `F17`, `F18`, `F19`, `F20`, `F21`, `F22`, `pós-F27`, `imediato`.
 
 ---
 
@@ -141,7 +141,7 @@ Ao promover:
 | **Prioridade** | critical / high / medium / low |
 | **Esforço** | XS / S / M / L / XL |
 | **Status** | open |
-| **Absorção recomendada** | FNN ou pós-F22 |
+| **Absorção recomendada** | FNN ou pós-F27 |
 | **Depende de** | IDEA-NNN ou — |
 
 ### Problema
@@ -168,24 +168,24 @@ Ao promover:
 | **Depende de** | — |
 
 Esta IDEA consolida os gaps de proteção identificados na análise de guardrails do AIgnt OS.
-Cada item tem prioridade e absorção independentes. Os itens não viram features autônomas —
-são absorvidos nas features da Fase 2 indicadas.
+Cada item tem prioridade e absorção independentes. Parte do programa já foi absorvida
+em `F23 -> F27`; os itens remanescentes continuam candidatos a novas SPECs próprias.
 
 ### Itens
 
-| Item | Descrição | Prioridade | Esforço | Absorção sugerida |
-|------|-----------|------------|---------|-------------------|
-| G-01 | Prevenção de Bidi attack (`strip_bidi_controls()`) | high | XS | F16 ou follow-up F15 |
-| G-02 | Mascaramento de secrets em campos `_clean` | high | S | **Imediato** (recorte mínimo) |
-| G-03 | Scanning AST de artefatos gerados por IA | high | M | F18 ou F21 |
-| G-04 | Normalização Unicode de inputs (`NFKC`) | medium | XS | Junto com G-01 ou G-02 |
-| G-05 | Isolamento de workspace por run (boundary check) | medium | XS | F16 |
-| G-06 | Integridade da SPEC por hash SHA-256 | medium | M | F18 |
-| G-07 | Rate limiting via `asyncio.Semaphore` no adapter layer | medium | M | pós-F21 |
-| G-08 | Audit trail com `initiated_by` e security events | medium | M | F21 |
-| G-09 | Circuit breaker para adapters (estado persistido entre runs) | medium | L | pós-F22 |
-| G-10 | Log sanitization de artefatos em disco | low | S | F17 |
-| G-11 | Autenticação e autorização (socket + RBAC) | low | XL | pós-F22 |
+| Item | Descrição | Prioridade | Esforço | Status atual | Absorção recomendada |
+|------|-----------|------------|---------|--------------|----------------------|
+| G-01 | Prevenção de Bidi attack (`strip_bidi_controls()`) | high | XS | absorbed em `F23` | — |
+| G-02 | Mascaramento de secrets em campos `_clean` | high | S | absorbed em `F23` | — |
+| G-03 | Scanning AST de artefatos gerados por IA | high | M | absorbed em `F25` | — |
+| G-04 | Normalização Unicode de inputs (`NFKC`) | medium | XS | absorbed em `F23` | — |
+| G-05 | Isolamento de workspace por run (boundary check) | medium | XS | absorbed em `F24` | — |
+| G-06 | Integridade da SPEC por hash SHA-256 | medium | M | absorbed em `F26` | — |
+| G-07 | Rate limiting via `asyncio.Semaphore` no adapter layer | medium | M | absorbed em `F27` | — |
+| G-08 | Audit trail com `initiated_by` e security events | medium | M | absorbed em `F26` | — |
+| G-09 | Circuit breaker para adapters (estado persistido entre runs) | medium | L | open | pós-F27 |
+| G-10 | Log sanitization de artefatos em disco | low | S | absorbed em `F24` | — |
+| G-11 | Autenticação e autorização (socket + RBAC) | low | XL | open | pós-F27 |
 
 ### Problema
 
@@ -202,34 +202,36 @@ ataque crescente à medida que a Fase 2 amplia a interface pública (`runs submi
 - **Ausência de rastreabilidade**: `RunRecord` não tem `initiated_by` nem events tipados
   como `security_failure`, dificultando auditoria e resposta a incidentes (G-08)
 
-Gaps secundários (médio prazo): boundary check de workspace (G-05), integridade da SPEC
-por hash (G-06), rate limiting (G-07), circuit breaker (G-09) e autenticação (G-11).
+Gaps secundários ainda em aberto no médio prazo: circuit breaker (G-09) e autenticação
+(G-11). Boundary check, integridade da SPEC, rate limiting, audit trail mínimo e
+sanitização pública já foram absorvidos no baseline atual.
 
 ### Solução proposta
 
-Absorver cada item G-01 a G-11 na feature da Fase 2 indicada na tabela, seguindo o
-fluxo oficial `SPEC → TEST_RED → CODE_GREEN → REFACTOR → SECURITY_REVIEW → COMMIT`.
+Absorver os itens remanescentes em features próprias, seguindo o fluxo oficial
+`SPEC → TEST_RED → CODE_GREEN → REFACTOR → SECURITY_REVIEW → COMMIT`.
 
-**Recorte imediato** (G-02, sem abrir feature nova — único permitido pelo PHASE_2_ROADMAP):
-- Preservar `stdout_raw` / `stderr_raw` intactos
-- Mascarar padrões em `stdout_clean` / `stderr_clean` e nos artefatos de leitura pública:
-  `ghp_[A-Za-z0-9_]+`, `ghs_[A-Za-z0-9_]+`, `Bearer [A-Za-z0-9._-]+`, `sk-[A-Za-z0-9]+`
-- Configurar `AppSettings.secret_mask_patterns: list[str]` para extensibilidade
+Absorções já concluídas no baseline atual:
+- `F23`: `G-01`, `G-02` e `G-04`
+- `F24`: `G-05` e o recorte público remanescente de `G-10`
+- `F25`: `G-03`
+- `F26`: `G-06` e `G-08`
+- `F27`: `G-07`
 
-**Centralização técnica** (a ser feita quando G-01, G-02 ou G-03 forem absorvidos):
-- Criar `src/aignt_os/security.py` como módulo de segurança compartilhado
-- Eliminar a duplicação de `ANSI_ESCAPE_RE` em `adapters.py` e `parsing.py`
+Centralização técnica já realizada:
+- `src/aignt_os/security.py` foi criado como módulo de segurança compartilhado
+- a sanitização pública passou a reutilizar helpers compartilhados no baseline atual
 
 ### Impacto arquitetural
 
 - **Mudança estrutural:** sim — G-06 e G-08 exigem migration SQLite;
   G-09 exige novo arquivo de estado; G-11 exige nova camada de autenticação
-- **Novos agents/skills:** sim — G-11 exige `auth-guard` skill (pós-F22)
+- **Novos agents/skills:** sim — G-11 exige `auth-guard` skill (pós-F27)
 - **Novos contratos Pydantic:**
-  - G-02: `AppSettings.secret_mask_patterns: list[str]`
-  - G-06: `RunRecord.spec_hash: str | None`
-  - G-07: `AppSettings.max_concurrent_adapters: int = 4`
-  - G-08: `RunRecord.initiated_by: str`
+  - já absorvido: `AppSettings.secret_mask_patterns: list[str]`
+  - já absorvido: `RunRecord.spec_hash: str | None`
+  - já absorvido: `AppSettings.max_concurrent_adapters: int = 4`
+  - já absorvido: `RunRecord.initiated_by: str`
   - G-09: `CircuitBreakerState` (novo modelo)
   - G-11: `AuthToken`, `Principal` (novos modelos)
 

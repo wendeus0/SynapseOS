@@ -2,6 +2,10 @@
 
 ## Decisões incorporadas recentemente
 
+- Em 2026-03-12, o handoff operacional foi realinhado ao baseline real pós-`F27`: `main` já incorpora `F23-security-sanitization-foundation`, `F24-workspace-boundary-hardening`, `F25-generated-artifact-ast-guard`, `F26-run-provenance-integrity` e `F27-adapter-concurrency-guard`, via merges `#56` a `#60`.
+- Com esse realinhamento, a “primeira SPEC pós-`F22`” deixou de ser pendência atual: a etapa 2 e a primeira onda de guardrails já foram concluídas em `main`, e a próxima decisão passa a ser a primeira SPEC pós-`F27`.
+- O backlog remanescente da `IDEA-001` ficou reduzido principalmente a `G-09` (circuit breaker para adapters) e `G-11` (autenticação/autorização), com `G-09` como menor recorte técnico natural para a próxima triagem.
+
 - Em 2026-03-12, o baseline documental foi realinhado ao estado real do repositório: `main` já incorpora `F17-artifact-preview` e `F22-release-readiness`, fechando a etapa 2 no código, na CLI pública e na release técnica.
 - A `F17-artifact-preview` foi mergeada em `main`, consolidando `aignt runs show <run_id> --preview report` e `--preview <STEP_STATE>.clean` com leitura textual truncada e sem abrir leitura arbitrária do host.
 - A `F22-release-readiness` foi mergeada em `main`, consolidando `CHANGELOG.md`, `docs/release/phase-2-technical-release.md`, README alinhado ao quickstart `sync-first` e boundary explícito para artifact preview.
@@ -125,8 +129,8 @@
 
 - Fixtures de testes aspiracionais marcadas como 🔜 no TDD.md: `tests/fixtures/worker/` (ainda ausente).
 - Property-based testing com `hypothesis` ainda não implementado (mencionado como evolução futura em TDD.md).
-- Nao abrir o pacote de guardrails proposto como novas `F14`/`F15`; manter a numeração histórica e abrir qualquer frente nova apenas com SPEC pós-`F22`.
-- Definir a primeira feature pós-`F22` a partir de triagem explícita; `IDEA-001 / G-02` segue como menor candidato imediato se houver risco concreto.
+- Promover a próxima feature apenas com SPEC própria pós-`F27`, sem reaproveitar backlog textual como fila automática.
+- Triar explicitamente `G-09` versus `G-11` antes de abrir nova frente; `G-09` segue como candidato de menor escopo relativo no backlog remanescente da `IDEA-001`.
 
 ## Pontos de atenção futuros
 
@@ -163,15 +167,17 @@
 - **TTY em container**: Rich degrada automaticamente sem TTY; Textual exige guarda `sys.stdout.isatty()`.
 - **Não implementar antes**: apesar da F14 resolver a observabilidade minima via CLI, TUI real continua dependendo de recorte proprio de watch/streaming e da camada `observability/`.
 
-## Estado da etapa 2
+## Estado do baseline atual
 
 - Etapa 2 concluída em `main` com `F17-artifact-preview` e `F22-release-readiness` já mergeadas.
-- A fila ativa passa a ser definida pela próxima SPEC pós-`F22`, não mais por features remanescentes da etapa 2.
+- A primeira onda de guardrails pós-release também está concluída em `main` com `F23 -> F27`.
+- A fila ativa agora passa a ser definida pela próxima SPEC pós-`F27`, não mais pela abertura da primeira SPEC pós-`F22`.
 
 ## Guardrails candidatos fora da fila principal
 
-- Mascaramento de secrets em saidas `_clean` e artifacts publicos pode virar follow-up curto apenas se houver risco concreto apos a F15 e antes de a `F21` absorver esse contrato de forma mais ampla.
-- Rate limiting por adapter, audit trail adicional com `initiated_by` e hardening amplo de config nao devem abrir frente propria agora; reavaliar como follow-up proprio curto ou dentro da `F21`.
+- Os follow-ups curtos de mascaramento publico e normalizacao textual deixaram de ser candidatos: esses recortes foram absorvidos na `F23`.
+- Rate limiting por adapter, audit trail adicional com `initiated_by` e hardening amplo de config tambem deixaram de ser backlog aberto isolado: esses recortes foram absorvidos em `F26` e `F27`.
+- Os itens de guardrail ainda em aberto concentram-se em `G-09` e `G-11`.
 
 ## Itens que podem virar novas features ou ajustes futuros
 

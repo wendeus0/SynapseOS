@@ -9,16 +9,17 @@
 - A F13 introduziu a primeira saida enriquecida com Rich em `src/`, mantendo o AIgnt-Synapse-Flow como a engine propria de pipeline do AIgnt OS e limitando o recorte a `aignt runtime status`.
 - A F14 adicionou observabilidade CLI-first sobre runs persistidas com `aignt runs list` e `aignt runs show <run_id>`, reaproveitando `RunRepository` e `ArtifactStore` sem abrir TUI.
 - A etapa 2 documentada em `docs/architecture/PHASE_2_ROADMAP.md` foi concluida em `main`: o baseline atual ja consolidou `F15 -> F16 -> F21 -> F18 -> F19 -> F20 -> F17 -> F22` como release tecnica coerente.
-- Uma proposta de guardrails pre-etapa-2 sobre input, secrets, rate limiting e audit trail foi avaliada e nao virou nova frente autonoma; por ora, so um endurecimento curto de mascaramento de secrets em campos `_clean` segue como candidato excepcional.
+- O baseline atual tambem ja incorporou a primeira onda de guardrails pos-release com `F23 -> F27`: sanitizacao de superficies publicas, boundary de workspace/artifacts, AST guard para artifacts Python, provenance minima por run e limite local de concorrencia no adapter layer.
 - A `F15-public-run-submission` foi concluida e mergeada em `main`: a CLI agora expõe `aignt runs submit <spec_path>` com `--mode auto|sync|async` e `--stop-at`, reaproveitando o `RunDispatchService` interno sem alterar schema nem abrir nova service layer.
 - A `F17-artifact-preview` ja foi mergeada em `main`, adicionando preview textual controlado de `RUN_REPORT.md` e `clean_output` por step em `aignt runs show <run_id> --preview <target>`.
 - A `F22-release-readiness` ja foi mergeada em `main`, fechando a etapa 2 com `CHANGELOG.md`, release notes versionada e README alinhado ao boundary entre quickstart `sync-first` e artifact preview.
+- `main` atual tambem ja incorpora `F23-security-sanitization-foundation`, `F24-workspace-boundary-hardening`, `F25-generated-artifact-ast-guard`, `F26-run-provenance-integrity` e `F27-adapter-concurrency-guard`, com merges `#56` a `#60`.
 
 ## Local snapshot
 
 - `main` local permanece sincronizada com `origin/main`, sem diff aberto no baseline usado para o handoff atual.
-- O baseline atual ja incorpora `F15-public-run-submission`, `F16-run-detail-expansion`, `F21-cli-error-model-and-exit-codes`, `F18-canonical-happy-path`, `F19-environment-doctor`, `F20-public-onboarding`, `F17-artifact-preview` e `F22-release-readiness`, com fontes de verdade realinhadas ao estado real do repositorio.
-- A release tecnica da etapa 2 ja esta refletida no codigo e na superficie publica da CLI; a proxima decisao passa a ser abrir a fila pos-`F22`, nao fechar merges pendentes.
+- O baseline atual ja incorpora `F15-public-run-submission`, `F16-run-detail-expansion`, `F21-cli-error-model-and-exit-codes`, `F18-canonical-happy-path`, `F19-environment-doctor`, `F20-public-onboarding`, `F17-artifact-preview`, `F22-release-readiness` e a sequencia `F23 -> F27`.
+- A release tecnica da etapa 2 e a primeira trilha de guardrails ja estao refletidas no codigo e na superficie publica da CLI; a proxima decisao passa a ser abrir a proxima SPEC apos `F27`, nao reconciliar merges pendentes.
 
 # Stable decisions
 
@@ -34,13 +35,13 @@
 
 # Active fronts
 
-- Nao ha feature de produto ativa no momento; a etapa 2 esta concluida e o baseline publico atual ja inclui submit, diagnostico, detail, preview e release readiness.
-- Nao ha frente autonoma extra aberta antes da fila pos-`F22`; os guardrails propostos seguem candidatos e nao backlog ativo.
+- Nao ha feature de produto ativa no momento; a etapa 2 e a primeira onda de guardrails pos-release ja foram mergeadas em `main`.
+- O backlog aberto da `IDEA-001` ficou reduzido aos itens ainda nao absorvidos, com `G-09` e `G-11` como candidatos remanescentes de maior porte.
 
 # Open decisions
 
-- A proxima decisao pratica em aberto e qual sera a primeira feature pos-`F22`; o repositorio ainda nao tem SPEC ativa para essa fase.
-- O menor candidato ja registrado continua sendo `IDEA-001 / G-02` em `docs/IDEAS.md`: mascaramento de secrets em campos `_clean` e artifacts de leitura publica, caso o risco justifique abertura imediata.
+- A proxima decisao pratica em aberto e qual sera a primeira feature apos `F27`; o repositorio ainda nao tem SPEC ativa para essa fase.
+- O candidato mais logico no backlog atual e `IDEA-001 / G-09`, porque `G-01` a `G-08` e `G-10` ja foram absorvidos pelas features `F23 -> F27`, enquanto `G-11` continua maior e explicitamente pos-MVP.
 - Decidir em momento futuro se o smoke autenticado do Codex deve virar gate obrigatorio; por ora o `401 Unauthorized` ficou classificado como bloqueio operacional externo e nao como requisito de produto.
 
 # Recurrent pitfalls
@@ -54,13 +55,13 @@
 
 # Next recommended steps
 
-- Manter `docs/architecture/PHASE_2_ROADMAP.md`, `WORKTREE_FEATURES.md`, `README.md`, `memory.md`, `PENDING_LOG.md` e `.github/copilot-instructions.md` coerentes entre si apos o fechamento da etapa 2.
-- Nao abrir `F14-tui-watch-command` por inercia; a proxima frente deve nascer de SPEC pos-`F22`, nao de backlog informal.
-- Se houver risco concreto de exposicao em observabilidade publica, priorizar a promocao de `IDEA-001 / G-02`; caso contrario, fazer a triagem da fila pos-`F22` antes de nova implementacao.
+- Manter `memory.md`, `PENDING_LOG.md`, `docs/IDEAS.md` e `WORKTREE_FEATURES.md` coerentes entre si apos a merge de `F27`.
+- Nao abrir `F14-tui-watch-command` por inercia; a proxima frente deve nascer de SPEC propria apos `F27`, nao de backlog informal.
+- Priorizar a triagem da proxima SPEC entre `G-09` e `G-11`, com vies pratico para `G-09` por ser o menor recorte restante do programa de guardrails.
 
 # Last handoff summary
 
 - Read before acting: releia `AGENTS.md`, `CONTEXT.md`, `memory.md`, `PENDING_LOG.md`, `ERROR_LOG.md`, `git status` e `git diff --stat`.
-- Current state: `main` ja incorpora `F17` e `F22`; a etapa 2 esta encerrada no baseline atual.
-- Open points: estabilizar a memoria operacional para o estado pos-release e abrir a proxima feature apenas via nova SPEC.
-- Recommended next front: triagem da fila pos-`F22`, com `IDEA-001 / G-02` como menor recorte candidato se houver urgencia de seguranca.
+- Current state: `main` ja incorpora `F17`, `F22` e `F23 -> F27`; a etapa 2 e a primeira trilha de guardrails estao encerradas no baseline atual.
+- Open points: promover a proxima feature apenas via nova SPEC e manter o handoff alinhado ao estado real do backlog.
+- Recommended next front: triagem da fila remanescente da `IDEA-001`, com `G-09` como proximo recorte tecnico mais natural.
