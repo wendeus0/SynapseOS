@@ -71,6 +71,38 @@ def test_base_cli_adapter_executes_subprocess_and_sanitizes_streams(
     assert result.success is True
 
 
+def test_base_cli_adapter_masks_secrets_and_normalizes_unicode_in_clean_streams(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    adapters = _adapters_module()
+
+    class FakeAdapter(_FakeAdapterMixin, adapters.BaseCLIAdapter):
+        pass
+
+    fake_process = _FakeProcess(
+        stdout=b"\x1b[32mBearer secret-token\x1b[0m e\xcc\x81 \xe2\x80\xae\xef\xbc\xa6\n",
+        stderr=b"sk-secret123\n",
+        returncode=0,
+    )
+
+    async def fake_create_subprocess_exec(*command: str, **kwargs: object) -> _FakeProcess:
+        del command, kwargs
+        return fake_process
+
+    monkeypatch.setattr(adapters.asyncio, "create_subprocess_exec", fake_create_subprocess_exec)
+
+    result = asyncio.run(FakeAdapter(tool_name="fake-tool").execute("plan feature"))
+
+    assert "\x1b[" not in result.stdout_clean
+    assert "Bearer secret-token" not in result.stdout_clean
+    assert "sk-secret123" not in result.stderr_clean
+    assert "é" in result.stdout_clean
+    assert "\u202E" not in result.stdout_clean
+    assert "F" in result.stdout_clean
+    assert "[REDACTED]" in result.stdout_clean
+    assert "[REDACTED]" in result.stderr_clean
+
+
 def test_base_cli_adapter_marks_nonzero_exit_as_unsuccessful(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

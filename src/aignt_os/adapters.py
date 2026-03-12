@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 import asyncio
-import re
 import time
 from abc import ABC, abstractmethod
 
 from aignt_os.contracts import CLIExecutionResult, CodexExecutionAssessment
+from aignt_os.security import sanitize_clean_text
 
-ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 _LAUNCHER_UNAVAILABLE_PATTERNS = (
     "docker: command not found",
     "cannot connect to the docker daemon",
@@ -107,7 +106,11 @@ class BaseCLIAdapter(ABC):
         )
 
     def _sanitize_stream(self, value: str) -> str:
-        return ANSI_ESCAPE_RE.sub("", value).strip()
+        return sanitize_clean_text(
+            value,
+            remove_ansi=True,
+            strip_outer_whitespace=True,
+        )
 
     def _validate_command(self, command: list[str]) -> None:
         if not command:

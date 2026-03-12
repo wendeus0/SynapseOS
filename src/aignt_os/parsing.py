@@ -5,7 +5,13 @@ import re
 
 from pydantic import BaseModel, ConfigDict, Field
 
-ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+from aignt_os.security import (
+    mask_secrets,
+    normalize_unicode,
+    strip_ansi_sequences,
+    strip_bidi_controls,
+)
+
 FENCED_BLOCK_RE = re.compile(
     r"```(?P<language>[^\n`]*)\n(?P<content>.*?)```",
     re.DOTALL,
@@ -41,7 +47,7 @@ def parse_cli_output(raw_output: str) -> ParsedOutput:
     artifacts = _extract_fenced_blocks(clean_output)
     return ParsedOutput(
         stdout_raw=raw_output,
-        stdout_clean=clean_output,
+        stdout_clean=mask_secrets(clean_output),
         artifacts=artifacts,
     )
 
@@ -57,7 +63,7 @@ def validate_python_artifact(artifact: ParsedArtifact) -> None:
 
 
 def _clean_output(raw_output: str) -> str:
-    without_ansi = ANSI_ESCAPE_RE.sub("", raw_output)
+    without_ansi = strip_ansi_sequences(strip_bidi_controls(normalize_unicode(raw_output)))
     cleaned_lines: list[str] = []
     inside_fence = False
 
