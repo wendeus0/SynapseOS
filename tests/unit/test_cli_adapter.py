@@ -475,3 +475,107 @@ def test_classify_codex_execution_result(
 
     assert assessment.category == expected_category
     assert assessment.is_operational_block == expected_blocked
+
+
+def test_codex_cli_adapter_opens_circuit_breaker_after_two_operational_failures(
+    tmp_path, monkeypatch
+) -> None:  # type: ignore[no-untyped-def]
+    adapters = _adapters_module()
+    circuit_breaker_module = import_module("aignt_os.runtime.circuit_breaker")
+
+    monkeypatch.setenv("AIGNT_OS_RUNTIME_STATE_DIR", str(tmp_path / "runtime"))
+    monkeypatch.setenv("AIGNT_OS_ADAPTER_CIRCUIT_BREAKER_FAILURE_THRESHOLD", "2")
+    monkeypatch.setenv("AIGNT_OS_ADAPTER_CIRCUIT_BREAKER_COOLDOWN_SECONDS", "60")
+
+    fake_process = _FakeProcess(
+        stdout=b"",
+        stderr=b"Cannot connect to the Docker daemon\n",
+        returncode=1,
+    )
+
+    async def fake_create_subprocess_exec(*command: str, **kwargs: object) -> _FakeProcess:
+        del command, kwargs
+        return fake_process
+
+    monkeypatch.setattr(adapters.asyncio, "create_subprocess_exec", fake_create_subprocess_exec)
+
+    first_result = asyncio.run(adapters.CodexCLIAdapter().execute("Implement the plan."))
+    second_result = asyncio.run(adapters.CodexCLIAdapter().execute("Implement the plan."))
+    store = circuit_breaker_module.AdapterCircuitBreakerStore(
+        tmp_path / "runtime" / "adapter-circuit-breakers.json"
+    )
+    state = store.read("codex")
+
+    assert adapters.classify_codex_execution(first_result).category == "launcher_unavailable"
+    assert adapters.classify_codex_execution(second_result).category == "launcher_unavailable"
+    assert state is not None
+    assert state.consecutive_operational_failures == 2
+    assert state.cooldown_until is not None
+    assert store.is_open("codex") is True
+
+
+def test_codex_cli_adapter_blocks_without_spawn_when_circuit_is_open(
+    tmp_path, monkeypatch
+) -> None:  # type: ignore[no-untyped-def]
+    adapters = _adapters_module()
+    circuit_breaker_module = import_module("aignt_os.runtime.circuit_breaker")
+
+    monkeypatch.setenv("AIGNT_OS_RUNTIME_STATE_DIR", str(tmp_path / "runtime"))
+    monkeypatch.setenv("AIGNT_OS_ADAPTER_CIRCUIT_BREAKER_FAILURE_THRESHOLD", "2")
+    monkeypatch.setenv("AIGNT_OS_ADAPTER_CIRCUIT_BREAKER_COOLDOWN_SECONDS", "60")
+
+    store = circuit_breaker_module.AdapterCircuitBreakerStore(
+        tmp_path / "runtime" / "adapter-circuit-breakers.json"
+    )
+    store.record_operational_failure("codex", threshold=2, cooldown_seconds=60.0, now=10.0)
+    store.record_operational_failure("codex", threshold=2, cooldown_seconds=60.0, now=11.0)
+
+    async def fail_if_called(*command: str, **kwargs: object) -> _FakeProcess:
+        del command, kwargs
+        raise AssertionError("subprocess should not be spawned while circuit is open")
+
+    monkeypatch.setattr(adapters.asyncio, "create_subprocess_exec", fail_if_called)
+    monkeypatch.setattr(adapters.time, "time", lambda: 12.0)
+
+    result = asyncio.run(adapters.CodexCLIAdapter().execute("Implement the plan."))
+    assessment = adapters.classify_codex_execution(result)
+
+    assert result.success is False
+    assert assessment.category == "circuit_open"
+    assert assessment.is_operational_block is True
+
+
+def test_codex_cli_adapter_resets_breaker_after_non_operational_probe(
+    tmp_path, monkeypatch
+) -> None:  # type: ignore[no-untyped-def]
+    adapters = _adapters_module()
+    circuit_breaker_module = import_module("aignt_os.runtime.circuit_breaker")
+
+    monkeypatch.setenv("AIGNT_OS_RUNTIME_STATE_DIR", str(tmp_path / "runtime"))
+    monkeypatch.setenv("AIGNT_OS_ADAPTER_CIRCUIT_BREAKER_FAILURE_THRESHOLD", "2")
+    monkeypatch.setenv("AIGNT_OS_ADAPTER_CIRCUIT_BREAKER_COOLDOWN_SECONDS", "60")
+
+    store = circuit_breaker_module.AdapterCircuitBreakerStore(
+        tmp_path / "runtime" / "adapter-circuit-breakers.json"
+    )
+    store.record_operational_failure("codex", threshold=2, cooldown_seconds=60.0, now=10.0)
+    store.record_operational_failure("codex", threshold=2, cooldown_seconds=60.0, now=11.0)
+
+    fake_process = _FakeProcess(
+        stdout=b"",
+        stderr=b"unexpected codex failure\n",
+        returncode=2,
+    )
+
+    async def fake_create_subprocess_exec(*command: str, **kwargs: object) -> _FakeProcess:
+        del command, kwargs
+        return fake_process
+
+    monkeypatch.setattr(adapters.asyncio, "create_subprocess_exec", fake_create_subprocess_exec)
+    monkeypatch.setattr(adapters.time, "time", lambda: 72.0)
+
+    result = asyncio.run(adapters.CodexCLIAdapter().execute("Implement the plan."))
+    assessment = adapters.classify_codex_execution(result)
+
+    assert assessment.category == "return_code_nonzero"
+    assert store.read("codex") is None

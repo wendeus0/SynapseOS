@@ -122,3 +122,52 @@ exit 98
     assert result.success is False
     assert assessment.category == "launcher_unavailable"
     assert assessment.is_operational_block is True
+
+
+def test_codex_cli_adapter_persists_breaker_between_instances_with_fake_docker(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    adapters = import_module("aignt_os.adapters")
+    fake_docker_log = tmp_path / "docker.log"
+
+    _install_fake_docker(
+        tmp_path,
+        """
+printf '%s\\n' "$*" >> "${FAKE_DOCKER_LOG:?}"
+if [[ "$1" != "compose" ]]; then
+  printf 'unexpected docker invocation: %s\\n' "$*" >&2
+  exit 97
+fi
+shift
+while [[ $# -gt 0 && "$1" == "-f" ]]; do
+  shift 2
+done
+if [[ "${1:-}" == "up" ]]; then
+  printf 'Cannot connect to the Docker daemon\\n' >&2
+  exit 1
+fi
+printf 'unexpected compose subcommand: %s\\n' "${1:-}" >&2
+exit 98
+""".strip(),
+    )
+
+    monkeypatch.setenv("FAKE_DOCKER_LOG", str(fake_docker_log))
+    monkeypatch.setenv("PATH", f"{tmp_path}{os.pathsep}{os.environ['PATH']}")
+    monkeypatch.setenv("AIGNT_OS_RUNTIME_STATE_DIR", str(tmp_path / "runtime"))
+    monkeypatch.setenv("AIGNT_OS_ADAPTER_CIRCUIT_BREAKER_FAILURE_THRESHOLD", "2")
+    monkeypatch.setenv("AIGNT_OS_ADAPTER_CIRCUIT_BREAKER_COOLDOWN_SECONDS", "60")
+
+    first_result = asyncio.run(adapters.CodexCLIAdapter().execute("Implement the plan."))
+    second_result = asyncio.run(adapters.CodexCLIAdapter().execute("Implement the plan."))
+    third_result = asyncio.run(adapters.CodexCLIAdapter().execute("Implement the plan."))
+
+    assert adapters.classify_codex_execution(first_result).category == "launcher_unavailable"
+    assert adapters.classify_codex_execution(second_result).category == "launcher_unavailable"
+
+    third_assessment = adapters.classify_codex_execution(third_result)
+    assert third_assessment.category == "circuit_open"
+    assert third_assessment.is_operational_block is True
+
+    docker_log = fake_docker_log.read_text(encoding="utf-8")
+    assert docker_log.count("up --detach codex-dev") == 2

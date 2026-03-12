@@ -135,6 +135,17 @@ def test_settings_exposes_default_max_concurrent_adapters() -> None:
     assert settings.max_concurrent_adapters == 4
 
 
+def test_settings_exposes_default_adapter_circuit_breaker_controls() -> None:
+    config_module = import_module("aignt_os.config")
+
+    settings = config_module.AppSettings()
+
+    assert settings.adapter_circuit_breaker_failure_threshold == 2
+    assert settings.adapter_circuit_breaker_cooldown_seconds == 60.0
+    assert settings.adapter_circuit_breaker_state_file.name == "adapter-circuit-breakers.json"
+    assert settings.adapter_circuit_breaker_state_file.parent == settings.runtime_state_dir
+
+
 def test_settings_rejects_invalid_environment_value() -> None:
     config_module = import_module("aignt_os.config")
 
@@ -147,6 +158,20 @@ def test_settings_rejects_non_positive_max_concurrent_adapters() -> None:
 
     with pytest.raises(ValidationError):
         config_module.AppSettings(max_concurrent_adapters=0)
+
+
+def test_settings_rejects_non_positive_adapter_circuit_breaker_threshold() -> None:
+    config_module = import_module("aignt_os.config")
+
+    with pytest.raises(ValidationError):
+        config_module.AppSettings(adapter_circuit_breaker_failure_threshold=0)
+
+
+def test_settings_rejects_non_positive_adapter_circuit_breaker_cooldown() -> None:
+    config_module = import_module("aignt_os.config")
+
+    with pytest.raises(ValidationError):
+        config_module.AppSettings(adapter_circuit_breaker_cooldown_seconds=0)
 
 
 @pytest.mark.parametrize(
