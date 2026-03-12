@@ -203,6 +203,22 @@ O caminho oficial atual da primeira run continua local e `sync-first`. Use esta 
 - Se a sua primeira execucao depender desses cenarios, saia do quickstart e rode o preflight operacional do projeto via `repo-preflight` (`./scripts/docker-preflight.sh`).
 - `runtime_state=warn` nao bloqueia o caminho minimo atual, porque a demonstracao oficial continua local e `sync-first`; o status `warn` e advisory, nao falha bloqueante.
 
+## Artifact Preview
+
+O preview de artifacts e uma capacidade adicional da CLI publica, nao um requisito da primeira run minima. O quickstart continua local e `sync-first` ate `SPEC_VALIDATION`; o preview so aparece quando a run ja possui artifacts persistidos compativeis, como `RUN_REPORT.md` ou `clean_output` por step.
+
+Exemplos suportados:
+
+- `aignt runs show <run_id> --preview report`
+- `aignt runs show <run_id> --preview PLAN.clean`
+
+Limites do recorte atual:
+
+- o preview continua textual e truncado no inicio do arquivo;
+- `raw_output` continua fora de escopo;
+- nao ha leitura arbitraria de path informado pelo usuario;
+- se o artifact ainda nao existir, a CLI retorna `Not found:` conforme o contrato da F21.
+
 ### Troubleshooting essencial
 
 | Sinal | Leitura | Proximo passo |
