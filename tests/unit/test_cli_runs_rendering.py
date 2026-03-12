@@ -69,3 +69,33 @@ def test_render_run_detail_is_legible_without_tty() -> None:
     assert "step_completed" in rendered
     assert "2026-03-12T00:00:11+00:00" in rendered
     assert "RUN_REPORT.md" in rendered
+
+
+def test_render_run_detail_completed_at_spec_validation_guides_canonical_happy_path() -> None:
+    cli_rendering = __import__("aignt_os.cli.rendering", fromlist=["render_run_detail"])
+    output = StringIO()
+    console = Console(file=output, force_terminal=False, color_system=None, width=160)
+
+    cli_rendering.render_run_detail(
+        RunRecord(
+            run_id="run-spec-validation",
+            spec_path="SPEC.md",
+            stop_at="SPEC_VALIDATION",
+            status="completed",
+            current_state="SPEC_VALIDATION",
+            locked=False,
+            failure_message=None,
+            created_at="2026-03-12T00:00:00+00:00",
+            updated_at="2026-03-12T00:01:00+00:00",
+            completed_at="2026-03-12T00:02:00+00:00",
+        ),
+        steps=[],
+        events=[],
+        artifact_paths=[],
+        console=console,
+    )
+
+    rendered = output.getvalue()
+    assert "SPEC_VALIDATION" in rendered
+    assert "Canonical happy path is complete" in rendered
+    assert "runs show" not in rendered.lower()
