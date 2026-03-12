@@ -9,6 +9,7 @@ def _runs_env(tmp_path: Path) -> dict[str, str]:
         "AIGNT_OS_ENVIRONMENT": "test",
         "AIGNT_OS_RUNS_DB_PATH": str(tmp_path / "runs.sqlite3"),
         "AIGNT_OS_ARTIFACTS_DIR": str(tmp_path / "artifacts"),
+        "AIGNT_OS_WORKSPACE_ROOT": str(tmp_path),
     }
 
 
@@ -425,3 +426,76 @@ def test_runs_show_preview_returns_execution_error_for_non_utf8_artifact(
     assert (
         "execution error:" in result.stdout.lower() or "execution error:" in result.stderr.lower()
     )
+
+
+def test_runs_show_hides_artifact_listing_entries_that_escape_artifacts_root(
+    tmp_path: Path,
+    cli_runner,
+    cli_app,
+) -> None:
+    persistence = import_module("aignt_os.persistence")
+
+    env = _runs_env(tmp_path)
+    repository = persistence.RunRepository(Path(env["AIGNT_OS_RUNS_DB_PATH"]))
+    artifact_store = persistence.ArtifactStore(Path(env["AIGNT_OS_ARTIFACTS_DIR"]))
+    spec_path = tmp_path / "SPEC.md"
+    spec_path.write_text("# Fixture\n", encoding="utf-8")
+    external_path = tmp_path / "outside-plan.txt"
+    external_path.write_text("outside\n", encoding="utf-8")
+
+    run_id = repository.create_run(
+        spec_path=spec_path,
+        initial_state="REQUEST",
+        stop_at="DOCUMENT",
+    )
+    repository.acquire_lock(run_id)
+    repository.mark_run_running(run_id, current_state="DOCUMENT")
+    escaped_path = artifact_store.run_directory(run_id) / "PLAN" / "escaped.txt"
+    escaped_path.parent.mkdir(parents=True, exist_ok=True)
+    escaped_path.symlink_to(external_path)
+    repository.mark_run_completed(run_id, current_state="DOCUMENT")
+
+    result = cli_runner.invoke(cli_app, ["runs", "show", run_id], env=env)
+
+    assert result.exit_code == 0
+    assert f"{run_id}/PLAN/escaped.txt" not in result.stdout
+
+
+def test_runs_show_preview_clean_rejects_db_path_outside_artifacts_root(
+    tmp_path: Path,
+    cli_runner,
+    cli_app,
+) -> None:
+    persistence = import_module("aignt_os.persistence")
+
+    env = _runs_env(tmp_path)
+    repository = persistence.RunRepository(Path(env["AIGNT_OS_RUNS_DB_PATH"]))
+    spec_path = tmp_path / "SPEC.md"
+    spec_path.write_text("# Fixture\n", encoding="utf-8")
+    external_path = tmp_path / "outside-clean.txt"
+    external_path.write_text("outside\n", encoding="utf-8")
+
+    run_id = repository.create_run(
+        spec_path=spec_path,
+        initial_state="REQUEST",
+        stop_at="DOCUMENT",
+    )
+    repository.acquire_lock(run_id)
+    repository.mark_run_running(run_id, current_state="PLAN")
+    repository.record_step(
+        run_id,
+        state="PLAN",
+        status="completed",
+        clean_output_path=external_path,
+    )
+    repository.mark_run_completed(run_id, current_state="DOCUMENT")
+
+    result = cli_runner.invoke(
+        cli_app,
+        ["runs", "show", run_id, "--preview", "PLAN.clean"],
+        env=env,
+    )
+
+    assert result.exit_code == 3
+    assert "not found:" in result.stdout.lower() or "not found:" in result.stderr.lower()
+    assert "outside" not in result.stdout

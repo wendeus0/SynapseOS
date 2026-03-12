@@ -47,6 +47,7 @@ def _submit_env(tmp_path: Path) -> dict[str, str]:
     env["AIGNT_OS_RUNTIME_STATE_DIR"] = str(tmp_path / "runtime")
     env["AIGNT_OS_RUNS_DB_PATH"] = str(tmp_path / "runs" / "runs.sqlite3")
     env["AIGNT_OS_ARTIFACTS_DIR"] = str(tmp_path / "artifacts")
+    env["AIGNT_OS_WORKSPACE_ROOT"] = str(tmp_path)
     env["AIGNT_OS_RUNTIME_POLL_INTERVAL_SECONDS"] = "0.05"
     return env
 
@@ -249,4 +250,62 @@ def test_runs_submit_fails_predictably_when_spec_is_invalid(
     assert (
         "validation error:" in result.stdout.lower() or "validation error:" in result.stderr.lower()
     )
+    assert repository.list_runs() == []
+
+
+def test_runs_submit_rejects_spec_outside_workspace_root(
+    tmp_path: Path,
+    cli_runner,
+    cli_app,
+) -> None:
+    workspace_root = tmp_path / "workspace"
+    workspace_root.mkdir()
+    outside_spec_path = tmp_path / "outside" / "SPEC.md"
+    outside_spec_path.parent.mkdir()
+    _write_valid_spec(outside_spec_path)
+
+    env = _submit_env(tmp_path)
+    env["AIGNT_OS_WORKSPACE_ROOT"] = str(workspace_root)
+
+    result = cli_runner.invoke(
+        cli_app,
+        ["runs", "submit", str(outside_spec_path)],
+        env=env,
+    )
+
+    persistence = import_module("aignt_os.persistence")
+    repository = persistence.RunRepository(tmp_path / "runs" / "runs.sqlite3")
+
+    assert result.exit_code == 3
+    assert "not found:" in result.stdout.lower() or "not found:" in result.stderr.lower()
+    assert repository.list_runs() == []
+
+
+def test_runs_submit_rejects_symlinked_spec_that_resolves_outside_workspace_root(
+    tmp_path: Path,
+    cli_runner,
+    cli_app,
+) -> None:
+    workspace_root = tmp_path / "workspace"
+    workspace_root.mkdir()
+    outside_spec_path = tmp_path / "outside" / "SPEC.md"
+    outside_spec_path.parent.mkdir()
+    _write_valid_spec(outside_spec_path)
+    escaped_spec_path = workspace_root / "SPEC.md"
+    escaped_spec_path.symlink_to(outside_spec_path)
+
+    env = _submit_env(tmp_path)
+    env["AIGNT_OS_WORKSPACE_ROOT"] = str(workspace_root)
+
+    result = cli_runner.invoke(
+        cli_app,
+        ["runs", "submit", str(escaped_spec_path)],
+        env=env,
+    )
+
+    persistence = import_module("aignt_os.persistence")
+    repository = persistence.RunRepository(tmp_path / "runs" / "runs.sqlite3")
+
+    assert result.exit_code == 3
+    assert "not found:" in result.stdout.lower() or "not found:" in result.stderr.lower()
     assert repository.list_runs() == []

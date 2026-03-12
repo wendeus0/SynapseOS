@@ -165,6 +165,7 @@ def test_run_dispatch_service_auto_queues_when_runtime_process_is_ready(
         repository=repository,
         runner=runner,
         is_runtime_ready=runtime_service.ready,
+        workspace_root=tmp_path,
     )
 
     runtime_service.start()

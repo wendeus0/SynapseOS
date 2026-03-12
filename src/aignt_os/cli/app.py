@@ -32,6 +32,7 @@ from aignt_os.pipeline import PIPELINE_STOP_STATES
 from aignt_os.runtime.dispatch import RunDispatchService
 from aignt_os.runtime.service import RuntimeLifecycleError, RuntimeService
 from aignt_os.runtime.worker import build_runtime_worker
+from aignt_os.security import resolve_path_within_root
 from aignt_os.specs import SpecValidationError
 
 app = typer.Typer(help="AIgnt OS CLI")
@@ -232,7 +233,8 @@ def _validate_preview_target(preview_target: str) -> tuple[str, str | None]:
 
 def _relative_artifact_path(artifact_store: ArtifactStore, artifact_path: Path) -> str:
     try:
-        return str(artifact_path.resolve().relative_to(artifact_store.base_path.resolve()))
+        resolved_path = resolve_path_within_root(artifact_path, root=artifact_store.base_path)
+        return str(resolved_path.relative_to(artifact_store.base_path.resolve()))
     except ValueError as exc:
         raise not_found_error(
             "Requested preview is outside the persisted artifacts directory."
@@ -319,6 +321,7 @@ def _dispatch_service() -> RunDispatchService:
         repository=repository,
         runner=runner,
         is_runtime_ready=runtime_service.ready,
+        workspace_root=settings.workspace_root,
     )
 
 

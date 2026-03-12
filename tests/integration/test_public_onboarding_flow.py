@@ -10,6 +10,7 @@ def _onboarding_env(tmp_path: Path) -> dict[str, str]:
         "AIGNT_OS_RUNTIME_STATE_DIR": str(tmp_path / "runtime"),
         "AIGNT_OS_RUNS_DB_PATH": str(tmp_path / "runs" / "runs.sqlite3"),
         "AIGNT_OS_ARTIFACTS_DIR": str(tmp_path / "artifacts"),
+        "AIGNT_OS_WORKSPACE_ROOT": str(tmp_path),
     }
 
 

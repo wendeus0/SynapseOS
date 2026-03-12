@@ -22,6 +22,7 @@ def test_settings_exposes_all_expected_default_paths() -> None:
     assert isinstance(settings.runtime_state_dir, Path)
     assert isinstance(settings.runs_db_path, Path)
     assert isinstance(settings.artifacts_dir, Path)
+    assert isinstance(settings.workspace_root, Path)
     assert settings.secret_mask_patterns
 
 
@@ -78,6 +79,34 @@ def test_settings_runtime_state_file_is_child_of_state_dir() -> None:
     settings = config_module.AppSettings()
 
     assert settings.runtime_state_file.parent == settings.runtime_state_dir
+
+
+def test_settings_workspace_root_defaults_to_current_working_directory() -> None:
+    config_module = import_module("aignt_os.config")
+
+    settings = config_module.AppSettings()
+
+    assert settings.workspace_root == Path.cwd()
+
+
+def test_settings_accepts_workspace_root_override(monkeypatch: pytest.MonkeyPatch) -> None:
+    config_module = import_module("aignt_os.config")
+    monkeypatch.setenv("AIGNT_OS_WORKSPACE_ROOT", ".workspace-root")
+
+    settings = config_module.AppSettings()
+
+    assert settings.workspace_root == Path(".workspace-root")
+
+
+def test_settings_workspace_root_uses_current_working_directory_at_instantiation(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    config_module = import_module("aignt_os.config")
+    monkeypatch.chdir(tmp_path)
+
+    settings = config_module.AppSettings()
+
+    assert settings.workspace_root == tmp_path
 
 
 def test_settings_exposes_default_secret_mask_patterns() -> None:

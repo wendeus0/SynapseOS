@@ -32,7 +32,7 @@ from aignt_os.pipeline import (
     StepExecutionResult,
     StepExecutor,
 )
-from aignt_os.security import sanitize_clean_text
+from aignt_os.security import resolve_path_within_root, sanitize_clean_text
 from aignt_os.supervisor import Supervisor, SupervisorDecision
 
 ARTIFACT_DIR_MODE = 0o700
@@ -323,11 +323,11 @@ class ArtifactStore:
         clean_path = None
 
         if raw_output is not None:
-            raw_path = step_directory / "raw.txt"
+            raw_path = resolve_path_within_root(step_directory / "raw.txt", root=self.base_path)
             _write_private_text(raw_path, raw_output)
 
         if clean_output is not None:
-            clean_path = step_directory / "clean.txt"
+            clean_path = resolve_path_within_root(step_directory / "clean.txt", root=self.base_path)
             _write_private_text(
                 clean_path,
                 sanitize_clean_text(
@@ -348,7 +348,10 @@ class ArtifactStore:
     ) -> Path:
         step_directory = self._step_directory(run_id, step_state)
         safe_name = _safe_segment(artifact_name, fallback="artifact")
-        artifact_path = step_directory / f"{safe_name}.txt"
+        artifact_path = resolve_path_within_root(
+            step_directory / f"{safe_name}.txt",
+            root=self.base_path,
+        )
         _write_private_text(
             artifact_path,
             sanitize_clean_text(
@@ -359,7 +362,10 @@ class ArtifactStore:
         return artifact_path
 
     def save_run_report(self, *, run_id: str, content: str) -> Path:
-        report_path = self.run_directory(run_id) / "RUN_REPORT.md"
+        report_path = resolve_path_within_root(
+            self.run_directory(run_id) / "RUN_REPORT.md",
+            root=self.base_path,
+        )
         _write_private_text(
             report_path,
             sanitize_clean_text(
@@ -373,11 +379,16 @@ class ArtifactStore:
         run_directory = self.base_path / _safe_segment(run_id, fallback="run")
         if not run_directory.exists():
             return []
-        return sorted(
-            str(path.relative_to(self.base_path))
-            for path in run_directory.rglob("*")
-            if path.is_file()
-        )
+        artifact_paths: list[str] = []
+        for path in run_directory.rglob("*"):
+            if not path.is_file():
+                continue
+            try:
+                resolve_path_within_root(path, root=self.base_path)
+            except ValueError:
+                continue
+            artifact_paths.append(str(path.relative_to(self.base_path)))
+        return sorted(artifact_paths)
 
     def _step_directory(self, run_id: str, step_state: str) -> Path:
         run_directory = self.run_directory(run_id)

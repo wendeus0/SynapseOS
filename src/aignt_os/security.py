@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 import unicodedata
 from collections.abc import Sequence
+from pathlib import Path
 
 ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 BIDI_CONTROL_RE = re.compile(r"[\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]")
@@ -54,3 +55,13 @@ def sanitize_clean_text(
     if strip_outer_whitespace:
         return sanitized.strip()
     return sanitized
+
+
+def resolve_path_within_root(path: Path, *, root: Path) -> Path:
+    resolved_root = root.resolve()
+    resolved_path = path.resolve()
+    try:
+        resolved_path.relative_to(resolved_root)
+    except ValueError as exc:
+        raise ValueError(f"Path escapes trusted root: {path}") from exc
+    return resolved_path

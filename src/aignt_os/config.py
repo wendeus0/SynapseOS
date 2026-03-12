@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Literal
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from aignt_os.security import DEFAULT_SECRET_MASK_PATTERNS
@@ -17,6 +18,7 @@ class AppSettings(BaseSettings):
     runtime_state_dir: Path = Path(".aignt-os/runtime")
     runs_db_path: Path = Path(".aignt-os/runs/runs.sqlite3")
     artifacts_dir: Path = Path(".aignt-os/artifacts")
+    workspace_root: Path = Field(default_factory=Path.cwd)
     runtime_poll_interval_seconds: float = 0.5
     secret_mask_patterns: list[str] = list(DEFAULT_SECRET_MASK_PATTERNS)
 

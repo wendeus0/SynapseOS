@@ -49,6 +49,7 @@ def test_run_dispatch_service_executes_inline_when_mode_is_sync(tmp_path: Path) 
         repository=repository,
         runner=runner,
         is_runtime_ready=lambda: False,
+        workspace_root=tmp_path,
     )
 
     result = service.dispatch(spec_path, stop_at="SPEC_VALIDATION", mode="sync")
@@ -76,6 +77,7 @@ def test_run_dispatch_service_auto_queues_when_runtime_is_ready(tmp_path: Path) 
         repository=repository,
         runner=runner,
         is_runtime_ready=lambda: True,
+        workspace_root=tmp_path,
     )
 
     result = service.dispatch(spec_path, stop_at="SPEC_VALIDATION", mode="auto")
@@ -104,6 +106,7 @@ def test_run_dispatch_service_explicit_async_queues_pending_run(tmp_path: Path) 
         repository=repository,
         runner=runner,
         is_runtime_ready=lambda: False,
+        workspace_root=tmp_path,
     )
 
     result = service.dispatch(spec_path, stop_at="SPEC_VALIDATION", mode="async")
@@ -129,6 +132,7 @@ def test_run_dispatch_service_rejects_missing_spec_path(tmp_path: Path) -> None:
         repository=repository,
         runner=runner,
         is_runtime_ready=lambda: False,
+        workspace_root=tmp_path,
     )
 
     with pytest.raises(FileNotFoundError, match="SPEC file not found"):
@@ -154,6 +158,7 @@ def test_run_dispatch_service_rejects_invalid_spec_before_persisting_run(tmp_pat
         repository=repository,
         runner=runner,
         is_runtime_ready=lambda: True,
+        workspace_root=tmp_path,
     )
 
     with pytest.raises(specs_module.SpecValidationError, match="SPEC"):
@@ -178,7 +183,89 @@ def test_run_dispatch_service_rejects_invalid_mode(tmp_path: Path) -> None:
         repository=repository,
         runner=runner,
         is_runtime_ready=lambda: False,
+        workspace_root=tmp_path,
     )
 
     with pytest.raises(ValueError, match="Unsupported dispatch mode"):
         service.dispatch(spec_path, stop_at="SPEC_VALIDATION", mode="invalid")  # type: ignore[arg-type]
+
+
+def test_run_dispatch_service_rejects_spec_outside_workspace_root(tmp_path: Path) -> None:
+    persistence = import_module("aignt_os.persistence")
+    dispatch_module = import_module("aignt_os.runtime.dispatch")
+
+    workspace_root = tmp_path / "workspace"
+    workspace_root.mkdir()
+    outside_spec = tmp_path / "outside" / "SPEC.md"
+    outside_spec.parent.mkdir()
+    _write_valid_spec(outside_spec)
+    repository = persistence.RunRepository(tmp_path / "runs.sqlite3")
+    artifact_store = persistence.ArtifactStore(tmp_path / "artifacts")
+    runner = persistence.PersistedPipelineRunner(
+        repository=repository,
+        artifact_store=artifact_store,
+    )
+    service = dispatch_module.RunDispatchService(
+        repository=repository,
+        runner=runner,
+        is_runtime_ready=lambda: False,
+        workspace_root=workspace_root,
+    )
+
+    with pytest.raises(FileNotFoundError, match="SPEC file not found"):
+        service.dispatch(outside_spec, stop_at="SPEC_VALIDATION", mode="sync")
+
+    assert repository.list_runs() == []
+
+
+def test_run_dispatch_service_rejects_directory_outside_workspace_root(tmp_path: Path) -> None:
+    persistence = import_module("aignt_os.persistence")
+    dispatch_module = import_module("aignt_os.runtime.dispatch")
+
+    workspace_root = tmp_path / "workspace"
+    workspace_root.mkdir()
+    outside_dir = tmp_path / "outside-dir"
+    outside_dir.mkdir()
+    repository = persistence.RunRepository(tmp_path / "runs.sqlite3")
+    artifact_store = persistence.ArtifactStore(tmp_path / "artifacts")
+    runner = persistence.PersistedPipelineRunner(
+        repository=repository,
+        artifact_store=artifact_store,
+    )
+    service = dispatch_module.RunDispatchService(
+        repository=repository,
+        runner=runner,
+        is_runtime_ready=lambda: False,
+        workspace_root=workspace_root,
+    )
+
+    with pytest.raises(FileNotFoundError, match="SPEC file not found"):
+        service.dispatch(outside_dir, stop_at="SPEC_VALIDATION", mode="sync")
+
+    assert repository.list_runs() == []
+
+
+def test_run_dispatch_service_persists_canonical_spec_path_for_valid_run(tmp_path: Path) -> None:
+    persistence = import_module("aignt_os.persistence")
+    dispatch_module = import_module("aignt_os.runtime.dispatch")
+
+    workspace_root = tmp_path / "workspace"
+    workspace_root.mkdir()
+    spec_path = workspace_root / "SPEC.md"
+    _write_valid_spec(spec_path)
+    repository = persistence.RunRepository(tmp_path / "runs.sqlite3")
+    artifact_store = persistence.ArtifactStore(tmp_path / "artifacts")
+    runner = persistence.PersistedPipelineRunner(
+        repository=repository,
+        artifact_store=artifact_store,
+    )
+    service = dispatch_module.RunDispatchService(
+        repository=repository,
+        runner=runner,
+        is_runtime_ready=lambda: False,
+        workspace_root=workspace_root,
+    )
+
+    result = service.dispatch(spec_path, stop_at="SPEC_VALIDATION", mode="sync")
+
+    assert repository.get_run(result.run_id).spec_path == str(spec_path.resolve())
