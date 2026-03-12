@@ -13,15 +13,12 @@ Registrar a proxima etapa do projeto apos a conclusao do MVP inicial e dos follo
 
 ## Estrategia adotada
 
-A etapa 2 segue o **cenario misto** escolhido na triagem. A `F15-public-run-submission` ja foi concluida e mergeada em `main`, entao a fila ativa remanescente passa a ser:
+A etapa 2 segue o **cenario misto** escolhido na triagem. A `F15-public-run-submission` ja foi concluida e mergeada em `main`, e o baseline real atual ja incorpora `F16-run-detail-expansion`, `F21-cli-error-model-and-exit-codes` e `F18-canonical-happy-path`. Com isso, a fila ativa remanescente passa a ser:
 
-1. `F16-run-detail-expansion`
-2. `F21-cli-error-model-and-exit-codes`
-3. `F18-canonical-happy-path`
-4. `F19-environment-doctor`
-5. `F20-public-onboarding`
-6. `F17-artifact-preview`
-7. `F22-release-readiness`
+1. `F19-environment-doctor`
+2. `F20-public-onboarding`
+3. `F17-artifact-preview`
+4. `F22-release-readiness`
 
 O objetivo desta ordem continua sendo abrir primeiro o caminho publico principal de execucao, depois endurecer diagnostico e contrato operacional, e so entao expandir demo, onboarding e leitura rica de artifacts.
 
@@ -58,8 +55,6 @@ Alocacao recomendada quando esses itens voltarem:
 - **Criterio de pronto**: um operador consegue iniciar uma run e obter `run_id`, `status` e `mode`.
 - **Risco principal**: expor submit antes de estabilizar o contrato de erro.
 
-## Fila ativa da etapa 2
-
 ### F16 — Run Detail Expansion
 - **Objetivo**: aprofundar `runs show` para explicar onde a run esta, falhou ou travou.
 - **Valor para a fase**: reduz atrito operacional logo apos a submissao publica.
@@ -86,6 +81,8 @@ Alocacao recomendada quando esses itens voltarem:
 - **Fora de escopo**: multiplos adapters reais ou multiplas demos paralelas.
 - **Criterio de pronto**: existe uma execucao canonica reproduzivel e auditavel.
 - **Risco principal**: acoplar a demo a pre-requisitos externos frageis.
+
+## Fila ativa da etapa 2
 
 ### F19 — Environment Doctor
 - **Objetivo**: oferecer diagnostico local para os pre-requisitos do fluxo publico.

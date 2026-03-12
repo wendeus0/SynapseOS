@@ -1,6 +1,7 @@
 import os
 import secrets
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated
 
@@ -18,6 +19,7 @@ from aignt_os.cli.errors import (
     validation_error,
 )
 from aignt_os.cli.rendering import (
+    render_environment_doctor,
     render_run_detail,
     render_run_submission,
     render_runs_list,
@@ -46,6 +48,153 @@ def main() -> None:
 @app.command()
 def version() -> None:
     typer.echo(__version__)
+
+
+def _doctor_check(
+    *,
+    name: str,
+    status: str,
+    target: Path,
+    message: str,
+    next_step: str,
+) -> dict[str, str]:
+    return {
+        "name": name,
+        "status": status,
+        "target": str(target),
+        "message": message,
+        "next_step": next_step,
+    }
+
+
+def _runtime_state_doctor_check(settings: AppSettings) -> dict[str, str]:
+    try:
+        state = RuntimeService(settings.runtime_state_file).status()
+    except ValueError as exc:
+        return _doctor_check(
+            name="runtime_state",
+            status="fail",
+            target=settings.runtime_state_file,
+            message=str(exc),
+            next_step="Fix the runtime state path configuration before using the CLI.",
+        )
+
+    if state.status == "running":
+        return _doctor_check(
+            name="runtime_state",
+            status="pass",
+            target=settings.runtime_state_file,
+            message="Runtime state is coherent and ready for async work.",
+            next_step="Use async submit modes only when you need resident processing.",
+        )
+    if state.status == "stopped":
+        return _doctor_check(
+            name="runtime_state",
+            status="warn",
+            target=settings.runtime_state_file,
+            message="Runtime is stopped but the sync happy path remains available.",
+            next_step="Start the runtime only if you need async dispatch.",
+        )
+    return _doctor_check(
+        name="runtime_state",
+        status="fail",
+        target=settings.runtime_state_file,
+        message="Runtime state is inconsistent.",
+        next_step="Fix or remove the persisted runtime state before retrying.",
+    )
+
+
+def _persistence_doctor_check(
+    *,
+    name: str,
+    target: Path,
+    expects_directory: bool,
+) -> dict[str, str]:
+    inspected_path = target if expects_directory else target.parent
+    failure = _path_preparation_failure(inspected_path, expects_directory=expects_directory)
+
+    if failure is not None:
+        return _doctor_check(
+            name=name,
+            status="fail",
+            target=target,
+            message=failure,
+            next_step="Fix the configured path or permissions before submitting a run.",
+        )
+
+    message = (
+        "Artifacts directory can be prepared by the current process."
+        if expects_directory
+        else "Run persistence path can be prepared by the current process."
+    )
+    next_step = (
+        "Inspect persisted outputs with `aignt runs show <run_id>` after a successful run."
+        if expects_directory
+        else "You can submit a run with `aignt runs submit`."
+    )
+    return _doctor_check(
+        name=name,
+        status="pass",
+        target=target,
+        message=message,
+        next_step=next_step,
+    )
+
+
+def _path_preparation_failure(path: Path, *, expects_directory: bool) -> str | None:
+    ancestor = path
+    while not ancestor.exists():
+        if ancestor == ancestor.parent:
+            return "No existing directory ancestor is available for this path."
+        ancestor = ancestor.parent
+
+    if not ancestor.is_dir():
+        return "Parent path is not a directory."
+
+    if not os.access(ancestor, os.W_OK | os.X_OK):
+        return "Parent directory is not writable for the current process."
+
+    if expects_directory and path.exists():
+        if not path.is_dir():
+            return "Configured directory path is not a directory."
+        if not os.access(path, os.W_OK | os.X_OK):
+            return "Configured directory is not writable for the current process."
+
+    return None
+
+
+def _collect_doctor_checks(settings: AppSettings) -> list[dict[str, str]]:
+    return [
+        _runtime_state_doctor_check(settings),
+        _persistence_doctor_check(
+            name="runs_db",
+            target=settings.runs_db_path,
+            expects_directory=False,
+        ),
+        _persistence_doctor_check(
+            name="artifacts_dir",
+            target=settings.artifacts_dir,
+            expects_directory=True,
+        ),
+    ]
+
+
+def _doctor_overall_status(checks: Sequence[dict[str, str]]) -> str:
+    if any(check["status"] == "fail" for check in checks):
+        return "fail"
+    return "pass"
+
+
+@app.command("doctor")
+def doctor() -> None:
+    settings = AppSettings()
+    checks = _collect_doctor_checks(settings)
+    overall_status = _doctor_overall_status(checks)
+
+    render_environment_doctor(overall_status=overall_status, checks=checks)
+
+    if overall_status == "fail":
+        exit_for_cli_error(environment_error("Environment doctor found blocking issues."))
 
 
 def _runtime_service() -> RuntimeService:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 from rich.console import Console, ConsoleRenderable, Group
 from rich.panel import Panel
@@ -159,12 +159,68 @@ def render_run_submission(
     )
 
 
+def render_environment_doctor(
+    *,
+    overall_status: str,
+    checks: Sequence[Mapping[str, str]],
+    console: Console | None = None,
+) -> None:
+    output_console = console or Console(width=160)
+    summary_table = Table.grid(expand=False)
+    summary_table.add_column(style="dim")
+    summary_table.add_column()
+    summary_table.add_row(
+        "Overall Status",
+        Text(overall_status, style=_status_style(overall_status)),
+    )
+
+    check_renderables: list[ConsoleRenderable] = []
+    for check in checks:
+        check_table = Table.grid(expand=False)
+        check_table.add_column(style="dim")
+        check_table.add_column()
+        check_table.add_row("Check", check["name"])
+        check_table.add_row(
+            "Status",
+            Text(check["status"], style=_status_style(check["status"])),
+        )
+        check_table.add_row("Target", check["target"])
+        check_table.add_row("Message", check["message"])
+        check_table.add_row("Next Step", check["next_step"])
+        check_renderables.append(
+            Panel.fit(
+                check_table,
+                border_style=_status_style(check["status"]),
+                padding=(0, 1),
+                title=f"Check: {check['name']}",
+            )
+        )
+
+    output_console.print(
+        Group(
+            Panel.fit(
+                summary_table,
+                border_style=_status_style(overall_status),
+                padding=(0, 1),
+                title="Environment Doctor",
+            ),
+            *check_renderables,
+        )
+    )
+
+
 def _status_style(status: str) -> str:
     if status == "running":
         return "green"
     if status == "completed":
         return "green"
+    if status == "pass":
+        return "green"
+    if status == "warn":
+        return "yellow"
     if status == "failed":
+        return "red"
+    if status == "fail":
         return "red"
     if status == "stopped":
         return "yellow"

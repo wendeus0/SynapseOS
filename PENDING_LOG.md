@@ -19,6 +19,9 @@
 - A validacao local da F15 fechou verde com `validate_spec_file()` da SPEC, `pytest` focado de dispatch/runs/runtime, `./scripts/commit-check.sh --no-sync --skip-branch-validation --skip-docker --skip-security` e `./scripts/security-gate.sh`.
 - A PR `#43` da `F15-public-run-submission` foi mergeada em `main`, consolidando `aignt runs submit <spec_path>` como superficie publica atual junto de `aignt runs list/show`.
 - A chore documental pos-F15 alinhou `README.md`, `WORKTREE_FEATURES.md`, `memory.md`, `PENDING_LOG.md` e `.github/copilot-instructions.md` ao baseline atual da etapa 2.
+- O baseline real atual tambem ja incorpora a `F16-run-detail-expansion`, a `F21-cli-error-model-and-exit-codes` e a `F18-canonical-happy-path`: as tres frentes tem `SPEC.md` propria, notes/checklists, comportamento materializado na CLI e cobertura dedicada em testes unitarios e de integracao.
+- A revalidacao focada do baseline da etapa 2 fechou verde com `uv run --no-sync python -m pytest tests/unit/test_cli_runs_rendering.py tests/integration/test_runs_submit_cli.py tests/integration/test_cli_error_model.py -q`, totalizando `12 passed`.
+- O handoff operacional foi realinhado para refletir a fila remanescente correta da etapa 2: `F19 -> F20 -> F17 -> F22`.
 
 - A `F10-run-report-one-real-adapter` foi concluida e mergeada em `main`, fechando o MVP inicial do AIgnt-Synapse-Flow com `DOCUMENT`, `RUN_REPORT.md` e o primeiro adapter real (`CodexCLIAdapter`).
 - A `F12-codex-adapter-operational-hardening` foi concluida e mergeada pela PR `#38`, com `main` local e `origin/main` sincronizados em `ahead=0 behind=0`.
@@ -111,7 +114,7 @@
 - Fixtures de testes aspiracionais marcadas como 🔜 no TDD.md: `tests/fixtures/worker/` (ainda ausente).
 - Property-based testing com `hypothesis` ainda não implementado (mencionado como evolução futura em TDD.md).
 - Nao abrir o pacote de guardrails proposto como novas `F14`/`F15`; manter a numeracao e a fila oficial ja documentadas.
-- Abrir a `F16-run-detail-expansion` como proxima feature da fila oficial da etapa 2.
+- Abrir a `F19-environment-doctor` como proxima feature da fila oficial da etapa 2.
 
 ## Pontos de atenção futuros
 
@@ -150,13 +153,10 @@
 
 ## Fila oficial da etapa 2
 
-1. `F16-run-detail-expansion`
-2. `F21-cli-error-model-and-exit-codes`
-3. `F18-canonical-happy-path`
-4. `F19-environment-doctor`
-5. `F20-public-onboarding`
-6. `F17-artifact-preview`
-7. `F22-release-readiness`
+1. `F19-environment-doctor`
+2. `F20-public-onboarding`
+3. `F17-artifact-preview`
+4. `F22-release-readiness`
 
 ## Guardrails candidatos fora da fila principal
 

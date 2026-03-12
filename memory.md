@@ -8,15 +8,15 @@
 - O MVP de produto agora chega ate `DOCUMENT`: a F10 adicionou `RUN_REPORT.md` por run e o primeiro adapter real via `CodexCLIAdapter`.
 - A F13 introduziu a primeira saida enriquecida com Rich em `src/`, mantendo o AIgnt-Synapse-Flow como a engine propria de pipeline do AIgnt OS e limitando o recorte a `aignt runtime status`.
 - A F14 adicionou observabilidade CLI-first sobre runs persistidas com `aignt runs list` e `aignt runs show <run_id>`, reaproveitando `RunRepository` e `ArtifactStore` sem abrir TUI.
-- A fila oficial da etapa seguinte foi definida pelo cenario misto e documentada em `docs/architecture/PHASE_2_ROADMAP.md`: `F15 -> F16 -> F21 -> F18 -> F19 -> F20 -> F17 -> F22`.
+- A fila oficial da etapa seguinte foi definida pelo cenario misto e documentada em `docs/architecture/PHASE_2_ROADMAP.md`. O baseline atual ja consolidou `F15 -> F16 -> F21 -> F18`, e a fila remanescente passou a ser `F19 -> F20 -> F17 -> F22`.
 - Uma proposta de guardrails pre-etapa-2 sobre input, secrets, rate limiting e audit trail foi avaliada e nao virou nova frente autonoma; por ora, so um endurecimento curto de mascaramento de secrets em campos `_clean` segue como candidato excepcional.
 - A `F15-public-run-submission` foi concluida e mergeada em `main`: a CLI agora expõe `aignt runs submit <spec_path>` com `--mode auto|sync|async` e `--stop-at`, reaproveitando o `RunDispatchService` interno sem alterar schema nem abrir nova service layer.
 
 ## Local snapshot
 
-- `main` local esta sincronizada com `origin/main` apos o merge da PR `#43` da `F15-public-run-submission`.
-- A F15 esta concluida em `main` e as fontes de verdade da etapa 2 foram alinhadas ao baseline pos-merge.
-- O proximo front de produto passa a ser a `F16-run-detail-expansion`.
+- `main` local permanece sincronizada com `origin/main`, sem diff aberto no baseline usado para o handoff atual.
+- O baseline atual ja incorpora `F15-public-run-submission`, `F16-run-detail-expansion`, `F21-cli-error-model-and-exit-codes` e `F18-canonical-happy-path`, com fontes de verdade da etapa 2 realinhadas ao estado real do repositorio.
+- O proximo front de produto passa a ser a `F19-environment-doctor`.
 
 # Stable decisions
 
@@ -37,8 +37,8 @@
 
 # Open decisions
 
-- A sequencia da etapa 2 ja foi decidida; a proxima decisao pratica em aberto e estabilizar a SPEC da `F16-run-detail-expansion`.
-- Decidir durante ou apos a F16 se o follow-up de mascaramento de secrets precisa virar frente propria curta ou se pode esperar a `F21`.
+- A sequencia da etapa 2 continua decidida; a proxima decisao pratica em aberto e estabilizar a SPEC da `F19-environment-doctor`.
+- Decidir durante ou apos a F19 se ha lacuna de diagnostico/segredos suficiente para justificar follow-up curto antes da `F20`, ou se o restante continua absorvido pela fila oficial.
 - Decidir em momento futuro se o smoke autenticado do Codex deve virar gate obrigatorio; por ora o `401 Unauthorized` ficou classificado como bloqueio operacional externo e nao como requisito de produto.
 
 # Recurrent pitfalls
@@ -54,12 +54,13 @@
 
 - Manter `docs/architecture/PHASE_2_ROADMAP.md`, `WORKTREE_FEATURES.md`, `README.md`, `memory.md`, `PENDING_LOG.md` e `.github/copilot-instructions.md` coerentes entre si.
 - Nao abrir features paralelas de hardening pre-etapa-2; se surgir risco concreto depois da F15, limitar o recorte a mascaramento de secrets em observabilidade.
-- Abrir a SPEC da `F16-run-detail-expansion`.
+- Consolidar o handoff documental da etapa 2 parcial sempre que a fila oficial mudar por merge ou validacao tardia.
+- Abrir a SPEC da `F19-environment-doctor`.
 - Nao abrir `F14-tui-watch-command` por inercia; a etapa 2 prioriza caminho publico de execucao, diagnostico e onboarding.
 
 # Last handoff summary
 
 - Read before acting: releia `AGENTS.md`, `CONTEXT.md`, `memory.md`, `PENDING_LOG.md`, `ERROR_LOG.md`, `git status` e `git diff --stat`.
-- Current state: a `F15-public-run-submission` foi mergeada em `main` e a documentacao da etapa 2 esta alinhada ao baseline atual.
-- Open points: estabilizar a SPEC da `F16-run-detail-expansion` e decidir se ha follow-up curto de mascaramento de secrets antes da `F21`.
-- Recommended next front: abrir a `F16-run-detail-expansion`.
+- Current state: a etapa 2 parcial (`F15`, `F16`, `F21`, `F18`) ja esta consolidada no baseline atual e a documentacao/handoff foram realinhados para refletir isso.
+- Open points: estabilizar a SPEC da `F19-environment-doctor` e decidir se onboarding (`F20`) pode ser aberto logo em seguida sem novo drift documental.
+- Recommended next front: abrir a `F19-environment-doctor`.

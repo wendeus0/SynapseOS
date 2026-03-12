@@ -174,17 +174,14 @@ aignt-os/
 
 ## Etapa 2 do projeto
 
-O cronograma de 10 dias acima descreve o MVP inicial já concluído. A etapa 2 do projeto já foi iniciada e a `F15-public-run-submission` foi concluída em `main`.
+O cronograma de 10 dias acima descreve o MVP inicial já concluído. A etapa 2 do projeto ja consolidou `F15-public-run-submission`, `F16-run-detail-expansion`, `F21-cli-error-model-and-exit-codes` e `F18-canonical-happy-path` no baseline atual.
 
 Próximas frentes da etapa 2:
 
-1. `F16-run-detail-expansion`
-2. `F21-cli-error-model-and-exit-codes`
-3. `F18-canonical-happy-path`
-4. `F19-environment-doctor`
-5. `F20-public-onboarding`
-6. `F17-artifact-preview`
-7. `F22-release-readiness`
+1. `F19-environment-doctor`
+2. `F20-public-onboarding`
+3. `F17-artifact-preview`
+4. `F22-release-readiness`
 
 O roadmap completo e o contexto da etapa 2 seguem em `docs/architecture/PHASE_2_ROADMAP.md`.
 
@@ -217,6 +214,9 @@ feature/f12-codex-adapter-operational-hardening — hardening do CodexCLIAdapter
 feature/f13-rich-cli-output             — saída enriquecida com Rich no `aignt runtime status`
 feature/f14-runs-observability-cli      — `aignt runs list/show` para observabilidade CLI-first
 feature/f15-public-run-submission       — `aignt runs submit <spec_path>` para submissão pública de runs
+feature/f16-run-detail-expansion        — detalhe expandido de `runs show` para diagnóstico operacional
+feature/f21-cli-error-model-and-exit-codes — contrato previsível de erros e exit codes da CLI pública
+feature/f18-canonical-happy-path        — caminho canônico `runs submit -> runs show` para a primeira demonstração oficial
 ```
 
 Nenhuma feature avança para código sem `SPEC.md` aprovada e testes mínimos escritos. O `DOCKER_PREFLIGHT` entra quando a mudança exigir validação prática em Docker.
