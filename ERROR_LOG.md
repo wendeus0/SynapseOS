@@ -1,5 +1,15 @@
 # ERROR_LOG
 
+## 2026-03-12 - Regressao de compatibilidade no monkeypatch de `_dispatch_service` durante a F29
+
+- Contexto: implementacao e validacao final da `F29-auth-rbac-foundation`.
+- Ação/comando relacionado: `env UV_CACHE_DIR=/home/g0dsssp33d/work/projects/aignt-os/.cache/uv uv run --no-sync python -m pytest tests/unit/test_config.py tests/unit/test_auth.py tests/integration/test_cli_auth_rbac.py tests/integration/test_runs_submit_cli.py tests/integration/test_runtime_cli.py tests/integration/test_cli_error_model.py -q`
+- Erro observado: `tests/integration/test_cli_error_model.py::test_runs_submit_unexpected_dispatch_failure_returns_execution_error_code` falhou com `TypeError` porque o monkeypatch local de `_dispatch_service` nao aceitava o novo keyword argument `initiated_by`.
+- Causa identificada: a F29 ampliou `_dispatch_service()` para aceitar override de provenance autenticada, mas o call site de `runs submit` perdeu compatibilidade com o patch zero-arg exercitado pelos testes legados da F21.
+- Ação tomada: o call site foi ajustado para chamar `_dispatch_service()` sem argumentos quando nao houver principal autenticado e usar o override apenas no caminho autenticado.
+- Status: resolvido localmente e mergeado em `main` via PR `#63`.
+- Observação futura: ao ampliar helpers de CLI ja usados por monkeypatch em testes de integracao, preservar assinatura compatível ou atualizar explicitamente os doubles legados no mesmo delta.
+
 ## 2026-03-11 19:26 -03 - Smoke real do Codex falhou por autenticacao ausente
 
 - Contexto: validacao operacional da `F12-codex-adapter-operational-hardening` apos `DOCKER_PREFLIGHT` completo e hardening do `CodexCLIAdapter`.

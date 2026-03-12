@@ -2,6 +2,10 @@
 
 ## Decisões incorporadas recentemente
 
+- Em 2026-03-12, a `F28-adapter-circuit-breaker` foi mergeada em `main` pela PR `#62`, absorvendo `G-09` com breaker persistido local para o `CodexCLIAdapter` sem reabrir SQLite, auth remota ou CLI publica.
+- Em 2026-03-12, a `F29-auth-rbac-foundation` foi mergeada em `main` pela PR `#63`, endurecendo `runs submit` e `runtime start|run|stop` com auth opt-in local, registry privado por hash SHA-256 e reuso de `initiated_by` para provenance autenticada.
+- Com `F28` e `F29`, a triagem pos-`F27` deixou de ser `G-09` versus `G-11`: o backlog imediato agora precisa distinguir entre follow-up residual de auth (`socket`, rotacao/provisionamento e operacao remota`) e outras frentes fora da `IDEA-001`.
+
 - Em 2026-03-12, o handoff operacional foi realinhado ao baseline real pós-`F27`: `main` já incorpora `F23-security-sanitization-foundation`, `F24-workspace-boundary-hardening`, `F25-generated-artifact-ast-guard`, `F26-run-provenance-integrity` e `F27-adapter-concurrency-guard`, via merges `#56` a `#60`.
 - Com esse realinhamento, a “primeira SPEC pós-`F22`” deixou de ser pendência atual: a etapa 2 e a primeira onda de guardrails já foram concluídas em `main`, e a próxima decisão passa a ser a primeira SPEC pós-`F27`.
 - O backlog remanescente da `IDEA-001` ficou reduzido principalmente a `G-09` (circuit breaker para adapters) e `G-11` (autenticação/autorização), com `G-09` como menor recorte técnico natural para a próxima triagem.
@@ -130,11 +134,13 @@
 - Fixtures de testes aspiracionais marcadas como 🔜 no TDD.md: `tests/fixtures/worker/` (ainda ausente).
 - Property-based testing com `hypothesis` ainda não implementado (mencionado como evolução futura em TDD.md).
 - Promover a próxima feature apenas com SPEC própria pós-`F27`, sem reaproveitar backlog textual como fila automática.
-- Triar explicitamente `G-09` versus `G-11` antes de abrir nova frente; `G-09` segue como candidato de menor escopo relativo no backlog remanescente da `IDEA-001`.
+- Decidir explicitamente se o residual de `G-11` apos a `F29` (socket, provisao/rotacao de credenciais e auth remota) merece feature propria agora ou deve permanecer adiado.
+- Alinhar `docs/IDEAS.md` ao baseline pos-`F28`/`F29` antes de usar o documento como fonte de triagem futura.
 
 ## Pontos de atenção futuros
 
 - O bloqueio operacional de autenticacao do Codex (`401 Unauthorized`) ficou explicitamente classificado na F12; revalidar esse smoke apenas quando houver credencial valida e necessidade real de uso autenticado.
+- A `F29` fechou apenas a fundacao local de auth/RBAC; nao assumir que `socket + RBAC` da `IDEA-001` foi totalmente absorvido sem uma nova SPEC especifica para operacao remota.
 
 - Validar em momento futuro uma operacao real do MCP oficial do GitHub com credencial valida, pois a frente atual fechou apenas o startup path e a cobertura operacional do launcher.
 - Fixture `noisy_mixed_output.txt` e `noisy_no_code_block.txt` armazenam sequências ANSI como literais `\u001b`. Todo helper que os lê para testar comportamento de ANSI precisa de `unicode_escape=True`. Considerar adicionar comentário nos próprios arquivos de fixture documentando isso.
