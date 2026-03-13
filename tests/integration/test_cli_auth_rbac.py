@@ -72,6 +72,32 @@ def _write_auth_registry(tmp_path: Path) -> Path:
     return registry_path
 
 
+def _write_operator_registry(tmp_path: Path) -> None:
+    registry_path = tmp_path / "runtime" / "auth-registry.json"
+    registry_path.parent.mkdir(parents=True, exist_ok=True)
+    registry_path.write_text(
+        json.dumps(
+            {
+                "principals": [
+                    {"principal_id": "operator-a", "roles": ["operator"]},
+                    {"principal_id": "operator-b", "roles": ["operator"]},
+                ],
+                "tokens": [
+                    {
+                        "principal_id": "operator-a",
+                        "token_sha256": hashlib.sha256(b"operator-a-token").hexdigest(),
+                    },
+                    {
+                        "principal_id": "operator-b",
+                        "token_sha256": hashlib.sha256(b"operator-b-token").hexdigest(),
+                    },
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
 def test_runs_submit_preserves_baseline_when_auth_is_disabled(
     tmp_path: Path,
     cli_runner,
@@ -221,6 +247,153 @@ def test_runs_submit_accepts_operator_and_persists_authenticated_principal(
 
     assert result.exit_code == 0
     assert run_record.initiated_by == "operator-user"
+
+
+def test_runs_submit_async_requires_running_runtime_when_auth_is_enabled(
+    tmp_path: Path,
+    cli_runner,
+    cli_app,
+) -> None:
+    persistence = import_module("aignt_os.persistence")
+
+    spec_path = tmp_path / "SPEC.md"
+    _write_valid_spec(spec_path)
+    _write_auth_registry(tmp_path)
+    env = _auth_env(tmp_path)
+    env["AIGNT_OS_AUTH_TOKEN"] = "operator-token"
+
+    result = cli_runner.invoke(
+        cli_app,
+        ["runs", "submit", str(spec_path), "--mode", "async", "--stop-at", "SPEC_VALIDATION"],
+        env=env,
+    )
+
+    repository = persistence.RunRepository(tmp_path / "runs" / "runs.sqlite3")
+
+    assert result.exit_code == 5
+    assert (
+        "environment error:" in result.stdout.lower()
+        or "environment error:" in result.stderr.lower()
+    )
+    assert repository.list_runs() == []
+
+
+def test_runs_submit_async_rejects_runtime_started_by_another_operator(
+    tmp_path: Path,
+    cli_runner,
+    cli_app,
+) -> None:
+    persistence = import_module("aignt_os.persistence")
+
+    spec_path = tmp_path / "SPEC.md"
+    _write_valid_spec(spec_path)
+    _write_operator_registry(tmp_path)
+    env = _auth_env(tmp_path)
+
+    start_result = cli_runner.invoke(
+        cli_app,
+        ["runtime", "start", "--auth-token", "operator-a-token"],
+        env=env,
+    )
+    submit_result = cli_runner.invoke(
+        cli_app,
+        ["runs", "submit", str(spec_path), "--mode", "async", "--auth-token", "operator-b-token"],
+        env=env,
+    )
+    cleanup_result = cli_runner.invoke(
+        cli_app,
+        ["runtime", "stop", "--auth-token", "operator-a-token"],
+        env=env,
+    )
+
+    repository = persistence.RunRepository(tmp_path / "runs" / "runs.sqlite3")
+
+    assert start_result.exit_code == 0
+    assert submit_result.exit_code == 8
+    assert (
+        "authorization error:" in submit_result.stdout.lower()
+        or "authorization error:" in submit_result.stderr.lower()
+    )
+    assert repository.list_runs() == []
+    assert cleanup_result.exit_code == 0
+
+
+def test_runs_submit_auto_rejects_runtime_started_by_another_operator(
+    tmp_path: Path,
+    cli_runner,
+    cli_app,
+) -> None:
+    persistence = import_module("aignt_os.persistence")
+
+    spec_path = tmp_path / "SPEC.md"
+    _write_valid_spec(spec_path)
+    _write_operator_registry(tmp_path)
+    env = _auth_env(tmp_path)
+
+    start_result = cli_runner.invoke(
+        cli_app,
+        ["runtime", "start", "--auth-token", "operator-a-token"],
+        env=env,
+    )
+    submit_result = cli_runner.invoke(
+        cli_app,
+        ["runs", "submit", str(spec_path), "--mode", "auto", "--auth-token", "operator-b-token"],
+        env=env,
+    )
+    cleanup_result = cli_runner.invoke(
+        cli_app,
+        ["runtime", "stop", "--auth-token", "operator-a-token"],
+        env=env,
+    )
+
+    repository = persistence.RunRepository(tmp_path / "runs" / "runs.sqlite3")
+
+    assert start_result.exit_code == 0
+    assert submit_result.exit_code == 8
+    assert (
+        "authorization error:" in submit_result.stdout.lower()
+        or "authorization error:" in submit_result.stderr.lower()
+    )
+    assert repository.list_runs() == []
+    assert cleanup_result.exit_code == 0
+
+
+def test_runs_submit_async_allows_legacy_runtime_binding_without_started_by(
+    tmp_path: Path,
+    cli_runner,
+    cli_app,
+) -> None:
+    persistence = import_module("aignt_os.persistence")
+
+    spec_path = tmp_path / "SPEC.md"
+    _write_valid_spec(spec_path)
+    _write_auth_registry(tmp_path)
+    env = _auth_env(tmp_path)
+    env["AIGNT_OS_AUTH_TOKEN"] = "operator-token"
+
+    start_result = cli_runner.invoke(cli_app, ["runtime", "start"], env=env)
+    runtime_state_path = tmp_path / "runtime" / "runtime-state.json"
+    legacy_payload = json.loads(runtime_state_path.read_text(encoding="utf-8"))
+    legacy_payload.pop("started_by", None)
+    runtime_state_path.write_text(json.dumps(legacy_payload), encoding="utf-8")
+
+    submit_result = cli_runner.invoke(
+        cli_app,
+        ["runs", "submit", str(spec_path), "--mode", "async", "--stop-at", "SPEC_VALIDATION"],
+        env=env,
+    )
+    cleanup_result = cli_runner.invoke(cli_app, ["runtime", "stop"], env=env)
+
+    repository = persistence.RunRepository(tmp_path / "runs" / "runs.sqlite3")
+    run_record = repository.list_runs()[0]
+
+    assert start_result.exit_code == 0
+    assert submit_result.exit_code == 0
+    assert "queued" in submit_result.stdout.lower()
+    assert "async" in submit_result.stdout.lower()
+    assert run_record.status == "pending"
+    assert run_record.initiated_by == "operator-user"
+    assert cleanup_result.exit_code == 0
 
 
 def test_runtime_start_requires_authentication_when_enabled(

@@ -125,6 +125,118 @@ def test_run_dispatch_service_explicit_async_queues_pending_run(tmp_path: Path) 
     assert run_record.spec_hash == hashlib.sha256(spec_path.read_bytes()).hexdigest()
 
 
+def test_run_dispatch_service_requires_running_runtime_for_authenticated_async(
+    tmp_path: Path,
+) -> None:
+    persistence = import_module("aignt_os.persistence")
+    dispatch_module = import_module("aignt_os.runtime.dispatch")
+    runtime_state_module = import_module("aignt_os.runtime.state")
+
+    spec_path = tmp_path / "SPEC.md"
+    _write_valid_spec(spec_path)
+    repository = persistence.RunRepository(tmp_path / "runs.sqlite3")
+    artifact_store = persistence.ArtifactStore(tmp_path / "artifacts")
+    runner = persistence.PersistedPipelineRunner(
+        repository=repository,
+        artifact_store=artifact_store,
+    )
+    service = dispatch_module.RunDispatchService(
+        repository=repository,
+        runner=runner,
+        is_runtime_ready=lambda: False,
+        workspace_root=tmp_path,
+        initiated_by="operator-user",
+        runtime_state_provider=lambda: runtime_state_module.RuntimeState(status="stopped"),
+        enforce_async_runtime_ownership=True,
+    )
+
+    with pytest.raises(
+        dispatch_module.AsyncDispatchRuntimeUnavailableError,
+        match="running resident runtime",
+    ):
+        service.dispatch(spec_path, stop_at="SPEC_VALIDATION", mode="async")
+
+    assert repository.list_runs() == []
+
+
+def test_run_dispatch_service_rejects_authenticated_async_for_other_runtime_owner(
+    tmp_path: Path,
+) -> None:
+    persistence = import_module("aignt_os.persistence")
+    dispatch_module = import_module("aignt_os.runtime.dispatch")
+    runtime_state_module = import_module("aignt_os.runtime.state")
+
+    spec_path = tmp_path / "SPEC.md"
+    _write_valid_spec(spec_path)
+    repository = persistence.RunRepository(tmp_path / "runs.sqlite3")
+    artifact_store = persistence.ArtifactStore(tmp_path / "artifacts")
+    runner = persistence.PersistedPipelineRunner(
+        repository=repository,
+        artifact_store=artifact_store,
+    )
+    service = dispatch_module.RunDispatchService(
+        repository=repository,
+        runner=runner,
+        is_runtime_ready=lambda: True,
+        workspace_root=tmp_path,
+        initiated_by="operator-b",
+        runtime_state_provider=lambda: runtime_state_module.RuntimeState(
+            status="running",
+            pid=1234,
+            process_identity="fixture-runtime",
+            started_by="operator-a",
+        ),
+        enforce_async_runtime_ownership=True,
+    )
+
+    with pytest.raises(
+        dispatch_module.AsyncDispatchOwnershipError,
+        match="another principal",
+    ):
+        service.dispatch(spec_path, stop_at="SPEC_VALIDATION", mode="auto")
+
+    assert repository.list_runs() == []
+
+
+def test_run_dispatch_service_allows_authenticated_async_for_legacy_runtime_binding(
+    tmp_path: Path,
+) -> None:
+    persistence = import_module("aignt_os.persistence")
+    dispatch_module = import_module("aignt_os.runtime.dispatch")
+    runtime_state_module = import_module("aignt_os.runtime.state")
+
+    spec_path = tmp_path / "SPEC.md"
+    _write_valid_spec(spec_path)
+    repository = persistence.RunRepository(tmp_path / "runs.sqlite3")
+    artifact_store = persistence.ArtifactStore(tmp_path / "artifacts")
+    runner = persistence.PersistedPipelineRunner(
+        repository=repository,
+        artifact_store=artifact_store,
+    )
+    service = dispatch_module.RunDispatchService(
+        repository=repository,
+        runner=runner,
+        is_runtime_ready=lambda: True,
+        workspace_root=tmp_path,
+        initiated_by="operator-user",
+        runtime_state_provider=lambda: runtime_state_module.RuntimeState(
+            status="running",
+            pid=1234,
+            process_identity="fixture-runtime",
+            started_by=None,
+        ),
+        enforce_async_runtime_ownership=True,
+    )
+
+    result = service.dispatch(spec_path, stop_at="SPEC_VALIDATION", mode="async")
+
+    run_record = repository.get_run(result.run_id)
+    assert result.status == "queued"
+    assert result.dispatch_mode_resolved == "async"
+    assert run_record.status == "pending"
+    assert run_record.initiated_by == "operator-user"
+
+
 def test_run_dispatch_service_rejects_missing_spec_path(tmp_path: Path) -> None:
     persistence = import_module("aignt_os.persistence")
     dispatch_module = import_module("aignt_os.runtime.dispatch")

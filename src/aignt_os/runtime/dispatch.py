@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Literal
 
 from aignt_os.persistence import PersistedPipelineRunner, RunRepository
+from aignt_os.runtime.state import RuntimeState
 from aignt_os.security import compute_file_sha256, resolve_path_within_root
 from aignt_os.specs import validate_spec_file
 
@@ -21,6 +22,14 @@ class RunDispatchResult:
     dispatch_mode_resolved: ResolvedDispatchMode
 
 
+class AsyncDispatchRuntimeUnavailableError(RuntimeError):
+    pass
+
+
+class AsyncDispatchOwnershipError(RuntimeError):
+    pass
+
+
 class RunDispatchService:
     def __init__(
         self,
@@ -30,12 +39,16 @@ class RunDispatchService:
         is_runtime_ready: Callable[[], bool],
         workspace_root: Path,
         initiated_by: str = "local_cli",
+        runtime_state_provider: Callable[[], RuntimeState] | None = None,
+        enforce_async_runtime_ownership: bool = False,
     ) -> None:
         self.repository = repository
         self.runner = runner
         self.is_runtime_ready = is_runtime_ready
         self.workspace_root = workspace_root
         self.initiated_by = initiated_by
+        self.runtime_state_provider = runtime_state_provider
+        self.enforce_async_runtime_ownership = enforce_async_runtime_ownership
 
     def dispatch(
         self,
@@ -46,6 +59,7 @@ class RunDispatchService:
     ) -> RunDispatchResult:
         resolved_spec_path = self._validate_dispatch_inputs(spec_path, mode=mode)
         resolved_mode = self._resolve_mode(mode)
+        self._authorize_async_dispatch(resolved_mode)
         if resolved_mode == "sync":
             context = self.runner.run(
                 resolved_spec_path,
@@ -96,3 +110,25 @@ class RunDispatchService:
         if mode != "auto":
             raise ValueError(f"Unsupported dispatch mode: {mode}")
         return "sync"
+
+    def _authorize_async_dispatch(self, resolved_mode: ResolvedDispatchMode) -> None:
+        if resolved_mode != "async" or not self.enforce_async_runtime_ownership:
+            return
+
+        runtime_state = self._runtime_state()
+        if runtime_state.status != "running":
+            raise AsyncDispatchRuntimeUnavailableError(
+                "Authenticated async dispatch requires a running resident runtime."
+            )
+        if runtime_state.started_by is None:
+            return
+        if self.initiated_by != runtime_state.started_by:
+            raise AsyncDispatchOwnershipError(
+                "Authenticated principal is not allowed to submit async work "
+                "to a runtime started by another principal."
+            )
+
+    def _runtime_state(self) -> RuntimeState:
+        if self.runtime_state_provider is None:
+            return RuntimeState(status="stopped")
+        return self.runtime_state_provider()
