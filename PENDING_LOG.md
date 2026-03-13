@@ -2,6 +2,11 @@
 
 ## Decisões incorporadas recentemente
 
+- Em 2026-03-13, a triagem pos-`F37` confirmou que `origin/main` ja cobre o MVP, a etapa 2 e o handoff doc-only pos-`F36`; o bloqueio real estava na branch local `feature/f39-persistence-path-root-hardening`, que havia virado agregador de drafts fora de escopo.
+- O estado misto foi preservado em `origin/archive/2026-03-13-f39-drift-snapshot`, e os recortes determinísticos foram separados em `origin/draft/f41-dashboard-artifacts-explorer`, `origin/draft/f43-runtime-robustness`, `origin/draft/f44-auth-backend-abstraction`, `origin/draft/f45-tui-performance-optimization` e `origin/draft/f47-advanced-rbac`.
+- Os itens transversais que ainda nao cabem numa unica frente sem inventar codigo novo (`F40`, `F42`, `F46`, testes de lifecycle e docs de roadmap de longo prazo`) ficaram somente no archive branch, sem virar fila ativa nem PR aberta.
+- Com isso, a frente ativa imediata deixa de ser `F37` e passa a ser nenhuma: a linha principal volta a partir de `main`, e a proxima decisao de produto fica bloqueada ate nova `technical-triage` em branch limpa.
+
 - Em 2026-03-13, a `F34-async-submit-runtime-ownership` foi mergeada em `main` pela PR `#70`, fazendo `runs submit` autenticado aceitar dispatch resolvido para `async` apenas quando o runtime residente pertence ao mesmo principal, preservando fallback legado sem `started_by`.
 - Em 2026-03-13, a `F35-worker-runtime-ownership-filter` foi mergeada em `main` pela PR `#71`, fazendo o worker do runtime residente consumir apenas runs compativeis com o principal que iniciou o runtime, sem falhar nem lockar runs incompatíveis.
 - Em 2026-03-13, a `F36-worker-owner-skip-observability` foi mergeada em `main` pela PR `#72`, tornando auditavel o skip do worker com evento `runtime_owner_skip` nas runs incompatíveis e mantendo o AIgnt-Synapse-Flow como a engine propria de pipeline do AIgnt OS.

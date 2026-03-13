@@ -1,5 +1,15 @@
 # ERROR_LOG
 
+## 2026-03-13 - Branch `feature/f39-persistence-path-root-hardening` acumulou drafts pos-MVP fora de escopo
+
+- Contexto: triagem tecnica e limpeza operacional apos `F39` e `F37` ja estarem absorvidas em `origin/main`.
+- Ação/comando relacionado: `git log --oneline origin/main..HEAD`, `./scripts/branch-sync-check.sh`, extracao controlada para `archive/*` e `draft/*`.
+- Erro observado: a branch local nomeada como `F39` estava `ahead=1 behind=1` contra `origin/main`, carregando um commit de `F47` e mudancas locais misturadas de `F41`, `F43`, `F44`, `F45`, `F46` e `F42`.
+- Causa identificada: reuso de uma branch ja absorvida no baseline para rascunhos de multiplas frentes futuras, quebrando a regra de uma feature por vez e inviabilizando `branch-sync-update`.
+- Ação tomada: o estado misto foi preservado em `origin/archive/2026-03-13-f39-drift-snapshot`; os recortes determinísticos foram separados e publicados como `origin/draft/f41-dashboard-artifacts-explorer`, `origin/draft/f43-runtime-robustness`, `origin/draft/f44-auth-backend-abstraction`, `origin/draft/f45-tui-performance-optimization` e `origin/draft/f47-advanced-rbac`; o restante transversal ficou apenas no archive branch.
+- Status: resolvido operacionalmente; a linha ativa voltou a partir de `origin/main`.
+- Observação futura: nunca reutilizar branch de feature ja mergeada para drafts novos; estacionar exploracoes futuras em `draft/*` ou `archive/*` e rodar `technical-triage` em branch limpa antes de abrir nova frente.
+
 ## 2026-03-13 - PR `#65` da F30 mergeada com `repo-checks` falhando por formatacao global, depois resolvido pela `#66`
 
 - Contexto: fechamento Git da `F30-auth-registry-cli` apos quality gate local e abertura da PR `#65`.

@@ -18,6 +18,10 @@
 ## Local snapshot
 
 - `main` local permanece sincronizada com `origin/main`, sem diff aberto no baseline usado para o handoff atual.
+- A limpeza operacional pos-`F37` confirmou que o problema imediato nao era gap de MVP nem de baseline em `main`, mas drift local numa branch antiga de `F39` reutilizada para drafts pos-MVP.
+- O estado misto foi preservado em `origin/archive/2026-03-13-f39-drift-snapshot`.
+- Os drafts coerentes foram estacionados em `origin/draft/f41-dashboard-artifacts-explorer`, `origin/draft/f43-runtime-robustness`, `origin/draft/f44-auth-backend-abstraction`, `origin/draft/f45-tui-performance-optimization` e `origin/draft/f47-advanced-rbac`.
+- Os recortes ainda transversais (`F40`, `F42`, `F46`, testes de lifecycle e docs especulativos de roadmap longo) permanecem apenas no archive branch, fora da fila ativa.
 - O baseline atual ja incorpora `F15-public-run-submission`, `F16-run-detail-expansion`, `F21-cli-error-model-and-exit-codes`, `F18-canonical-happy-path`, `F19-environment-doctor`, `F20-public-onboarding`, `F17-artifact-preview`, `F22-release-readiness` e a sequencia `F23 -> F27`.
 - O baseline atual tambem ja incorpora `F28-adapter-circuit-breaker`, `F29-auth-rbac-foundation` e `F30-auth-registry-cli`, com `aignt auth init|issue|disable` e o alinhamento de `docs/IDEAS.md`/README ao estado pos-F30.
 - A release tecnica da etapa 2 e a primeira trilha de guardrails ja estao refletidas no codigo e na superficie publica da CLI; a baseline tambem foi reestabilizada apos a PR `#66`, com `repo-checks` novamente verde.
@@ -38,7 +42,9 @@
 
 # Active fronts
 
-- Nao ha frente de produto aberta no baseline atual; a frente imediata aprovada e apenas a chore doc-only `F37-post-f36-g11-sync` para alinhar o handoff pos-`F36`.
+- Nao ha frente de produto aberta no baseline atual.
+- Nao ha frente doc-only aberta no baseline atual; a `F37-post-f36-g11-sync` ja foi absorvida.
+- Existem apenas drafts estacionados em branches `draft/*`, sem PR aberta e sem aprovacao para merge.
 - Nao ha frente de implementacao de transporte remoto, socket ou auth distribuida em andamento no baseline atual.
 
 # Open decisions
@@ -58,13 +64,13 @@
 
 # Next recommended steps
 
-- Fechar a `F37` alinhando `PENDING_LOG.md`, `memory.md` e `docs/IDEAS.md` ao estado pos-`F36`.
-- So depois rodar nova triagem para escolher a proxima frente fora de `resident_transport_auth`, mantendo `remote_multi_host_auth` explicitamente adiado.
-- Evitar reabrir follow-up local/residente de auth, porque esse recorte ja foi absorvido por `F29`, `F30`, `F32`, `F34`, `F35` e `F36`.
+- Rodar nova `technical-triage` em branch limpa a partir de `main` para escolher uma unica frente ativa.
+- Nao reabrir a branch historica de `F39`; usar `draft/*` apenas como estacionamento e extrair dali somente quando houver prioridade aprovada.
+- Manter `remote_multi_host_auth` explicitamente adiado e evitar reabrir follow-up local/residente de auth, porque esse recorte ja foi absorvido por `F29`, `F30`, `F32`, `F34`, `F35` e `F36`.
 
 # Last handoff summary
 
 - Read before acting: releia `AGENTS.md`, `CONTEXT.md`, `memory.md`, `PENDING_LOG.md`, `ERROR_LOG.md`, `git status` e `git diff --stat`.
-- Current state: `main` ja incorpora `F17`, `F22`, `F23 -> F36`; a baseline operacional segue verde e a PR `#72` fechou a `F36`.
-- Open points: alinhar o handoff pos-`F36` e decidir, em triagem posterior, a proxima frente fora do bucket residente local de `G-11`.
-- Recommended next front: fechar a `F37` e, depois disso, abrir nova triagem antes de qualquer feature de produto.
+- Current state: `main` ja incorpora `F17`, `F22`, `F23 -> F39` e `F37`; a baseline operacional segue verde e os drafts pos-MVP foram separados em `archive/*` e `draft/*`.
+- Open points: escolher uma unica proxima frente a partir de `main`; os recortes ainda ambiguos continuam apenas no archive branch.
+- Recommended next front: nova `technical-triage` em branch limpa antes de qualquer feature de produto.
