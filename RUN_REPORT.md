@@ -1,7 +1,7 @@
-# Relatório de Execução - Feature F34: Dashboard Logs
+# Relatório de Execução - Feature F39: Dashboard Logs
 
 ## Resumo
-Adição da funcionalidade de visualização de logs (`stdout`/`stderr`) no dashboard TUI (`aignt runs watch`), permitindo a inspeção detalhada de steps executados.
+Adição da funcionalidade de visualização de logs (`stdout`/`stderr`) no dashboard TUI (`aignt runs watch`), permitindo a inspeção detalhada de steps executados. (Anteriormente referenciada como F34, regularizada para F39).
 
 ## Escopo Entregue
 - **Interface TUI**:
@@ -25,8 +25,8 @@ Adição da funcionalidade de visualização de logs (`stdout`/`stderr`) no dash
 - **Performance**: Leitura síncrona de arquivos pode impactar a UI em logs muito grandes (>10MB), mas é aceitável para o escopo local atual.
 
 ## Próximos Passos
-- Avaliar carregamento assíncrono ou paginado para logs muito extensos.
-- Monitorar uso de memória em sessões longas com muitos logs abertos.
+- Implementar filtros de steps (F42).
+- Controle de cancelamento (F40).
 
 ## Conclusão
-Feature F34 implementada e validada. Aprovada para merge na branch principal, completando o ciclo de melhoria de observabilidade iniciado na F33.
+Feature F39 implementada e validada, resolvendo o débito técnico de colisão de ID da F34.
