@@ -16,12 +16,26 @@ from aignt_os.runtime.state import STATE_DIR_MODE, STATE_FILE_MODE
 if TYPE_CHECKING:
     from aignt_os.config import AppSettings
 
-Role = Literal["viewer", "operator"]
-Permission = Literal["runs.submit", "runtime.manage"]
+
+Role = Literal["admin", "operator", "viewer"]
+Permission = Literal[
+    "run:read",
+    "run:write",
+    "runtime:manage",
+    "auth:manage",
+]
 
 ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
-    "viewer": frozenset(),
-    "operator": frozenset({"runs.submit", "runtime.manage"}),
+    "admin": frozenset(
+        {
+            "run:read",
+            "run:write",
+            "runtime:manage",
+            "auth:manage",
+        }
+    ),
+    "operator": frozenset({"run:read", "run:write", "runtime:manage"}),
+    "viewer": frozenset({"run:read"}),
 }
 
 
@@ -57,6 +71,7 @@ class AuthenticatedPrincipal(BaseModel):
 
     principal_id: str = Field(min_length=1)
     roles: tuple[Role, ...]
+    permissions: frozenset[str] = Field(default_factory=frozenset)
 
 
 @runtime_checkable
@@ -115,7 +130,7 @@ class AuthRegistryStore:
         os.replace(temporary_path, self.path)
         os.chmod(self.path, STATE_FILE_MODE)
 
-    def initialize_registry(self, *, principal_id: str, role: Role = "operator") -> IssuedAuthToken:
+    def initialize_registry(self, *, principal_id: str, role: Role = "admin") -> IssuedAuthToken:
         if self.path.exists():
             raise AuthConfigurationError("Auth registry is already configured.")
 
@@ -147,8 +162,11 @@ class AuthRegistryStore:
         resolved_role: Role
         if principal is None:
             if role is None:
-                raise ValueError("Role is required when issuing a token for a new principal.")
-            resolved_role = role
+                # Default to admin for backward compatibility / ease of use
+                resolved_role = "admin"
+            else:
+                resolved_role = role
+
             registry.principals.append(
                 AuthPrincipal(principal_id=principal_id, roles=[resolved_role])
             )
@@ -189,22 +207,34 @@ class AuthRegistryStore:
         registry = self.load_registry()
         token_hash = hash_token(normalized_token)
 
-        principal_roles = {
-            principal.principal_id: principal.roles for principal in registry.principals
-        }
         for token_record in registry.tokens:
             if token_record.disabled:
                 continue
+            # Constant time comparison
             if not hmac.compare_digest(token_record.token_sha256, token_hash):
                 continue
 
-            roles = principal_roles.get(token_record.principal_id)
-            if roles is None:
+            # Find principal for this token
+            principal_record = next(
+                (p for p in registry.principals if p.principal_id == token_record.principal_id),
+                None,
+            )
+
+            if principal_record is None:
                 raise AuthConfigurationError("Auth registry references an unknown principal.")
+
+            # Resolve permissions
+            permissions: set[str] = set()
+            for role in principal_record.roles:
+                # Handle legacy or unknown roles gracefully by ignoring them
+                # or treating them as having no permissions if not in map
+                if role in ROLE_PERMISSIONS:
+                    permissions.update(ROLE_PERMISSIONS[role])
 
             return AuthenticatedPrincipal(
                 principal_id=token_record.principal_id,
-                roles=tuple(roles),
+                roles=tuple(principal_record.roles),
+                permissions=frozenset(permissions),
             )
 
         return None
@@ -238,11 +268,8 @@ def hash_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
-def is_authorized(principal: AuthenticatedPrincipal, *, permission: Permission) -> bool:
-    allowed_permissions: set[Permission] = set()
-    for role in principal.roles:
-        allowed_permissions.update(ROLE_PERMISSIONS.get(role, frozenset()))
-    return permission in allowed_permissions
+def is_authorized(principal: AuthenticatedPrincipal, *, permission: str) -> bool:
+    return permission in principal.permissions
 
 
 def get_auth_provider(settings: AppSettings) -> AuthProvider:

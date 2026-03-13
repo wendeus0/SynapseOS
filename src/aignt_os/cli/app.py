@@ -390,8 +390,8 @@ def _auth_registry_store() -> AuthRegistryStore:
 
 def _validate_role(role: str) -> Role:
     normalized = role.strip().lower()
-    if normalized not in {"viewer", "operator"}:
-        raise usage_error("role must be one of: viewer, operator.")
+    if normalized not in {"admin", "operator", "viewer"}:
+        raise usage_error("role must be one of: admin, operator, viewer.")
     return normalized  # type: ignore[return-value]
 
 
@@ -435,7 +435,7 @@ def _resolve_principal_id(
 @auth_app.command("init")
 def auth_init(
     principal_id: Annotated[str, typer.Option("--principal-id")] = "",
-    role: Annotated[str, typer.Option("--role")] = "operator",
+    role: Annotated[str, typer.Option("--role")] = "admin",
 ) -> None:
     try:
         store = _auth_registry_store()
@@ -461,8 +461,13 @@ def auth_init(
 def auth_issue(
     principal_id: Annotated[str, typer.Option("--principal-id")] = "",
     role: Annotated[str | None, typer.Option("--role")] = None,
+    auth_token: Annotated[
+        str | None,
+        typer.Option("--auth-token", envvar="AIGNT_OS_AUTH_TOKEN"),
+    ] = None,
 ) -> None:
     try:
+        _resolve_principal_id(permission="auth:manage", auth_token=auth_token)
         store = _auth_registry_store()
         issued_token = store.issue_token(
             principal_id=principal_id.strip(),
@@ -485,8 +490,13 @@ def auth_issue(
 @auth_app.command("disable")
 def auth_disable(
     token_id: Annotated[str, typer.Option("--token-id")] = "",
+    auth_token: Annotated[
+        str | None,
+        typer.Option("--auth-token", envvar="AIGNT_OS_AUTH_TOKEN"),
+    ] = None,
 ) -> None:
     try:
+        _resolve_principal_id(permission="auth:manage", auth_token=auth_token)
         _auth_registry_store().disable_token(token_id=token_id.strip())
     except CLIError as exc:
         exit_for_cli_error(exc)
@@ -509,7 +519,7 @@ def runtime_start(
     ] = None,
 ) -> None:
     try:
-        principal_id = _resolve_principal_id(permission="runtime.manage", auth_token=auth_token)
+        principal_id = _resolve_principal_id(permission="runtime:manage", auth_token=auth_token)
         service = _runtime_service()
         state = service.start(started_by=principal_id)
     except CLIError as exc:
@@ -547,7 +557,7 @@ def runtime_run(
     ] = None,
 ) -> None:
     try:
-        principal_id = _resolve_principal_id(permission="runtime.manage", auth_token=auth_token)
+        principal_id = _resolve_principal_id(permission="runtime:manage", auth_token=auth_token)
     except CLIError as exc:
         exit_for_cli_error(exc)
 
@@ -600,7 +610,7 @@ def runtime_stop(
     ] = None,
 ) -> None:
     try:
-        principal_id = _resolve_principal_id(permission="runtime.manage", auth_token=auth_token)
+        principal_id = _resolve_principal_id(permission="runtime:manage", auth_token=auth_token)
         service = _runtime_service()
         state = service.status()
         if (
@@ -626,6 +636,10 @@ def runtime_stop(
 def watch(
     run_id: str = typer.Argument(..., help="ID of the run to monitor"),
     refresh: float = typer.Option(1.0, help="Refresh interval in seconds"),
+    auth_token: Annotated[
+        str | None,
+        typer.Option("--auth-token", envvar="AIGNT_OS_AUTH_TOKEN"),
+    ] = None,
 ) -> None:
     """
     Monitor a run in real-time using a TUI dashboard.
@@ -633,6 +647,7 @@ def watch(
     from aignt_os.cli.dashboard import RunDashboard
 
     try:
+        _resolve_principal_id(permission="run:read", auth_token=auth_token)
         repo = _run_repository()
         if not repo.get_run(run_id):
             typer.echo(f"Error: Run {run_id} not found.", err=True)
@@ -648,8 +663,14 @@ def watch(
 
 
 @runs_app.command("list")
-def runs_list() -> None:
+def runs_list(
+    auth_token: Annotated[
+        str | None,
+        typer.Option("--auth-token", envvar="AIGNT_OS_AUTH_TOKEN"),
+    ] = None,
+) -> None:
     try:
+        _resolve_principal_id(permission="run:read", auth_token=auth_token)
         repository = _run_repository()
         runs = repository.list_runs()
     except CLIError as exc:
@@ -682,7 +703,7 @@ def runs_submit(
     ] = None,
 ) -> None:
     try:
-        principal_id = _resolve_principal_id(permission="runs.submit", auth_token=auth_token)
+        principal_id = _resolve_principal_id(permission="run:write", auth_token=auth_token)
         dispatch_service = (
             _dispatch_service(initiated_by=principal_id)
             if principal_id is not None
@@ -715,8 +736,13 @@ def runs_submit(
 def runs_show(
     run_id: str,
     preview: Annotated[str | None, typer.Option("--preview")] = None,
+    auth_token: Annotated[
+        str | None,
+        typer.Option("--auth-token", envvar="AIGNT_OS_AUTH_TOKEN"),
+    ] = None,
 ) -> None:
     try:
+        _resolve_principal_id(permission="run:read", auth_token=auth_token)
         repository = _run_repository()
         artifact_store = _artifact_store()
         run = repository.get_run(run_id)
