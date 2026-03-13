@@ -333,7 +333,7 @@ class RunDashboard(App[None]):
         self.run_id = run_id
         self.refresh_interval = refresh_interval
         settings = AppSettings()
-        self.repository = RunRepository(settings.runs_db_path)
+        self.repository = RunRepository(settings.runs_db_path_resolved)
         self.run_header = RunHeader()
         self.step_list = ListView(id="step_list")
         self.step_detail = StepDetail()

@@ -89,8 +89,8 @@ class RuntimeWorker:
 
 
 def build_runtime_worker(settings: AppSettings) -> RuntimeWorker:
-    repository = RunRepository(settings.runs_db_path)
-    artifact_store = ArtifactStore(settings.artifacts_dir)
+    repository = RunRepository(settings.runs_db_path_resolved)
+    artifact_store = ArtifactStore(settings.artifacts_dir_resolved)
     runtime_state_store = RuntimeStateStore(settings.runtime_state_file)
     runner = PersistedPipelineRunner(
         repository=repository,

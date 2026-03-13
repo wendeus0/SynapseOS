@@ -32,6 +32,14 @@ class AppSettings(BaseSettings):
         return resolve_path_within_root(self.runtime_state_dir, root=self.workspace_root)
 
     @property
+    def runs_db_path_resolved(self) -> Path:
+        return resolve_path_within_root(self.runs_db_path, root=self.workspace_root)
+
+    @property
+    def artifacts_dir_resolved(self) -> Path:
+        return resolve_path_within_root(self.artifacts_dir, root=self.workspace_root)
+
+    @property
     def runtime_state_file(self) -> Path:
         return self.runtime_state_dir_resolved / "runtime-state.json"
 

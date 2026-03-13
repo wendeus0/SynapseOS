@@ -182,18 +182,40 @@ def _path_preparation_failure(path: Path, *, expects_directory: bool) -> str | N
 
 
 def _collect_doctor_checks(settings: AppSettings) -> list[dict[str, str]]:
+    try:
+        runs_db_check = _persistence_doctor_check(
+            name="runs_db",
+            target=settings.runs_db_path_resolved,
+            expects_directory=False,
+        )
+    except ValueError as exc:
+        runs_db_check = _doctor_check(
+            name="runs_db",
+            status="fail",
+            target=settings.runs_db_path,
+            message=str(exc),
+            next_step="Fix the configured path or permissions before submitting a run.",
+        )
+
+    try:
+        artifacts_dir_check = _persistence_doctor_check(
+            name="artifacts_dir",
+            target=settings.artifacts_dir_resolved,
+            expects_directory=True,
+        )
+    except ValueError as exc:
+        artifacts_dir_check = _doctor_check(
+            name="artifacts_dir",
+            status="fail",
+            target=settings.artifacts_dir,
+            message=str(exc),
+            next_step="Fix the configured path or permissions before submitting a run.",
+        )
+
     return [
         _runtime_state_doctor_check(settings),
-        _persistence_doctor_check(
-            name="runs_db",
-            target=settings.runs_db_path,
-            expects_directory=False,
-        ),
-        _persistence_doctor_check(
-            name="artifacts_dir",
-            target=settings.artifacts_dir,
-            expects_directory=True,
-        ),
+        runs_db_check,
+        artifacts_dir_check,
     ]
 
 
@@ -228,12 +250,18 @@ def _runtime_service() -> RuntimeService:
 
 def _run_repository() -> RunRepository:
     settings = AppSettings()
-    return RunRepository(settings.runs_db_path)
+    try:
+        return RunRepository(settings.runs_db_path_resolved)
+    except ValueError as exc:
+        raise environment_error(str(exc)) from exc
 
 
 def _artifact_store() -> ArtifactStore:
     settings = AppSettings()
-    return ArtifactStore(settings.artifacts_dir)
+    try:
+        return ArtifactStore(settings.artifacts_dir_resolved)
+    except ValueError as exc:
+        raise environment_error(str(exc)) from exc
 
 
 def _validate_preview_target(preview_target: str) -> tuple[str, str | None]:
@@ -326,13 +354,13 @@ def _resolve_run_preview(
 
 def _dispatch_service(*, initiated_by: str | None = None) -> RunDispatchService:
     settings = AppSettings()
-    repository = RunRepository(settings.runs_db_path)
-    artifact_store = ArtifactStore(settings.artifacts_dir)
-    runner = PersistedPipelineRunner(
-        repository=repository,
-        artifact_store=artifact_store,
-    )
     try:
+        repository = RunRepository(settings.runs_db_path_resolved)
+        artifact_store = ArtifactStore(settings.artifacts_dir_resolved)
+        runner = PersistedPipelineRunner(
+            repository=repository,
+            artifact_store=artifact_store,
+        )
         runtime_service = RuntimeService(settings.runtime_state_file)
     except ValueError as exc:
         raise environment_error(str(exc)) from exc
@@ -599,14 +627,16 @@ def watch(
     """
     from aignt_os.cli.dashboard import RunDashboard
 
-    repo = _run_repository()
     try:
+        repo = _run_repository()
         if not repo.get_run(run_id):
             typer.echo(f"Error: Run {run_id} not found.", err=True)
             raise typer.Exit(code=1)
     except NoResultFound:
         typer.echo(f"Error: Run {run_id} not found.", err=True)
         raise typer.Exit(code=1) from None
+    except CLIError as exc:
+        exit_for_cli_error(exc)
 
     app = RunDashboard(run_id=run_id, refresh_interval=refresh)
     app.run()
@@ -614,8 +644,11 @@ def watch(
 
 @runs_app.command("list")
 def runs_list() -> None:
-    repository = _run_repository()
-    runs = repository.list_runs()
+    try:
+        repository = _run_repository()
+        runs = repository.list_runs()
+    except CLIError as exc:
+        exit_for_cli_error(exc)
     render_runs_list(runs)
 
 
@@ -678,15 +711,10 @@ def runs_show(
     run_id: str,
     preview: Annotated[str | None, typer.Option("--preview")] = None,
 ) -> None:
-    repository = _run_repository()
-    artifact_store = _artifact_store()
-
     try:
+        repository = _run_repository()
+        artifact_store = _artifact_store()
         run = repository.get_run(run_id)
-    except NoResultFound:
-        exit_for_cli_error(not_found_error(f"Run '{run_id}' not found."))
-
-    try:
         resolved_preview = (
             _resolve_run_preview(
                 run_id=run_id,
@@ -699,6 +727,8 @@ def runs_show(
         )
     except CLIError as exc:
         exit_for_cli_error(exc)
+    except NoResultFound:
+        exit_for_cli_error(not_found_error(f"Run '{run_id}' not found."))
 
     render_run_detail(
         run,
