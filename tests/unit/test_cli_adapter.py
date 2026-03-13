@@ -484,6 +484,7 @@ def test_codex_cli_adapter_opens_circuit_breaker_after_two_operational_failures(
     circuit_breaker_module = import_module("aignt_os.runtime.circuit_breaker")
 
     monkeypatch.setenv("AIGNT_OS_RUNTIME_STATE_DIR", str(tmp_path / "runtime"))
+    monkeypatch.setenv("AIGNT_OS_WORKSPACE_ROOT", str(tmp_path))
     monkeypatch.setenv("AIGNT_OS_ADAPTER_CIRCUIT_BREAKER_FAILURE_THRESHOLD", "2")
     monkeypatch.setenv("AIGNT_OS_ADAPTER_CIRCUIT_BREAKER_COOLDOWN_SECONDS", "60")
 
@@ -519,6 +520,7 @@ def test_codex_cli_adapter_blocks_without_spawn_when_circuit_is_open(tmp_path, m
     circuit_breaker_module = import_module("aignt_os.runtime.circuit_breaker")
 
     monkeypatch.setenv("AIGNT_OS_RUNTIME_STATE_DIR", str(tmp_path / "runtime"))
+    monkeypatch.setenv("AIGNT_OS_WORKSPACE_ROOT", str(tmp_path))
     monkeypatch.setenv("AIGNT_OS_ADAPTER_CIRCUIT_BREAKER_FAILURE_THRESHOLD", "2")
     monkeypatch.setenv("AIGNT_OS_ADAPTER_CIRCUIT_BREAKER_COOLDOWN_SECONDS", "60")
 
@@ -550,6 +552,7 @@ def test_codex_cli_adapter_resets_breaker_after_non_operational_probe(
     circuit_breaker_module = import_module("aignt_os.runtime.circuit_breaker")
 
     monkeypatch.setenv("AIGNT_OS_RUNTIME_STATE_DIR", str(tmp_path / "runtime"))
+    monkeypatch.setenv("AIGNT_OS_WORKSPACE_ROOT", str(tmp_path))
     monkeypatch.setenv("AIGNT_OS_ADAPTER_CIRCUIT_BREAKER_FAILURE_THRESHOLD", "2")
     monkeypatch.setenv("AIGNT_OS_ADAPTER_CIRCUIT_BREAKER_COOLDOWN_SECONDS", "60")
 

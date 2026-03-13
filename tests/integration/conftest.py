@@ -31,6 +31,7 @@ def runtime_env(tmp_path: Path) -> dict[str, str]:
     return {
         "AIGNT_OS_ENVIRONMENT": "test",
         "AIGNT_OS_RUNTIME_STATE_DIR": str(tmp_path),
+        "AIGNT_OS_WORKSPACE_ROOT": str(tmp_path),
     }
 
 
@@ -43,6 +44,7 @@ def subprocess_env(tmp_path: Path) -> dict[str, str]:
     env["PYTHONPATH"] = f"{python_path}{os.pathsep}{existing}" if existing else python_path
     env["AIGNT_OS_ENVIRONMENT"] = "test"
     env["AIGNT_OS_RUNTIME_STATE_DIR"] = str(tmp_path)
+    env["AIGNT_OS_WORKSPACE_ROOT"] = str(tmp_path)
     return env
 
 

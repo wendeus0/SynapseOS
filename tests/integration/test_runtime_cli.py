@@ -19,6 +19,7 @@ def invoke_runtime_command(tmp_path: Path, *args: str):
     env = {
         "AIGNT_OS_ENVIRONMENT": "test",
         "AIGNT_OS_RUNTIME_STATE_DIR": str(tmp_path),
+        "AIGNT_OS_WORKSPACE_ROOT": str(tmp_path),
     }
     return runner.invoke(cli_module.app, ["runtime", *args], env=env)
 
@@ -32,6 +33,7 @@ def spawn_runtime_foreground(tmp_path: Path) -> subprocess.Popen[str]:
     )
     env["AIGNT_OS_ENVIRONMENT"] = "test"
     env["AIGNT_OS_RUNTIME_STATE_DIR"] = str(tmp_path)
+    env["AIGNT_OS_WORKSPACE_ROOT"] = str(tmp_path)
 
     return subprocess.Popen(
         [
@@ -218,9 +220,12 @@ def test_runtime_stop_refuses_to_signal_process_when_persisted_identity_mismatch
 
 def test_runtime_start_rejects_untrusted_state_directory(tmp_path: Path) -> None:
     cli_module = import_module("aignt_os.cli.app")
+    workspace_root = tmp_path / "workspace"
+    workspace_root.mkdir()
     env = {
         "AIGNT_OS_ENVIRONMENT": "test",
-        "AIGNT_OS_RUNTIME_STATE_DIR": "../outside-runtime-state",
+        "AIGNT_OS_WORKSPACE_ROOT": str(workspace_root),
+        "AIGNT_OS_RUNTIME_STATE_DIR": str(tmp_path / "outside-runtime-state"),
     }
 
     result = runner.invoke(cli_module.app, ["runtime", "start"], env=env)
@@ -231,6 +236,32 @@ def test_runtime_start_rejects_untrusted_state_directory(tmp_path: Path) -> None
         or "environment error:" in result.stderr.lower()
     )
     assert "state" in result.stdout.lower() or "state" in result.stderr.lower()
+
+
+def test_runtime_start_rejects_symlinked_state_directory_outside_workspace_root(
+    tmp_path: Path,
+) -> None:
+    cli_module = import_module("aignt_os.cli.app")
+    workspace_root = tmp_path / "workspace"
+    outside_root = tmp_path / "outside-runtime-state"
+    runtime_link = workspace_root / "runtime-link"
+    workspace_root.mkdir()
+    outside_root.mkdir()
+    runtime_link.symlink_to(outside_root, target_is_directory=True)
+    env = {
+        "AIGNT_OS_ENVIRONMENT": "test",
+        "AIGNT_OS_WORKSPACE_ROOT": str(workspace_root),
+        "AIGNT_OS_RUNTIME_STATE_DIR": str(runtime_link),
+    }
+
+    result = runner.invoke(cli_module.app, ["runtime", "start"], env=env)
+
+    assert result.exit_code == 5
+    assert (
+        "environment error:" in result.stdout.lower()
+        or "environment error:" in result.stderr.lower()
+    )
+    assert "trusted root" in result.stdout.lower() or "trusted root" in result.stderr.lower()
 
 
 def test_runtime_cli_exposes_foreground_command_for_container_entrypoint(

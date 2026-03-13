@@ -78,7 +78,7 @@ def test_settings_runtime_state_file_is_child_of_state_dir() -> None:
 
     settings = config_module.AppSettings()
 
-    assert settings.runtime_state_file.parent == settings.runtime_state_dir
+    assert settings.runtime_state_file.parent == settings.runtime_state_dir_resolved
 
 
 def test_settings_workspace_root_defaults_to_current_working_directory() -> None:
@@ -143,7 +143,7 @@ def test_settings_exposes_default_adapter_circuit_breaker_controls() -> None:
     assert settings.adapter_circuit_breaker_failure_threshold == 2
     assert settings.adapter_circuit_breaker_cooldown_seconds == 60.0
     assert settings.adapter_circuit_breaker_state_file.name == "adapter-circuit-breakers.json"
-    assert settings.adapter_circuit_breaker_state_file.parent == settings.runtime_state_dir
+    assert settings.adapter_circuit_breaker_state_file.parent == settings.runtime_state_dir_resolved
 
 
 def test_settings_exposes_default_auth_controls() -> None:
@@ -153,7 +153,57 @@ def test_settings_exposes_default_auth_controls() -> None:
 
     assert settings.auth_enabled is False
     assert settings.auth_registry_file.name == "auth-registry.json"
-    assert settings.auth_registry_file.parent == settings.runtime_state_dir
+    assert settings.auth_registry_file.parent == settings.runtime_state_dir_resolved
+
+
+def test_settings_resolves_runtime_state_dir_within_workspace_root(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    config_module = import_module("aignt_os.config")
+    monkeypatch.setenv("AIGNT_OS_WORKSPACE_ROOT", str(tmp_path))
+    monkeypatch.setenv("AIGNT_OS_RUNTIME_STATE_DIR", str(tmp_path / "runtime"))
+
+    settings = config_module.AppSettings()
+
+    assert settings.runtime_state_dir_resolved == (tmp_path / "runtime").resolve()
+    assert settings.runtime_state_file.parent == settings.runtime_state_dir_resolved
+
+
+def test_settings_rejects_runtime_state_dir_outside_workspace_root(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    config_module = import_module("aignt_os.config")
+    workspace_root = tmp_path / "workspace"
+    workspace_root.mkdir()
+    monkeypatch.setenv("AIGNT_OS_WORKSPACE_ROOT", str(workspace_root))
+    monkeypatch.setenv("AIGNT_OS_RUNTIME_STATE_DIR", str(tmp_path / "outside-runtime"))
+
+    settings = config_module.AppSettings()
+
+    with pytest.raises(ValueError, match="Path escapes trusted root"):
+        _ = settings.runtime_state_file
+
+    with pytest.raises(ValueError, match="Path escapes trusted root"):
+        _ = settings.auth_registry_file
+
+
+def test_settings_rejects_symlinked_runtime_state_dir_that_resolves_outside_workspace_root(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    config_module = import_module("aignt_os.config")
+    workspace_root = tmp_path / "workspace"
+    outside_root = tmp_path / "outside-runtime"
+    runtime_link = workspace_root / "runtime-link"
+    workspace_root.mkdir()
+    outside_root.mkdir()
+    runtime_link.symlink_to(outside_root, target_is_directory=True)
+    monkeypatch.setenv("AIGNT_OS_WORKSPACE_ROOT", str(workspace_root))
+    monkeypatch.setenv("AIGNT_OS_RUNTIME_STATE_DIR", str(runtime_link))
+
+    settings = config_module.AppSettings()
+
+    with pytest.raises(ValueError, match="Path escapes trusted root"):
+        _ = settings.adapter_circuit_breaker_state_file
 
 
 def test_settings_rejects_invalid_environment_value() -> None:

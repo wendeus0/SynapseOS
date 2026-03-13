@@ -50,6 +50,7 @@ def _runtime_env(tmp_path: Path) -> dict[str, str]:
     env["AIGNT_OS_RUNTIME_STATE_DIR"] = str(tmp_path / "runtime")
     env["AIGNT_OS_RUNS_DB_PATH"] = str(tmp_path / "runs" / "runs.sqlite3")
     env["AIGNT_OS_ARTIFACTS_DIR"] = str(tmp_path / "artifacts")
+    env["AIGNT_OS_WORKSPACE_ROOT"] = str(tmp_path)
     env["AIGNT_OS_RUNTIME_POLL_INTERVAL_SECONDS"] = "0.05"
     return env
 
