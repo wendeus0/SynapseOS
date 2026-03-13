@@ -211,14 +211,14 @@ class RunRepository:
         )
 
     def mark_run_cancelling(self, run_id: str) -> None:
-        """Marks run as cancelling. 
+        """Marks run as cancelling.
         Does NOT unlock the run - the worker needs to see this signal while holding lock.
         Throws ValueError if run is already finished.
         """
         run = self.get_run(run_id)
         if run.status in ("completed", "failed", "cancelled"):
             raise ValueError(f"Cannot cancel finished run (status={run.status})")
-        
+
         self._update_run(
             run_id,
             status="cancelling",
@@ -725,9 +725,8 @@ class PersistedPipelineRunner:
                     # If we cannot read the run state, let the exception propagate
                     # to stop the potentially broken execution environment.
                     raise
-        
-        cancellation_checker = DBCancellationChecker()
 
+        cancellation_checker = DBCancellationChecker()
 
         executors = dict(self.executors)
         executors.setdefault(
