@@ -2,6 +2,11 @@
 
 ## Decisões incorporadas recentemente
 
+- Em 2026-03-13, a baseline voltou a ficar estavel apos a merge da PR `#66`, com `repo-checks` e `security-review` verdes na checagem remota e `ruff format --check .` restaurado como gate verde local.
+- Com a baseline estabilizada, a frente ativa deixou de ser operacional e voltou a ser backlog de produto: `F31-g11-remote-auth-decomposition`.
+- A `F31` foi aberta como frente doc-only para decompor formalmente o residual de `G-11` em `local_cli_auth` ja absorvido, `resident_transport_auth` ainda pendente e `remote_multi_host_auth` explicitamente adiado.
+- O proximo trabalho de codigo fica bloqueado ate essa decomposicao documental fechar uma SPEC pequena e verificavel para o bucket `resident_transport_auth`.
+
 - Em 2026-03-13, a `F30-auth-registry-cli` foi mergeada em `main` pela PR `#65`, adicionando `aignt auth init|issue|disable`, `token_id` no registry local e alinhamento de `docs/IDEAS.md`/README ao baseline pos-F30.
 - A `F30` fechou o follow-up local de auth iniciado pela `F29`; o residual real de `G-11` ficou reduzido ao recorte grande de operacao remota/socket, explicitamente adiado.
 - O fechamento Git da `F30` exigiu merge explicito porque o job `repo-checks` permaneceu vermelho por `ruff format --check .` em 6 arquivos preexistentes fora do diff funcional da feature.

@@ -20,7 +20,8 @@
 - `main` local permanece sincronizada com `origin/main`, sem diff aberto no baseline usado para o handoff atual.
 - O baseline atual ja incorpora `F15-public-run-submission`, `F16-run-detail-expansion`, `F21-cli-error-model-and-exit-codes`, `F18-canonical-happy-path`, `F19-environment-doctor`, `F20-public-onboarding`, `F17-artifact-preview`, `F22-release-readiness` e a sequencia `F23 -> F27`.
 - O baseline atual tambem ja incorpora `F28-adapter-circuit-breaker`, `F29-auth-rbac-foundation` e `F30-auth-registry-cli`, com `aignt auth init|issue|disable` e o alinhamento de `docs/IDEAS.md`/README ao estado pos-F30.
-- A release tecnica da etapa 2 e a primeira trilha de guardrails ja estao refletidas no codigo e na superficie publica da CLI; a proxima decisao passa a ser abrir a proxima SPEC apos `F27`, nao reconciliar merges pendentes.
+- A release tecnica da etapa 2 e a primeira trilha de guardrails ja estao refletidas no codigo e na superficie publica da CLI; a baseline tambem foi reestabilizada apos a PR `#66`, com `repo-checks` novamente verde.
+- A branch de trabalho atual abriu a `F31-g11-remote-auth-decomposition` como frente doc-only para fechar a ambiguidade do residual de `G-11` antes de qualquer nova implementacao de produto.
 
 # Stable decisions
 
@@ -36,13 +37,13 @@
 
 # Active fronts
 
-- Nao ha feature de produto ativa no momento; a etapa 2 e a primeira onda de guardrails pos-release ja foram mergeadas em `main`.
-- A frente operacional ativa agora e restaurar o `repo-checks`, porque a PR `#65` da `F30` precisou de merge explicito enquanto `ruff format --check .` ainda listava 6 arquivos preexistentes fora do padrao.
+- A frente ativa agora e a `F31-g11-remote-auth-decomposition`, uma frente doc-only de SPEC/backlog.
+- Nao ha frente de implementacao de transporte remoto, socket ou auth distribuida em andamento no baseline atual.
 
 # Open decisions
 
-- A proxima decisao pratica em aberto continua sendo qual sera a primeira feature apos `F27`, mas ela deve esperar a restauracao do `repo-checks` na baseline.
-- O backlog de guardrails ficou com `G-11` remoto/socket como residual real; os follow-ups locais de auth ja foram absorvidos por `F29` e `F30`.
+- O backlog de guardrails ficou com `G-11` como residual real, mas ele agora esta sendo decomposto em `local_cli_auth`, `resident_transport_auth` e `remote_multi_host_auth`.
+- A proxima decisao codificavel passa a ser qual sera a SPEC pequena derivada do bucket `resident_transport_auth`, nao uma implementacao direta de auth remota.
 - Decidir em momento futuro se o smoke autenticado do Codex deve virar gate obrigatorio; por ora o `401 Unauthorized` ficou classificado como bloqueio operacional externo e nao como requisito de produto.
 
 # Recurrent pitfalls
@@ -56,13 +57,13 @@
 
 # Next recommended steps
 
-- Restaurar `ruff format --check .` e o `repo-checks` na baseline atual com uma chore pequena e auditavel.
-- Sincronizar `memory.md`, `PENDING_LOG.md` e `ERROR_LOG.md` ao estado pos-F30 e ao incidente operacional da PR `#65`.
-- So depois reabrir a triagem da proxima SPEC de produto, mantendo `G-11` remoto/socket como backlog futuro e evitando abrir nova frente com a baseline ainda instavel.
+- Fechar a `F31` com SPEC validada, backlog/documentacao alinhados e teste de documentacao travando o novo estado de `G-11`.
+- So depois abrir a primeira SPEC de codigo derivada de `resident_transport_auth`, mantendo `remote_multi_host_auth` explicitamente adiado.
+- Evitar reabrir follow-up local de auth, porque esse recorte ja foi absorvido por `F29` e `F30`.
 
 # Last handoff summary
 
 - Read before acting: releia `AGENTS.md`, `CONTEXT.md`, `memory.md`, `PENDING_LOG.md`, `ERROR_LOG.md`, `git status` e `git diff --stat`.
-- Current state: `main` ja incorpora `F17`, `F22` e `F23 -> F27`; a etapa 2 e a primeira trilha de guardrails estao encerradas no baseline atual.
-- Open points: promover a proxima feature apenas via nova SPEC e manter o handoff alinhado ao estado real do backlog.
-- Recommended next front: triagem da fila remanescente da `IDEA-001`, com `G-09` como proximo recorte tecnico mais natural.
+- Current state: `main` ja incorpora `F17`, `F22`, `F23 -> F30` e a baseline operacional voltou a ficar verde apos a `#66`.
+- Open points: concluir a decomposicao documental de `G-11` e transformar apenas o bucket `resident_transport_auth` no proximo candidato de SPEC pequena.
+- Recommended next front: fechar a `F31` e, depois disso, abrir a primeira SPEC de codigo derivada do residual residente/local de `G-11`.
