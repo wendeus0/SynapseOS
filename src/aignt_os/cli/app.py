@@ -38,7 +38,11 @@ from aignt_os.cli.rendering import (
 from aignt_os.config import AppSettings
 from aignt_os.persistence import ArtifactStore, PersistedPipelineRunner, RunRepository
 from aignt_os.pipeline import PIPELINE_STOP_STATES
-from aignt_os.runtime.dispatch import RunDispatchService
+from aignt_os.runtime.dispatch import (
+    AsyncDispatchOwnershipError,
+    AsyncDispatchRuntimeUnavailableError,
+    RunDispatchService,
+)
 from aignt_os.runtime.service import RuntimeLifecycleError, RuntimeService
 from aignt_os.runtime.worker import build_runtime_worker
 from aignt_os.security import resolve_path_within_root
@@ -334,6 +338,8 @@ def _dispatch_service(*, initiated_by: str | None = None) -> RunDispatchService:
         is_runtime_ready=runtime_service.ready,
         workspace_root=settings.workspace_root,
         initiated_by=initiated_by or settings.run_initiated_by,
+        runtime_state_provider=runtime_service.status,
+        enforce_async_runtime_ownership=settings.auth_enabled,
     )
 
 
@@ -614,6 +620,10 @@ def runs_submit(
         exit_for_cli_error(not_found_error(str(exc)))
     except SpecValidationError as exc:
         exit_for_cli_error(validation_error(str(exc)))
+    except AsyncDispatchRuntimeUnavailableError as exc:
+        exit_for_cli_error(environment_error(str(exc)))
+    except AsyncDispatchOwnershipError as exc:
+        exit_for_cli_error(authorization_error(str(exc)))
     except ValueError as exc:
         exit_for_cli_error(usage_error(str(exc)))
     except RuntimeError as exc:
