@@ -21,7 +21,8 @@
 - O baseline atual ja incorpora `F15-public-run-submission`, `F16-run-detail-expansion`, `F21-cli-error-model-and-exit-codes`, `F18-canonical-happy-path`, `F19-environment-doctor`, `F20-public-onboarding`, `F17-artifact-preview`, `F22-release-readiness` e a sequencia `F23 -> F27`.
 - O baseline atual tambem ja incorpora `F28-adapter-circuit-breaker`, `F29-auth-rbac-foundation` e `F30-auth-registry-cli`, com `aignt auth init|issue|disable` e o alinhamento de `docs/IDEAS.md`/README ao estado pos-F30.
 - A release tecnica da etapa 2 e a primeira trilha de guardrails ja estao refletidas no codigo e na superficie publica da CLI; a baseline tambem foi reestabilizada apos a PR `#66`, com `repo-checks` novamente verde.
-- O baseline atual agora tambem incorpora `F31-g11-remote-auth-decomposition` e `F32-runtime-resident-principal-binding`, incluindo o primeiro slice concreto de `resident_transport_auth` via binding local de `started_by` no lifecycle do runtime.
+- O baseline atual agora tambem incorpora `F31-g11-remote-auth-decomposition`, `F32-runtime-resident-principal-binding`, `F34-async-submit-runtime-ownership`, `F35-worker-runtime-ownership-filter` e `F36-worker-owner-skip-observability`.
+- Com isso, o baseline fecha o recorte local de `resident_transport_auth`: binding do principal do runtime, gate de ownership no submit assincrono, filtro de ownership no worker e observabilidade local de skips incompatíveis.
 
 # Stable decisions
 
@@ -37,13 +38,13 @@
 
 # Active fronts
 
-- Nao ha frente de produto aberta no baseline atual; a frente imediata aprovada e apenas a chore doc-only `F33-post-f32-handoff-sync` para alinhar o handoff pos-`F32`.
+- Nao ha frente de produto aberta no baseline atual; a frente imediata aprovada e apenas a chore doc-only `F37-post-f36-g11-sync` para alinhar o handoff pos-`F36`.
 - Nao ha frente de implementacao de transporte remoto, socket ou auth distribuida em andamento no baseline atual.
 
 # Open decisions
 
-- O backlog de guardrails ficou com `G-11` como residual real, decomposto em `local_cli_auth`, `resident_transport_auth` e `remote_multi_host_auth`.
-- `resident_transport_auth` ja tem um primeiro slice absorvido na `F32`, mas a proxima decisao codificavel ainda precisa definir se existe outro recorte local-only pequeno ou se o bucket deve ser pausado.
+- O backlog de guardrails ficou com `G-11` como residual real apenas no bucket `remote_multi_host_auth`.
+- O recorte local de `resident_transport_auth` foi absorvido no baseline atual por `F32`, `F34`, `F35` e `F36`; nao ha decisao de produto pendente nesse bucket sem reabrir transporte novo.
 - Decidir em momento futuro se o smoke autenticado do Codex deve virar gate obrigatorio; por ora o `401 Unauthorized` ficou classificado como bloqueio operacional externo e nao como requisito de produto.
 
 # Recurrent pitfalls
@@ -57,13 +58,13 @@
 
 # Next recommended steps
 
-- Fechar a `F33` alinhando `PENDING_LOG.md`, `ERROR_LOG.md`, `memory.md` e `docs/IDEAS.md` ao estado pos-`F32`.
-- So depois rodar nova triagem para decidir se o proximo passo de produto ainda e um slice local-only de `resident_transport_auth` ou um hardening menor fora desse bucket.
-- Evitar reabrir follow-up local de auth, porque esse recorte ja foi absorvido por `F29` e `F30`.
+- Fechar a `F37` alinhando `PENDING_LOG.md`, `memory.md` e `docs/IDEAS.md` ao estado pos-`F36`.
+- So depois rodar nova triagem para escolher a proxima frente fora de `resident_transport_auth`, mantendo `remote_multi_host_auth` explicitamente adiado.
+- Evitar reabrir follow-up local/residente de auth, porque esse recorte ja foi absorvido por `F29`, `F30`, `F32`, `F34`, `F35` e `F36`.
 
 # Last handoff summary
 
 - Read before acting: releia `AGENTS.md`, `CONTEXT.md`, `memory.md`, `PENDING_LOG.md`, `ERROR_LOG.md`, `git status` e `git diff --stat`.
-- Current state: `main` ja incorpora `F17`, `F22`, `F23 -> F32`; a baseline operacional segue verde apos a `#66` e a `F32` foi mergeada na `#68`.
-- Open points: alinhar o handoff pos-`F32` e decidir, em triagem posterior, se ainda existe outro slice pequeno de `resident_transport_auth`.
-- Recommended next front: fechar a `F33` e, depois disso, abrir nova triagem antes de qualquer feature de produto.
+- Current state: `main` ja incorpora `F17`, `F22`, `F23 -> F36`; a baseline operacional segue verde e a PR `#72` fechou a `F36`.
+- Open points: alinhar o handoff pos-`F36` e decidir, em triagem posterior, a proxima frente fora do bucket residente local de `G-11`.
+- Recommended next front: fechar a `F37` e, depois disso, abrir nova triagem antes de qualquer feature de produto.

@@ -182,7 +182,7 @@ em `F23 -> F27`; os itens remanescentes continuam candidatos a novas SPECs próp
 | G-08 | Audit trail com `initiated_by` e security events | medium | M | absorbed em `F26` | — |
 | G-09 | Circuit breaker para adapters (estado persistido entre runs) | medium | L | absorbed em `F28` | — |
 | G-10 | Log sanitization de artefatos em disco | low | S | absorbed em `F24` | — |
-| G-11 | Autenticação e autorização (fundacao local absorvida; primeiro slice residente absorvido; operacao remota ainda pendente) | low | XL | decomposed em `F31`; local absorvido em `F29`/`F30`; primeiro slice residente absorvido em `F32` | pós-F27 |
+| G-11 | Autenticação e autorização (fundacao local absorvida; bucket residente local absorvido; operacao remota ainda pendente) | low | XL | decomposed em `F31`; local absorvido em `F29`/`F30`; residente local absorvido em `F32`/`F34`/`F35`/`F36` | pós-F27 |
 
 ### Problema
 
@@ -199,11 +199,11 @@ ataque crescente à medida que a Fase 2 amplia a interface pública (`runs submi
 - **Ausência de rastreabilidade**: `RunRecord` não tem `initiated_by` nem events tipados
   como `security_failure`, dificultando auditoria e resposta a incidentes (G-08)
 
-O unico gap remanescente desta IDEA no baseline atual e o residual de `G-11`, agora
-decomposto em tres buckets: a fundacao local ja absorvida, o futuro bucket pequeno de
-`resident_transport_auth` e a operacao remota/multi-host explicitamente adiada.
-Circuit breaker, boundary check, integridade da SPEC, rate limiting, audit trail minimo
-e sanitizacao publica ja foram absorvidos no baseline atual.
+O unico gap remanescente desta IDEA no baseline atual e o residual remoto de `G-11`.
+A fundacao local ja foi absorvida, o bucket `resident_transport_auth` tambem foi
+absorvido no baseline atual e apenas a operacao remota/multi-host continua
+explicitamente adiada. Circuit breaker, boundary check, integridade da SPEC, rate
+limiting, audit trail minimo e sanitizacao publica ja foram absorvidos no baseline atual.
 
 ### Solução proposta
 
@@ -221,19 +221,21 @@ Absorções já concluídas no baseline atual:
 - `F30`: provisionamento local do auth registry (`init`, `issue`, `disable`)
 - `F31`: decomposicao formal de `G-11` em buckets local, residente e remoto
 - `F32`: primeiro slice de `resident_transport_auth` com binding local de `started_by` no lifecycle do runtime
+- `F34`: gate de ownership no `runs submit` quando o dispatch resolve para `async`
+- `F35`: filtro de ownership no consumo da fila pelo worker do runtime residente
+- `F36`: observabilidade de `runtime_owner_skip` para runs incompatíveis no worker autenticado
 
 Centralização técnica já realizada:
 - `src/aignt_os/security.py` foi criado como módulo de segurança compartilhado
 - a sanitização pública passou a reutilizar helpers compartilhados no baseline atual
 
 Boundary ainda adiado:
-- `resident_transport_auth`: ainda parcial; a `F32` cobriu apenas o binding local do principal que inicia o runtime residente
 - `remote_multi_host_auth`: continua sem transporte em rede, operacao entre hosts ou coordenacao remota
 
 ### Impacto arquitetural
 
 - **Mudança estrutural:** sim — G-06 e G-08 exigem migration SQLite;
-  G-09 exigiu novo arquivo de estado; o residual futuro de G-11 ainda exigira camada propria de transporte/auth quando sair do bucket documental
+  G-09 exigiu novo arquivo de estado; o residual futuro de G-11 ainda exigira camada propria de transporte/auth quando sair do bucket remoto
 - **Novos agents/skills:** nao obrigatorio no baseline atual; qualquer skill nova de auth/transporte so deve aparecer quando houver frente de codigo propria
 - **Novos contratos Pydantic:**
   - já absorvido: `AppSettings.secret_mask_patterns: list[str]`
