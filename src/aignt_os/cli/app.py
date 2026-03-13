@@ -14,6 +14,7 @@ from aignt_os.auth import (
     AuthRegistryStore,
     Permission,
     Role,
+    get_auth_provider,
     is_authorized,
 )
 from aignt_os.cli.errors import (
@@ -377,6 +378,10 @@ def _dispatch_service(*, initiated_by: str | None = None) -> RunDispatchService:
 
 def _auth_registry_store() -> AuthRegistryStore:
     settings = AppSettings()
+    if settings.auth_provider != "file":
+        raise usage_error(
+            f"Auth provider '{settings.auth_provider}' does not support local token management."
+        )
     try:
         return AuthRegistryStore(settings.auth_registry_file)
     except ValueError as exc:
@@ -412,11 +417,11 @@ def _resolve_principal_id(
         raise authentication_error("Authentication token is required for this command.")
 
     try:
-        store = AuthRegistryStore(settings.auth_registry_file)
+        provider = get_auth_provider(settings)
     except ValueError as exc:
         raise environment_error(str(exc)) from exc
     try:
-        principal = store.authenticate(auth_token)
+        principal = provider.authenticate(auth_token)
     except AuthConfigurationError as exc:
         raise environment_error(str(exc)) from exc
 

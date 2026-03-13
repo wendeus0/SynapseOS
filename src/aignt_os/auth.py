@@ -7,11 +7,14 @@ import os
 import secrets
 import tempfile
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from aignt_os.runtime.state import STATE_DIR_MODE, STATE_FILE_MODE
+
+if TYPE_CHECKING:
+    from aignt_os.config import AppSettings
 
 Role = Literal["viewer", "operator"]
 Permission = Literal["runs.submit", "runtime.manage"]
@@ -54,6 +57,11 @@ class AuthenticatedPrincipal(BaseModel):
 
     principal_id: str = Field(min_length=1)
     roles: tuple[Role, ...]
+
+
+@runtime_checkable
+class AuthProvider(Protocol):
+    def authenticate(self, token: str) -> AuthenticatedPrincipal | None: ...
 
 
 class IssuedAuthToken(BaseModel):
@@ -235,3 +243,9 @@ def is_authorized(principal: AuthenticatedPrincipal, *, permission: Permission) 
     for role in principal.roles:
         allowed_permissions.update(ROLE_PERMISSIONS.get(role, frozenset()))
     return permission in allowed_permissions
+
+
+def get_auth_provider(settings: AppSettings) -> AuthProvider:
+    if settings.auth_provider == "file":
+        return AuthRegistryStore(settings.auth_registry_file)
+    raise ValueError(f"Unknown auth provider: {settings.auth_provider}")
