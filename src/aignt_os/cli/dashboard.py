@@ -462,6 +462,9 @@ class RunDashboard(App[None]):
         ("q", "quit", "Quit"),
         ("enter", "show_logs", "Show Logs"),
         ("a", "show_artifacts", "Artifacts"),
+        ("f", "filter_failed", "Filter Failed"),
+        ("r", "filter_active", "Filter Active"),
+        ("x", "filter_all", "Reset Filters"),
     ]
 
     def __init__(self, run_id: str, refresh_interval: float = 1.0) -> None:
@@ -478,6 +481,25 @@ class RunDashboard(App[None]):
         self.artifact_explorer = ArtifactExplorer()
 
         self.steps_count = 0
+        self.current_filter: str = "all"  # all, failed, active
+
+    def action_filter_failed(self) -> None:
+        """Filter to show only failed steps."""
+        self.current_filter = "failed"
+        self.refresh_data()
+        self.notify("Filter: Failed steps only")
+
+    def action_filter_active(self) -> None:
+        """Filter to show only active (running/pending) steps."""
+        self.current_filter = "active"
+        self.refresh_data()
+        self.notify("Filter: Active steps only")
+
+    def action_filter_all(self) -> None:
+        """Reset filter to show all steps."""
+        self.current_filter = "all"
+        self.refresh_data()
+        self.notify("Filter: All steps")
 
     def action_show_artifacts(self) -> None:
         """Switch to artifacts tab."""
@@ -568,6 +590,19 @@ class RunDashboard(App[None]):
 
             steps = self.repository.list_steps(self.run_id)
 
+            # Apply filter
+            filtered_steps = steps
+            if self.current_filter == "failed":
+                filtered_steps = [s for s in steps if s.status == "failed"]
+            elif self.current_filter == "active":
+                filtered_steps = [s for s in steps if s.status in ("running", "pending")]
+
+            # Update title to reflect filter
+            filter_text = ""
+            if self.current_filter != "all":
+                filter_text = f" [FILTER: {self.current_filter}]"
+            self.title = f"AIgnt OS Watcher - {self.run_id}{filter_text}"
+
             # Simple diff: rebuild list if count changes or status changes
             # For MVP simplicity, verify if rebuild is needed
             # Or just rebuild if count matches but status might change?
@@ -575,14 +610,31 @@ class RunDashboard(App[None]):
             # Ideally we update items in place, but ListView API is list-based.
             # Let's rebuild only if count changes for now (new steps),
             # OR if last step status changed.
+            # OR if filter changed (which forces rebuild)
 
             should_rebuild = False
+            # If filtered count differs from current visible count
+            if len(filtered_steps) != len(self.step_list.children):
+                should_rebuild = True
+
+            # If we haven't rebuilt yet, check if content changed
+            if not should_rebuild and filtered_steps:
+                # Check first and last item as heuristic
+                first_item = self.step_list.children[0]
+                if isinstance(first_item, StepItem):
+                    if str(first_item.step.step_id) != str(filtered_steps[0].step_id):
+                        should_rebuild = True
+
             if len(steps) != self.steps_count:
                 should_rebuild = True
             elif steps and self.steps_count > 0:
                 # Check if last step status changed (e.g. running -> completed)
                 # In a real app we would check all, but this is a heuristic for optimization
                 pass
+
+            # Always rebuild if filter is active to ensure correctness without complex diff
+            if self.current_filter != "all":
+                should_rebuild = True
 
             # Forcing rebuild for now to ensure correctness
             should_rebuild = True
@@ -594,12 +646,13 @@ class RunDashboard(App[None]):
                 current_index = self.step_list.index
 
                 self.step_list.clear()
-                for step in steps:
+                for step in filtered_steps:
                     self.step_list.append(StepItem(step))
 
-                if current_index is not None and current_index < len(steps):
+                # Restore selection if valid
+                if current_index is not None and current_index < len(filtered_steps):
                     self.step_list.index = current_index
-                elif len(steps) > 0:
+                elif len(filtered_steps) > 0:
                     self.step_list.index = 0
 
         except Exception as e:
