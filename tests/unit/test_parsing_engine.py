@@ -104,7 +104,7 @@ def test_parse_cli_output_clean_output_strips_transport_noise() -> None:
 
 def test_parse_cli_output_normalizes_unicode_and_strips_bidi_controls() -> None:
     parsing = _parsing_module()
-    raw_output = "e\u0301 \u202EＦ\n"
+    raw_output = "e\u0301 \u202eＦ\n"
 
     parsed_output = parsing.parse_cli_output(raw_output)
 

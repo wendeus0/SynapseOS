@@ -2,6 +2,11 @@
 
 ## Decisões incorporadas recentemente
 
+- Em 2026-03-13, a `F30-auth-registry-cli` foi mergeada em `main` pela PR `#65`, adicionando `aignt auth init|issue|disable`, `token_id` no registry local e alinhamento de `docs/IDEAS.md`/README ao baseline pos-F30.
+- A `F30` fechou o follow-up local de auth iniciado pela `F29`; o residual real de `G-11` ficou reduzido ao recorte grande de operacao remota/socket, explicitamente adiado.
+- O fechamento Git da `F30` exigiu merge explicito porque o job `repo-checks` permaneceu vermelho por `ruff format --check .` em 6 arquivos preexistentes fora do diff funcional da feature.
+- Com isso, a proxima frente logica deixou de ser backlog de produto e passou a ser estabilizacao da baseline: restaurar `repo-checks` e sincronizar o handoff pos-F30 antes de abrir nova SPEC.
+
 - Em 2026-03-12, a `F28-adapter-circuit-breaker` foi mergeada em `main` pela PR `#62`, absorvendo `G-09` com breaker persistido local para o `CodexCLIAdapter` sem reabrir SQLite, auth remota ou CLI publica.
 - Em 2026-03-12, a `F29-auth-rbac-foundation` foi mergeada em `main` pela PR `#63`, endurecendo `runs submit` e `runtime start|run|stop` com auth opt-in local, registry privado por hash SHA-256 e reuso de `initiated_by` para provenance autenticada.
 - Com `F28` e `F29`, a triagem pos-`F27` deixou de ser `G-09` versus `G-11`: o backlog imediato agora precisa distinguir entre follow-up residual de auth (`socket`, rotacao/provisionamento e operacao remota`) e outras frentes fora da `IDEA-001`.
@@ -133,9 +138,10 @@
 
 - Fixtures de testes aspiracionais marcadas como 🔜 no TDD.md: `tests/fixtures/worker/` (ainda ausente).
 - Property-based testing com `hypothesis` ainda não implementado (mencionado como evolução futura em TDD.md).
-- Promover a próxima feature apenas com SPEC própria pós-`F27`, sem reaproveitar backlog textual como fila automática.
-- Decidir explicitamente se o residual de `G-11` apos a `F29` (socket, provisao/rotacao de credenciais e auth remota) merece feature propria agora ou deve permanecer adiado.
-- Alinhar `docs/IDEAS.md` ao baseline pos-`F28`/`F29` antes de usar o documento como fonte de triagem futura.
+- Restaurar `ruff format --check .` na baseline atual; hoje 6 arquivos ainda bloqueiam o `repo-checks`.
+- Sincronizar `PENDING_LOG.md`, `ERROR_LOG.md` e `memory.md` ao estado pos-F30 e ao incidente operacional da PR `#65`.
+- Promover a próxima feature apenas com SPEC própria pós-`F27`, sem reaproveitar backlog textual como fila automática, mas somente depois de o baseline voltar a passar no `repo-checks`.
+- Manter o residual de `G-11` limitado a operacao remota/socket como frente futura propria; nao reabrir follow-up local de auth agora.
 
 ## Pontos de atenção futuros
 

@@ -59,8 +59,8 @@ def test_artifact_store_saves_raw_clean_and_named_artifacts(tmp_path: Path) -> N
     saved_outputs = store.save_step_outputs(
         run_id="run-123",
         step_state="PLAN",
-        raw_output="RAW Bearer secret-token \u202EＦ\n",
-        clean_output="clean Bearer secret-token e\u0301 \u202EＦ",
+        raw_output="RAW Bearer secret-token \u202eＦ\n",
+        clean_output="clean Bearer secret-token e\u0301 \u202eＦ",
     )
     artifact_path = store.save_named_artifact(
         run_id="run-123",
@@ -76,14 +76,13 @@ def test_artifact_store_saves_raw_clean_and_named_artifacts(tmp_path: Path) -> N
     assert saved_outputs.raw_path is not None
     assert saved_outputs.clean_path is not None
     assert (
-        saved_outputs.raw_path.read_text(encoding="utf-8")
-        == "RAW Bearer secret-token \u202EＦ\n"
+        saved_outputs.raw_path.read_text(encoding="utf-8") == "RAW Bearer secret-token \u202eＦ\n"
     )
     clean_content = saved_outputs.clean_path.read_text(encoding="utf-8")
     assert "Bearer secret-token" not in clean_content
     assert "[REDACTED]" in clean_content
     assert "é" in clean_content
-    assert "\u202E" not in clean_content
+    assert "\u202e" not in clean_content
     assert "F" in clean_content
     artifact_content = artifact_path.read_text(encoding="utf-8")
     assert "sk-secret123" not in artifact_content

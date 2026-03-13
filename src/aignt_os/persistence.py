@@ -643,8 +643,8 @@ class PersistedPipelineRunner:
         spec_hash: str | None = None,
     ) -> str:
         resolved_spec_path = spec_path.resolve()
-        persisted_spec_hash = spec_hash if spec_hash is not None else compute_file_sha256(
-            resolved_spec_path
+        persisted_spec_hash = (
+            spec_hash if spec_hash is not None else compute_file_sha256(resolved_spec_path)
         )
         run_id = self.repository.create_run(
             spec_path=resolved_spec_path,
