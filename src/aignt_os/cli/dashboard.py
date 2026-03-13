@@ -1,0 +1,323 @@
+from __future__ import annotations
+
+from textual.app import App, ComposeResult
+from textual.containers import Horizontal, Vertical
+from textual.reactive import reactive
+from textual.widgets import (
+    Footer,
+    Header,
+    Label,
+    ListItem,
+    ListView,
+    Static,
+)
+
+from aignt_os.config import AppSettings
+from aignt_os.persistence import RunRecord, RunRepository, RunStepRecord
+
+
+class RunHeader(Static):
+    """Exibe informações básicas da run no topo."""
+
+    run_id = reactive("")
+    status = reactive("loading...")
+    state = reactive("loading...")
+    spec_path = reactive("")
+
+    def compose(self) -> ComposeResult:
+        with Horizontal(id="header_content"):
+            with Vertical(classes="header_column"):
+                yield Label("RUN ID", classes="header_label")
+                yield Label(self.run_id, id="run_id", classes="header_value")
+            with Vertical(classes="header_column"):
+                yield Label("STATUS", classes="header_label")
+                yield Label(self.status, id="status", classes="header_value")
+            with Vertical(classes="header_column"):
+                yield Label("STATE", classes="header_label")
+                yield Label(self.state, id="state", classes="header_value")
+            with Vertical(classes="header_column_wide"):
+                yield Label("SPEC", classes="header_label")
+                yield Label(self.spec_path, id="spec_path", classes="header_value")
+
+    def update_info(self, run: RunRecord) -> None:
+        self.run_id = run.run_id
+        self.status = run.status
+        self.state = run.current_state
+        self.spec_path = run.spec_path
+
+        # Update classes based on status
+        status_label = self.query_one("#status", Label)
+        status_label.remove_class("status-success", "status-error", "status-running")
+        if run.status == "completed":
+            status_label.add_class("status-success")
+        elif run.status == "failed":
+            status_label.add_class("status-error")
+        elif run.status in ("running", "pending"):
+            status_label.add_class("status-running")
+
+
+class StepItem(ListItem):
+    """Item individual da lista de steps."""
+
+    def __init__(self, step: RunStepRecord) -> None:
+        super().__init__()
+        self.step = step
+        self.step_id = str(step.step_id)
+
+    def compose(self) -> ComposeResult:
+        icon = "⚪"
+        if self.step.status == "completed":
+            icon = "✅"
+        elif self.step.status == "failed":
+            icon = "❌"
+        elif self.step.status == "running":
+            icon = "⏳"
+        elif self.step.status == "skipped":
+            icon = "⏭️"
+
+        tool = self.step.tool_name or "system"
+        duration = f"{self.step.duration_ms}ms" if self.step.duration_ms else ""
+
+        yield Label(f"{icon} {self.step.state}", classes="step_state")
+        yield Label(tool, classes="step_tool")
+        if duration:
+            yield Label(duration, classes="step_duration")
+
+
+class StepDetail(Static):
+    """Painel de detalhes do step selecionado."""
+
+    step: reactive[RunStepRecord | None] = reactive(None)
+
+    def compose(self) -> ComposeResult:
+        yield Label("Select a step to view details", id="detail_placeholder")
+        yield Vertical(id="detail_content", classes="hidden")
+
+    def watch_step(self, step: RunStepRecord | None) -> None:
+        if step is None:
+            self.query_one("#detail_placeholder").remove_class("hidden")
+            self.query_one("#detail_content").add_class("hidden")
+            return
+
+        self.query_one("#detail_placeholder").add_class("hidden")
+        content = self.query_one("#detail_content")
+        content.remove_class("hidden")
+        
+        # Clear previous content manually since we are not using clear() on Vertical
+        for child in content.children:
+            child.remove()
+
+        # Build details
+        content.mount(Label(f"Step ID: {step.step_id}", classes="detail_header"))
+        
+        with Horizontal(classes="detail_row"):
+            content.mount(Label("State:", classes="detail_label"))
+            content.mount(Label(step.state, classes="detail_value"))
+            
+        with Horizontal(classes="detail_row"):
+            content.mount(Label("Status:", classes="detail_label"))
+            content.mount(Label(step.status, classes="detail_value"))
+
+        with Horizontal(classes="detail_row"):
+            content.mount(Label("Tool:", classes="detail_label"))
+            content.mount(Label(step.tool_name or 'N/A', classes="detail_value"))
+
+        with Horizontal(classes="detail_row"):
+            content.mount(Label("Duration:", classes="detail_label"))
+            content.mount(Label(f"{step.duration_ms or 0}ms", classes="detail_value"))
+            
+        with Horizontal(classes="detail_row"):
+            content.mount(Label("Created:", classes="detail_label"))
+            content.mount(Label(step.created_at, classes="detail_value"))
+
+        if step.return_code is not None:
+             with Horizontal(classes="detail_row"):
+                content.mount(Label("Return Code:", classes="detail_label"))
+                content.mount(Label(str(step.return_code), classes="detail_value"))
+
+        if step.timed_out:
+             content.mount(Label("Timed Out: Yes", classes="detail_row error"))
+
+
+class RunDashboard(App):
+    """Dashboard TUI Moderno para AIgnt OS."""
+
+    CSS = """
+    Screen {
+        layout: vertical;
+        background: $surface;
+    }
+
+    /* Header Styling */
+    RunHeader {
+        height: auto;
+        dock: top;
+        background: $surface-darken-1;
+        border-bottom: solid $primary;
+        padding: 1;
+    }
+    #header_content {
+        height: auto;
+    }
+    .header_column {
+        width: 1fr;
+        height: auto;
+    }
+    .header_column_wide {
+        width: 3fr;
+        height: auto;
+    }
+    .header_label {
+        color: $text-muted;
+        text-style: bold;
+    }
+    .header_value {
+        color: $text;
+    }
+    .status-success { color: $success; }
+    .status-error { color: $error; }
+    .status-running { color: $warning; }
+
+    /* Main Layout */
+    #main_container {
+        height: 1fr;
+        width: 1fr;
+    }
+    #sidebar {
+        width: 30%;
+        height: 100%;
+        border-right: solid $primary;
+        background: $surface-darken-2;
+    }
+    #content {
+        width: 70%;
+        height: 100%;
+        padding: 1 2;
+        background: $surface;
+    }
+
+    /* Steps List */
+    StepItem {
+        layout: horizontal;
+        height: auto;
+        padding: 1;
+        margin-bottom: 0;
+    }
+    StepItem:hover {
+        background: $primary-darken-2;
+    }
+    ListView > ListItem.--highlight {
+        background: $primary-darken-1;
+        border-left: solid $secondary;
+    }
+    .step_state { width: 1fr; }
+    .step_tool { width: 1fr; color: $text-muted; }
+    .step_duration { width: auto; color: $text-disabled; }
+
+    /* Detail View */
+    .detail_header {
+        text-style: bold;
+        border-bottom: solid $secondary;
+        margin-bottom: 1;
+        color: $primary;
+    }
+    .detail_row {
+        height: auto;
+        margin-bottom: 0;
+    }
+    .detail_label {
+        width: 15;
+        color: $text-muted;
+    }
+    .detail_value {
+        width: 1fr;
+        color: $text;
+    }
+    .hidden {
+        display: none;
+    }
+    .error {
+        color: $error;
+        text-style: bold;
+    }
+    """
+
+    BINDINGS = [("q", "quit", "Quit")]
+
+    def __init__(self, run_id: str, refresh_interval: float = 1.0) -> None:
+        super().__init__()
+        self.run_id = run_id
+        self.refresh_interval = refresh_interval
+        settings = AppSettings()
+        self.repository = RunRepository(settings.runs_db_path)
+        self.run_header = RunHeader()
+        self.step_list = ListView(id="step_list")
+        self.step_detail = StepDetail()
+        self.steps_count = 0
+
+    def compose(self) -> ComposeResult:
+        yield Header(show_clock=True)
+        yield self.run_header
+        with Horizontal(id="main_container"):
+            with Vertical(id="sidebar"):
+                yield Label("Steps", classes="header_label", style="padding: 1;")
+                yield self.step_list
+            with Vertical(id="content"):
+                yield self.step_detail
+        yield Footer()
+
+    def on_mount(self) -> None:
+        self.title = f"AIgnt OS Watcher - {self.run_id}"
+        self.set_interval(self.refresh_interval, self.refresh_data)
+        self.refresh_data()
+
+    def on_list_view_selected(self, message: ListView.Selected) -> None:
+        if isinstance(message.item, StepItem):
+            self.step_detail.step = message.item.step
+
+    def refresh_data(self) -> None:
+        """Atualiza dados do banco."""
+        try:
+            try:
+                run = self.repository.get_run(self.run_id)
+                self.run_header.update_info(run)
+            except Exception:
+                self.notify("Run not found!", severity="error")
+                return
+
+            steps = self.repository.list_steps(self.run_id)
+            
+            # Simple diff: rebuild list if count changes or status changes
+            # For MVP simplicity, verify if rebuild is needed
+            # Or just rebuild if count matches but status might change?
+            # Rebuilding clears selection, which is annoying.
+            # Ideally we update items in place, but ListView API is list-based.
+            # Let's rebuild only if count changes for now (new steps), 
+            # OR if last step status changed.
+            
+            should_rebuild = False
+            if len(steps) != self.steps_count:
+                should_rebuild = True
+            elif steps and self.steps_count > 0:
+                # Check if last step status changed (e.g. running -> completed)
+                # In a real app we would check all, but this is a heuristic for optimization
+                pass
+            
+            # Forcing rebuild for now to ensure correctness
+            should_rebuild = True 
+
+            if should_rebuild:
+                self.steps_count = len(steps)
+                
+                # Preserve selection index if possible
+                current_index = self.step_list.index
+                
+                self.step_list.clear()
+                for step in steps:
+                    self.step_list.append(StepItem(step))
+                
+                if current_index is not None and current_index < len(steps):
+                    self.step_list.index = current_index
+                
+        except Exception as e:
+            self.notify(f"Error refreshing data: {e}", severity="error")

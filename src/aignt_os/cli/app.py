@@ -571,6 +571,29 @@ def runtime_stop(
     typer.echo(f"Runtime status: {state.status}")
 
 
+@runs_app.command("watch")
+def watch(
+    run_id: str = typer.Argument(..., help="ID of the run to monitor"),
+    refresh: float = typer.Option(1.0, help="Refresh interval in seconds"),
+) -> None:
+    """
+    Monitor a run in real-time using a TUI dashboard.
+    """
+    from aignt_os.cli.dashboard import RunDashboard
+
+    repo = _run_repository()
+    try:
+        if not repo.get_run(run_id):
+            typer.echo(f"Error: Run {run_id} not found.", err=True)
+            raise typer.Exit(code=1)
+    except NoResultFound:
+        typer.echo(f"Error: Run {run_id} not found.", err=True)
+        raise typer.Exit(code=1) from None
+
+    app = RunDashboard(run_id=run_id, refresh_interval=refresh)
+    app.run()
+
+
 @runs_app.command("list")
 def runs_list() -> None:
     repository = _run_repository()
