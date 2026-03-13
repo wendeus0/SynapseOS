@@ -19,6 +19,7 @@ def _runtime_env(tmp_path: Path) -> dict[str, str]:
     return {
         "AIGNT_OS_ENVIRONMENT": "test",
         "AIGNT_OS_RUNTIME_STATE_DIR": str(tmp_path),
+        "AIGNT_OS_WORKSPACE_ROOT": str(tmp_path),
     }
 
 

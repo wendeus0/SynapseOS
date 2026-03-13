@@ -155,6 +155,7 @@ exit 98
     monkeypatch.setenv("FAKE_DOCKER_LOG", str(fake_docker_log))
     monkeypatch.setenv("PATH", f"{tmp_path}{os.pathsep}{os.environ['PATH']}")
     monkeypatch.setenv("AIGNT_OS_RUNTIME_STATE_DIR", str(tmp_path / "runtime"))
+    monkeypatch.setenv("AIGNT_OS_WORKSPACE_ROOT", str(tmp_path))
     monkeypatch.setenv("AIGNT_OS_ADAPTER_CIRCUIT_BREAKER_FAILURE_THRESHOLD", "2")
     monkeypatch.setenv("AIGNT_OS_ADAPTER_CIRCUIT_BREAKER_COOLDOWN_SECONDS", "60")
 

@@ -85,13 +85,14 @@ def _doctor_check(
 
 
 def _runtime_state_doctor_check(settings: AppSettings) -> dict[str, str]:
+    runtime_state_target = settings.runtime_state_dir / "runtime-state.json"
     try:
         state = RuntimeService(settings.runtime_state_file).status()
     except ValueError as exc:
         return _doctor_check(
             name="runtime_state",
             status="fail",
-            target=settings.runtime_state_file,
+            target=runtime_state_target,
             message=str(exc),
             next_step="Fix the runtime state path configuration before using the CLI.",
         )
@@ -331,7 +332,10 @@ def _dispatch_service(*, initiated_by: str | None = None) -> RunDispatchService:
         repository=repository,
         artifact_store=artifact_store,
     )
-    runtime_service = RuntimeService(settings.runtime_state_file)
+    try:
+        runtime_service = RuntimeService(settings.runtime_state_file)
+    except ValueError as exc:
+        raise environment_error(str(exc)) from exc
     return RunDispatchService(
         repository=repository,
         runner=runner,
@@ -345,7 +349,10 @@ def _dispatch_service(*, initiated_by: str | None = None) -> RunDispatchService:
 
 def _auth_registry_store() -> AuthRegistryStore:
     settings = AppSettings()
-    return AuthRegistryStore(settings.auth_registry_file)
+    try:
+        return AuthRegistryStore(settings.auth_registry_file)
+    except ValueError as exc:
+        raise environment_error(str(exc)) from exc
 
 
 def _validate_role(role: str) -> Role:
@@ -376,7 +383,10 @@ def _resolve_principal_id(
     if auth_token is None or not auth_token.strip():
         raise authentication_error("Authentication token is required for this command.")
 
-    store = AuthRegistryStore(settings.auth_registry_file)
+    try:
+        store = AuthRegistryStore(settings.auth_registry_file)
+    except ValueError as exc:
+        raise environment_error(str(exc)) from exc
     try:
         principal = store.authenticate(auth_token)
     except AuthConfigurationError as exc:
@@ -395,10 +405,13 @@ def auth_init(
     role: Annotated[str, typer.Option("--role")] = "operator",
 ) -> None:
     try:
-        issued_token = _auth_registry_store().initialize_registry(
+        store = _auth_registry_store()
+        issued_token = store.initialize_registry(
             principal_id=principal_id.strip(),
             role=_validate_role(role),
         )
+    except CLIError as exc:
+        exit_for_cli_error(exc)
     except AuthConfigurationError as exc:
         exit_for_cli_error(environment_error(str(exc)))
     except ValueError as exc:
@@ -406,7 +419,7 @@ def auth_init(
 
     _render_issued_auth_token(
         status="initialized",
-        registry_path=AppSettings().auth_registry_file,
+        registry_path=store.path,
         issued_token=issued_token,
     )
 
@@ -417,10 +430,13 @@ def auth_issue(
     role: Annotated[str | None, typer.Option("--role")] = None,
 ) -> None:
     try:
-        issued_token = _auth_registry_store().issue_token(
+        store = _auth_registry_store()
+        issued_token = store.issue_token(
             principal_id=principal_id.strip(),
             role=_validate_role(role) if role is not None else None,
         )
+    except CLIError as exc:
+        exit_for_cli_error(exc)
     except AuthConfigurationError as exc:
         exit_for_cli_error(environment_error(str(exc)))
     except ValueError as exc:
@@ -428,7 +444,7 @@ def auth_issue(
 
     _render_issued_auth_token(
         status="issued",
-        registry_path=AppSettings().auth_registry_file,
+        registry_path=store.path,
         issued_token=issued_token,
     )
 
@@ -439,6 +455,8 @@ def auth_disable(
 ) -> None:
     try:
         _auth_registry_store().disable_token(token_id=token_id.strip())
+    except CLIError as exc:
+        exit_for_cli_error(exc)
     except AuthConfigurationError as exc:
         exit_for_cli_error(environment_error(str(exc)))
     except LookupError as exc:

@@ -39,16 +39,17 @@ Fixture objective.
     )
 
 
-def _submit_env(tmp_path: Path) -> dict[str, str]:
+def _submit_env(tmp_path: Path, *, workspace_root: Path | None = None) -> dict[str, str]:
+    trusted_workspace_root = workspace_root or tmp_path
     env = os.environ.copy()
     python_path = str(REPO_ROOT / "src")
     existing = env.get("PYTHONPATH")
     env["PYTHONPATH"] = f"{python_path}{os.pathsep}{existing}" if existing else python_path
     env["AIGNT_OS_ENVIRONMENT"] = "test"
-    env["AIGNT_OS_RUNTIME_STATE_DIR"] = str(tmp_path / "runtime")
+    env["AIGNT_OS_RUNTIME_STATE_DIR"] = str(trusted_workspace_root / ".aignt-os" / "runtime")
     env["AIGNT_OS_RUNS_DB_PATH"] = str(tmp_path / "runs" / "runs.sqlite3")
     env["AIGNT_OS_ARTIFACTS_DIR"] = str(tmp_path / "artifacts")
-    env["AIGNT_OS_WORKSPACE_ROOT"] = str(tmp_path)
+    env["AIGNT_OS_WORKSPACE_ROOT"] = str(trusted_workspace_root)
     env["AIGNT_OS_RUNTIME_POLL_INTERVAL_SECONDS"] = "0.05"
     return env
 
@@ -192,7 +193,7 @@ def test_runs_submit_auto_queues_when_runtime_is_ready(
     _write_valid_spec(spec_path)
 
     runtime_service = runtime_service_module.RuntimeService(
-        tmp_path / "runtime" / "runtime-state.json"
+        tmp_path / ".aignt-os" / "runtime" / "runtime-state.json"
     )
     try:
         runtime_service.start()
@@ -273,8 +274,7 @@ def test_runs_submit_rejects_spec_outside_workspace_root(
     outside_spec_path.parent.mkdir()
     _write_valid_spec(outside_spec_path)
 
-    env = _submit_env(tmp_path)
-    env["AIGNT_OS_WORKSPACE_ROOT"] = str(workspace_root)
+    env = _submit_env(tmp_path, workspace_root=workspace_root)
 
     result = cli_runner.invoke(
         cli_app,
@@ -303,8 +303,7 @@ def test_runs_submit_rejects_symlinked_spec_that_resolves_outside_workspace_root
     escaped_spec_path = workspace_root / "SPEC.md"
     escaped_spec_path.symlink_to(outside_spec_path)
 
-    env = _submit_env(tmp_path)
-    env["AIGNT_OS_WORKSPACE_ROOT"] = str(workspace_root)
+    env = _submit_env(tmp_path, workspace_root=workspace_root)
 
     result = cli_runner.invoke(
         cli_app,

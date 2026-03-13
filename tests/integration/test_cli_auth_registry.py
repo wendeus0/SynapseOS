@@ -193,3 +193,26 @@ def test_auth_disable_revokes_token_used_by_runs_submit(
         "authentication error:" in submit_result.stdout.lower()
         or "authentication error:" in submit_result.stderr.lower()
     )
+
+
+def test_auth_init_rejects_state_dir_outside_workspace_root(
+    tmp_path: Path,
+    cli_runner,
+    cli_app,
+) -> None:
+    env = _auth_env(tmp_path)
+    env["AIGNT_OS_WORKSPACE_ROOT"] = str(tmp_path / "workspace")
+    env["AIGNT_OS_RUNTIME_STATE_DIR"] = str(tmp_path / "outside-runtime")
+
+    result = cli_runner.invoke(
+        cli_app,
+        ["auth", "init", "--principal-id", "local-operator"],
+        env=env,
+    )
+
+    assert result.exit_code == 5
+    assert (
+        "environment error:" in result.stdout.lower()
+        or "environment error:" in result.stderr.lower()
+    )
+    assert "trusted root" in result.stdout.lower() or "trusted root" in result.stderr.lower()
