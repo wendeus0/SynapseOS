@@ -3,17 +3,74 @@ from __future__ import annotations
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.reactive import reactive
+from textual.screen import ModalScreen
 from textual.widgets import (
     Footer,
     Header,
     Label,
     ListItem,
     ListView,
+    RichLog,
     Static,
 )
 
 from aignt_os.config import AppSettings
 from aignt_os.persistence import RunRecord, RunRepository, RunStepRecord
+
+
+class LogViewer(ModalScreen[None]):
+    """Modal para visualização de logs."""
+
+    CSS = """
+    LogViewer {
+        align: center middle;
+    }
+
+    #dialog {
+        grid-size: 2;
+        grid-gutter: 1 2;
+        grid-rows: 1fr 3;
+        padding: 0 1;
+        width: 80%;
+        height: 80%;
+        border: thick $background 80%;
+        background: $surface;
+    }
+
+    #log_content {
+        column-span: 2;
+        height: 1fr;
+        width: 1fr;
+        background: $surface;
+        border: solid $secondary;
+        overflow-y: scroll;
+    }
+
+    #footer_label {
+        column-span: 2;
+        text-align: center;
+        color: $text-muted;
+    }
+    """
+
+    BINDINGS = [("escape", "app.pop_screen", "Close")]
+
+    def __init__(self, title: str, content: str) -> None:
+        super().__init__()
+        self.dialog_title = title
+        self.log_content = content
+
+    def compose(self) -> ComposeResult:
+        yield Vertical(
+            Label(self.dialog_title, classes="detail_header"),
+            RichLog(id="log_content", wrap=True, highlight=True, markup=False),
+            Label("Press ESC to close", id="footer_label"),
+            id="dialog",
+        )
+
+    def on_mount(self) -> None:
+        log_widget = self.query_one("#log_content", RichLog)
+        log_widget.write(self.log_content)
 
 
 class RunHeader(Static):
@@ -102,44 +159,68 @@ class StepDetail(Static):
         self.query_one("#detail_placeholder").add_class("hidden")
         content = self.query_one("#detail_content")
         content.remove_class("hidden")
-        
+
         # Clear previous content manually since we are not using clear() on Vertical
         for child in content.children:
             child.remove()
 
         # Build details
         content.mount(Label(f"Step ID: {step.step_id}", classes="detail_header"))
-        
-        with Horizontal(classes="detail_row"):
-            content.mount(Label("State:", classes="detail_label"))
-            content.mount(Label(step.state, classes="detail_value"))
-            
-        with Horizontal(classes="detail_row"):
-            content.mount(Label("Status:", classes="detail_label"))
-            content.mount(Label(step.status, classes="detail_value"))
 
-        with Horizontal(classes="detail_row"):
-            content.mount(Label("Tool:", classes="detail_label"))
-            content.mount(Label(step.tool_name or 'N/A', classes="detail_value"))
+        content.mount(
+            Horizontal(
+                Label("State:", classes="detail_label"),
+                Label(step.state, classes="detail_value"),
+                classes="detail_row",
+            )
+        )
 
-        with Horizontal(classes="detail_row"):
-            content.mount(Label("Duration:", classes="detail_label"))
-            content.mount(Label(f"{step.duration_ms or 0}ms", classes="detail_value"))
-            
-        with Horizontal(classes="detail_row"):
-            content.mount(Label("Created:", classes="detail_label"))
-            content.mount(Label(step.created_at, classes="detail_value"))
+        content.mount(
+            Horizontal(
+                Label("Status:", classes="detail_label"),
+                Label(step.status, classes="detail_value"),
+                classes="detail_row",
+            )
+        )
+
+        content.mount(
+            Horizontal(
+                Label("Tool:", classes="detail_label"),
+                Label(step.tool_name or "N/A", classes="detail_value"),
+                classes="detail_row",
+            )
+        )
+
+        content.mount(
+            Horizontal(
+                Label("Duration:", classes="detail_label"),
+                Label(f"{step.duration_ms or 0}ms", classes="detail_value"),
+                classes="detail_row",
+            )
+        )
+
+        content.mount(
+            Horizontal(
+                Label("Created:", classes="detail_label"),
+                Label(step.created_at, classes="detail_value"),
+                classes="detail_row",
+            )
+        )
 
         if step.return_code is not None:
-             with Horizontal(classes="detail_row"):
-                content.mount(Label("Return Code:", classes="detail_label"))
-                content.mount(Label(str(step.return_code), classes="detail_value"))
+            content.mount(
+                Horizontal(
+                    Label("Return Code:", classes="detail_label"),
+                    Label(str(step.return_code), classes="detail_value"),
+                    classes="detail_row",
+                )
+            )
 
         if step.timed_out:
-             content.mount(Label("Timed Out: Yes", classes="detail_row error"))
+            content.mount(Label("Timed Out: Yes", classes="detail_row error"))
 
 
-class RunDashboard(App):
+class RunDashboard(App[None]):
     """Dashboard TUI Moderno para AIgnt OS."""
 
     CSS = """
@@ -242,7 +323,10 @@ class RunDashboard(App):
     }
     """
 
-    BINDINGS = [("q", "quit", "Quit")]
+    BINDINGS = [
+        ("q", "quit", "Quit"),
+        ("enter", "show_logs", "Show Logs"),
+    ]
 
     def __init__(self, run_id: str, refresh_interval: float = 1.0) -> None:
         super().__init__()
@@ -255,12 +339,44 @@ class RunDashboard(App):
         self.step_detail = StepDetail()
         self.steps_count = 0
 
+    def action_show_logs(self) -> None:
+        """Show logs for the selected step."""
+        if self.step_detail.step:
+            step = self.step_detail.step
+            log_content = "No logs available."
+
+            paths_to_check = []
+            if step.clean_output_path:
+                paths_to_check.append(step.clean_output_path)
+            if step.raw_output_path:
+                paths_to_check.append(step.raw_output_path)
+
+            for path_str in paths_to_check:
+                try:
+                    from pathlib import Path
+
+                    p = Path(path_str)
+                    if p.exists():
+                        log_content = p.read_text(encoding="utf-8", errors="replace")
+                        break
+                except Exception as e:
+                    log_content = f"Error reading log file: {e}"
+
+            # If no file found but we have content in the mock (for testing) or older records?
+            # Persistence model relies on files.
+
+            self.push_screen(
+                LogViewer(f"Logs: Step {step.step_id} ({step.tool_name})", log_content)
+            )
+        else:
+            self.notify("Select a step first.", severity="warning")
+
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
         yield self.run_header
         with Horizontal(id="main_container"):
             with Vertical(id="sidebar"):
-                yield Label("Steps", classes="header_label", style="padding: 1;")
+                yield Label("Steps", classes="header_label")
                 yield self.step_list
             with Vertical(id="content"):
                 yield self.step_detail
@@ -271,9 +387,14 @@ class RunDashboard(App):
         self.set_interval(self.refresh_interval, self.refresh_data)
         self.refresh_data()
 
+    def on_list_view_highlighted(self, message: ListView.Highlighted) -> None:
+        if isinstance(message.item, StepItem):
+            self.step_detail.step = message.item.step
+
     def on_list_view_selected(self, message: ListView.Selected) -> None:
         if isinstance(message.item, StepItem):
             self.step_detail.step = message.item.step
+            self.action_show_logs()
 
     def refresh_data(self) -> None:
         """Atualiza dados do banco."""
@@ -286,15 +407,15 @@ class RunDashboard(App):
                 return
 
             steps = self.repository.list_steps(self.run_id)
-            
+
             # Simple diff: rebuild list if count changes or status changes
             # For MVP simplicity, verify if rebuild is needed
             # Or just rebuild if count matches but status might change?
             # Rebuilding clears selection, which is annoying.
             # Ideally we update items in place, but ListView API is list-based.
-            # Let's rebuild only if count changes for now (new steps), 
+            # Let's rebuild only if count changes for now (new steps),
             # OR if last step status changed.
-            
+
             should_rebuild = False
             if len(steps) != self.steps_count:
                 should_rebuild = True
@@ -302,22 +423,24 @@ class RunDashboard(App):
                 # Check if last step status changed (e.g. running -> completed)
                 # In a real app we would check all, but this is a heuristic for optimization
                 pass
-            
+
             # Forcing rebuild for now to ensure correctness
-            should_rebuild = True 
+            should_rebuild = True
 
             if should_rebuild:
                 self.steps_count = len(steps)
-                
+
                 # Preserve selection index if possible
                 current_index = self.step_list.index
-                
+
                 self.step_list.clear()
                 for step in steps:
                     self.step_list.append(StepItem(step))
-                
+
                 if current_index is not None and current_index < len(steps):
                     self.step_list.index = current_index
-                
+                elif len(steps) > 0:
+                    self.step_list.index = 0
+
         except Exception as e:
             self.notify(f"Error refreshing data: {e}", severity="error")
