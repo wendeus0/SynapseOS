@@ -4,7 +4,7 @@ from typing import Literal
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from aignt_os.security import DEFAULT_SECRET_MASK_PATTERNS
+from aignt_os.security import DEFAULT_SECRET_MASK_PATTERNS, resolve_path_within_root
 
 
 class AppSettings(BaseSettings):
@@ -28,13 +28,17 @@ class AppSettings(BaseSettings):
     secret_mask_patterns: list[str] = list(DEFAULT_SECRET_MASK_PATTERNS)
 
     @property
+    def runtime_state_dir_resolved(self) -> Path:
+        return resolve_path_within_root(self.runtime_state_dir, root=self.workspace_root)
+
+    @property
     def runtime_state_file(self) -> Path:
-        return self.runtime_state_dir / "runtime-state.json"
+        return self.runtime_state_dir_resolved / "runtime-state.json"
 
     @property
     def adapter_circuit_breaker_state_file(self) -> Path:
-        return self.runtime_state_dir / "adapter-circuit-breakers.json"
+        return self.runtime_state_dir_resolved / "adapter-circuit-breakers.json"
 
     @property
     def auth_registry_file(self) -> Path:
-        return self.runtime_state_dir / "auth-registry.json"
+        return self.runtime_state_dir_resolved / "auth-registry.json"
