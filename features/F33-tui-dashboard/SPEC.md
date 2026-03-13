@@ -11,7 +11,10 @@ outputs:
 acceptance_criteria:
   - "O comando `aignt runs watch <run_id>` deve abrir uma TUI sem travar a CLI"
   - "A TUI deve exibir o ID, Status Atual, Estado Atual e Spec Path da run"
-  - "A TUI deve listar os steps já executados com seus status (completed/failed)"
+  - "A TUI deve listar os steps já executados com ícones de status (✅, ❌, ⏳)"
+  - "A TUI deve permitir visualizar detalhes do step selecionado"
+  - "Layout moderno com painéis divididos (Sidebar/Content)"
+  - "Uso de cores semânticas (Verde=Sucesso, Vermelho=Falha)"
   - "A TUI deve atualizar as informações automaticamente sem necessidade de input do usuário"
   - "A TUI deve permitir sair pressionando 'q'"
   - "Se a run não existir, deve exibir erro amigável e sair antes de iniciar a TUI"
