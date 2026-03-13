@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from textual.app import App, ComposeResult
@@ -18,6 +19,7 @@ from textual.widgets import (
     TabPane,
 )
 
+from aignt_os.cli.rendering import truncate_logs
 from aignt_os.config import AppSettings
 from aignt_os.persistence import ArtifactStore, RunRecord, RunRepository, RunStepRecord
 
@@ -59,10 +61,12 @@ class LogViewer(ModalScreen[None]):
 
     BINDINGS = [("escape", "app.pop_screen", "Close")]
 
-    def __init__(self, title: str, content: str) -> None:
+    def __init__(self, title: str, content: str, path: str | None = None) -> None:
         super().__init__()
         self.dialog_title = title
         self.log_content = content
+        self.log_path = path
+        self._last_size: int | None = None
 
     def compose(self) -> ComposeResult:
         yield Vertical(
@@ -75,6 +79,32 @@ class LogViewer(ModalScreen[None]):
     def on_mount(self) -> None:
         log_widget = self.query_one("#log_content", RichLog)
         log_widget.write(self.log_content)
+        if self.log_path:
+            self.set_interval(1.0, self.refresh_log)
+
+    def refresh_log(self) -> None:
+        if not self.log_path:
+            return
+
+        try:
+            current_path = Path(self.log_path)
+            if not current_path.exists():
+                return
+
+            current_size = current_path.stat().st_size
+            if current_size == self._last_size:
+                return
+
+            settings = AppSettings()
+            new_content = current_path.read_text(encoding="utf-8", errors="replace")
+            truncated = truncate_logs(new_content, settings.tui_log_buffer_lines)
+
+            log_widget = self.query_one("#log_content", RichLog)
+            log_widget.clear()
+            log_widget.write(truncated)
+            self._last_size = current_size
+        except Exception:
+            pass
 
 
 class RunHeader(Static):
@@ -458,6 +488,7 @@ class RunDashboard(App[None]):
         if self.step_detail.step:
             step = self.step_detail.step
             log_content = "No logs available."
+            log_path: str | None = None
 
             paths_to_check = []
             if step.clean_output_path:
@@ -467,17 +498,23 @@ class RunDashboard(App[None]):
 
             for path_str in paths_to_check:
                 try:
-                    from pathlib import Path
-
                     p = Path(path_str)
                     if p.exists():
-                        log_content = p.read_text(encoding="utf-8", errors="replace")
+                        full_content = p.read_text(encoding="utf-8", errors="replace")
+                        log_content = truncate_logs(
+                            full_content, self.settings.tui_log_buffer_lines
+                        )
+                        log_path = path_str
                         break
                 except Exception as e:
                     log_content = f"Error reading log file: {e}"
 
             self.push_screen(
-                LogViewer(f"Logs: Step {step.step_id} ({step.tool_name})", log_content)
+                LogViewer(
+                    f"Logs: Step {step.step_id} ({step.tool_name})",
+                    log_content,
+                    path=log_path,
+                )
             )
         else:
             self.notify("Select a step first.", severity="warning")

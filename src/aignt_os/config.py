@@ -30,6 +30,7 @@ class AppSettings(BaseSettings):
 
     execution_timeout_seconds: float = Field(default=300.0, gt=0)
     max_retries: int = Field(default=3, ge=0)
+    tui_log_buffer_lines: int = Field(default=1000, gt=0)
 
     @property
     def runtime_state_dir_resolved(self) -> Path:
