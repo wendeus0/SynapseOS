@@ -218,13 +218,21 @@ Limites do recorte atual:
 
 ## Auth Registry Local
 
-A `F29` introduziu auth opt-in para os comandos mutaveis da CLI e a `F30` adiciona o provisionamento local desse registry sem editar JSON manualmente. O AIgnt-Synapse-Flow continua sendo a engine propria de pipeline do AIgnt OS; esta capacidade continua estritamente local e nao abre socket, auth remota ou RBAC distribuido.
+A `F29` introduziu auth opt-in para os comandos mutaveis da CLI, a `F30` adicionou o provisionamento local desse registry sem editar JSON manualmente, a `F44` desacoplou o provider atual em torno de `auth_provider=file` e a `F47` consolidou RBAC local com roles fixas (`viewer`, `operator`, `admin`). O AIgnt-Synapse-Flow continua sendo a engine propria de pipeline do AIgnt OS; esta capacidade permanece estritamente local e nao abre socket, auth remota ou RBAC distribuido.
 
 Fluxo minimo de provisionamento:
 
-1. Inicialize o registry com `aignt auth init --principal-id local-operator`.
-2. Emita um token adicional com `aignt auth issue --principal-id local-operator`.
-3. Se precisar revogar um token emitido, use `aignt auth disable --token-id <token_id>`.
+1. Inicialize o registry com `aignt auth init --principal-id local-admin --role admin`.
+2. Emita um token adicional com `aignt auth issue --principal-id local-viewer --role viewer`.
+3. Emita um token operacional com `aignt auth issue --principal-id local-operator --role operator`.
+4. Se precisar revogar um token emitido, use `aignt auth disable --token-id <token_id>`.
+
+Boundary de roles no recorte atual:
+
+- `viewer` consegue consultar `runs list`, `runs show`, `runs watch`, `runs follow`, `doctor` e `version`, mas nao submete run nem gerencia runtime;
+- `operator` herda leitura e pode operar `runs submit`, `runtime start|run|stop` e demais mutacoes operacionais de run;
+- `admin` mantem acesso total, incluindo `auth init|issue|disable`;
+- o provider atual continua sendo `file`; providers externos e auth remota continuam fora de escopo.
 
 Boundary do recorte atual:
 
@@ -232,6 +240,7 @@ Boundary do recorte atual:
 - o arquivo persistido guarda apenas `token_sha256`, `token_id`, `principal_id` e `disabled`;
 - `runs submit` e `runtime start|run|stop` continuam exigindo token somente quando `auth_enabled=true`;
 - comandos de leitura publica continuam sem token;
+- roles novas continuam fixas no codigo; nao ha papeis arbitrarios definidos pelo usuario;
 - operacao remota e rotacao distribuida continuam fora de escopo.
 
 ### Troubleshooting essencial

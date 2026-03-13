@@ -10,13 +10,18 @@ def test_readme_documents_local_auth_registry_cli_boundary() -> None:
     readme = README_PATH.read_text(encoding="utf-8")
 
     assert "## Auth Registry Local" in readme
-    assert "`aignt auth init --principal-id local-operator`" in readme
-    assert "`aignt auth issue --principal-id local-operator`" in readme
+    assert "`aignt auth init --principal-id local-admin --role admin`" in readme
+    assert "`aignt auth issue --principal-id local-viewer --role viewer`" in readme
+    assert "`aignt auth issue --principal-id local-operator --role operator`" in readme
     assert "`aignt auth disable --token-id <token_id>`" in readme
+    assert "`viewer`" in readme
+    assert "`operator`" in readme
+    assert "`admin`" in readme
+    assert "`auth_provider=file`" in readme
     assert "nao abre socket" in readme.lower()
 
 
-def test_ideas_reflects_f28_f29_f30_f31_and_post_f36_g11_state() -> None:
+def test_ideas_reflects_f28_f29_f30_f31_f44_f47_and_post_f36_g11_state() -> None:
     ideas = IDEAS_PATH.read_text(encoding="utf-8")
 
     assert (
@@ -24,9 +29,10 @@ def test_ideas_reflects_f28_f29_f30_f31_and_post_f36_g11_state() -> None:
         "absorbed em `F28` | — |" in ideas
     )
     assert (
-        "| G-11 | Autenticação e autorização (fundacao local absorvida; bucket residente "
-        "local absorvido; operacao remota ainda pendente) | low | XL | decomposed em "
-        "`F31`; local absorvido em `F29`/`F30`; residente local absorvido em "
+        "| G-11 | Autenticação e autorização (fundacao local, abstracao local de provider "
+        "e RBAC local absorvidos; bucket residente local absorvido; operacao remota ainda "
+        "pendente) | low | XL | decomposed em `F31`; local absorvido em "
+        "`F29`/`F30`/`F44`/`F47`; residente local absorvido em "
         "`F32`/`F34`/`F35`/`F36` "
         "| pós-F27 |" in ideas
     )
@@ -35,6 +41,10 @@ def test_ideas_reflects_f28_f29_f30_f31_and_post_f36_g11_state() -> None:
     assert (
         "- `F32`: primeiro slice de `resident_transport_auth` com binding local de "
         "`started_by` no lifecycle do runtime" in ideas
+    )
+    assert (
+        "- `F44`: abstracao local de `AuthProvider` mantendo `auth_provider=file` como "
+        "backend padrao" in ideas
     )
     assert (
         "- `F34`: gate de ownership no `runs submit` quando o dispatch resolve para "
@@ -47,6 +57,7 @@ def test_ideas_reflects_f28_f29_f30_f31_and_post_f36_g11_state() -> None:
         "- `F36`: observabilidade de `runtime_owner_skip` para runs incompatíveis no worker "
         "autenticado" in ideas
     )
+    assert "- `F47`: RBAC local com roles `viewer`, `operator` e `admin`" in ideas
     assert (
         "- `remote_multi_host_auth`: continua sem transporte em rede, operacao entre "
         "hosts ou coordenacao remota" in ideas

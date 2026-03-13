@@ -182,7 +182,7 @@ em `F23 -> F27`; os itens remanescentes continuam candidatos a novas SPECs próp
 | G-08 | Audit trail com `initiated_by` e security events | medium | M | absorbed em `F26` | — |
 | G-09 | Circuit breaker para adapters (estado persistido entre runs) | medium | L | absorbed em `F28` | — |
 | G-10 | Log sanitization de artefatos em disco | low | S | absorbed em `F24` | — |
-| G-11 | Autenticação e autorização (fundacao local absorvida; bucket residente local absorvido; operacao remota ainda pendente) | low | XL | decomposed em `F31`; local absorvido em `F29`/`F30`; residente local absorvido em `F32`/`F34`/`F35`/`F36` | pós-F27 |
+| G-11 | Autenticação e autorização (fundacao local, abstracao local de provider e RBAC local absorvidos; bucket residente local absorvido; operacao remota ainda pendente) | low | XL | decomposed em `F31`; local absorvido em `F29`/`F30`/`F44`/`F47`; residente local absorvido em `F32`/`F34`/`F35`/`F36` | pós-F27 |
 
 ### Problema
 
@@ -200,10 +200,11 @@ ataque crescente à medida que a Fase 2 amplia a interface pública (`runs submi
   como `security_failure`, dificultando auditoria e resposta a incidentes (G-08)
 
 O unico gap remanescente desta IDEA no baseline atual e o residual remoto de `G-11`.
-A fundacao local ja foi absorvida, o bucket `resident_transport_auth` tambem foi
-absorvido no baseline atual e apenas a operacao remota/multi-host continua
-explicitamente adiada. Circuit breaker, boundary check, integridade da SPEC, rate
-limiting, audit trail minimo e sanitizacao publica ja foram absorvidos no baseline atual.
+A fundacao local, a abstracao local de provider, o RBAC local e o bucket
+`resident_transport_auth` ja foram absorvidos no baseline atual; apenas a operacao
+remota/multi-host continua explicitamente adiada. Circuit breaker, boundary check,
+integridade da SPEC, rate limiting, audit trail minimo e sanitizacao publica ja foram
+absorvidos no baseline atual.
 
 ### Solução proposta
 
@@ -221,9 +222,11 @@ Absorções já concluídas no baseline atual:
 - `F30`: provisionamento local do auth registry (`init`, `issue`, `disable`)
 - `F31`: decomposicao formal de `G-11` em buckets local, residente e remoto
 - `F32`: primeiro slice de `resident_transport_auth` com binding local de `started_by` no lifecycle do runtime
+- `F44`: abstracao local de `AuthProvider` mantendo `auth_provider=file` como backend padrao
 - `F34`: gate de ownership no `runs submit` quando o dispatch resolve para `async`
 - `F35`: filtro de ownership no consumo da fila pelo worker do runtime residente
 - `F36`: observabilidade de `runtime_owner_skip` para runs incompatíveis no worker autenticado
+- `F47`: RBAC local com roles `viewer`, `operator` e `admin`
 
 Centralização técnica já realizada:
 - `src/aignt_os/security.py` foi criado como módulo de segurança compartilhado
@@ -243,7 +246,7 @@ Boundary ainda adiado:
   - já absorvido: `AppSettings.max_concurrent_adapters: int = 4`
   - já absorvido: `RunRecord.initiated_by: str`
   - G-09: `CircuitBreakerState` (novo modelo)
-  - G-11 local: `AuthToken`, `Principal` ja absorvidos no baseline de auth local
+  - G-11 local: `AuthToken`, `Principal`, `AuthProvider`, `Role` e `Permission` ja absorvidos no baseline de auth local
   - G-11 remoto: sem contrato novo definido nesta frente
 
 ---

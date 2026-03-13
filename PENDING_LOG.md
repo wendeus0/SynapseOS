@@ -2,6 +2,12 @@
 
 ## Decisões incorporadas recentemente
 
+- Em 2026-03-13, `origin/main` absorveu as merges de `F41-dashboard-artifacts-explorer` (`#80`), `F44-auth-backend-abstraction` (`#81`), `F47-advanced-rbac` (`#82`), `F43-runtime-robustness` (`#83`) e `F45-tui-performance-optimization` (`#84`), consolidando a TUI local, a robustez basica de timeout/retry e o baseline atual de auth local.
+- Com essas merges, `main` passou a refletir explorer de artifacts na TUI, buffering de logs, timeout global por step, retry simples para falhas transientes, abstracao local de `AuthProvider` e RBAC local com `viewer`/`operator`/`admin`.
+- O drift remanescente deixou de ser funcional e passou a ser documental: `memory.md`, `PENDING_LOG.md`, `docs/IDEAS.md`, `README.md` e `CHANGELOG.md` ficaram atrasados em relacao ao baseline real pos-`F47`.
+- A frente ativa imediata passa a ser a chore doc-only `chore-post-f47-baseline-handoff-sync`, para consolidar o handoff do baseline atual antes da proxima decisao de produto.
+- A proxima decisao de produto volta a ficar bloqueada ate essa chore fechar e uma nova `technical-triage` escolher uma unica frente a partir de `main`.
+
 - Em 2026-03-13, a triagem pos-`F37` confirmou que `origin/main` ja cobre o MVP, a etapa 2 e o handoff doc-only pos-`F36`; o bloqueio real estava na branch local `feature/f39-persistence-path-root-hardening`, que havia virado agregador de drafts fora de escopo.
 - O estado misto foi preservado em `origin/archive/2026-03-13-f39-drift-snapshot`, e os recortes determinísticos foram separados em `origin/draft/f41-dashboard-artifacts-explorer`, `origin/draft/f43-runtime-robustness`, `origin/draft/f44-auth-backend-abstraction`, `origin/draft/f45-tui-performance-optimization` e `origin/draft/f47-advanced-rbac`.
 - Os itens transversais que ainda nao cabem numa unica frente sem inventar codigo novo (`F40`, `F42`, `F46`, testes de lifecycle e docs de roadmap de longo prazo`) ficaram somente no archive branch, sem virar fila ativa nem PR aberta.
@@ -161,8 +167,8 @@
 
 - Fixtures de testes aspiracionais marcadas como 🔜 no TDD.md: `tests/fixtures/worker/` (ainda ausente).
 - Property-based testing com `hypothesis` ainda não implementado (mencionado como evolução futura em TDD.md).
-- Sincronizar `PENDING_LOG.md`, `memory.md` e `docs/IDEAS.md` ao estado pos-F36; a `F37` foi aberta exatamente para fechar esse drift documental.
-- Rodar nova `technical-triage` depois da `F37` para escolher a proxima frente fora de `resident_transport_auth`.
+- Fechar a `chore-post-f47-baseline-handoff-sync` atualizando `PENDING_LOG.md`, `memory.md`, `docs/IDEAS.md`, `README.md` e `CHANGELOG.md` ao estado pos-`F47`.
+- Rodar nova `technical-triage` depois da `chore-post-f47-baseline-handoff-sync` para escolher a proxima frente fora de `remote_multi_host_auth`.
 - Manter `remote_multi_host_auth` explicitamente adiado ate existir demanda concreta, recorte proprio e validavel.
 
 ## Pontos de atenção futuros
