@@ -51,6 +51,10 @@ class PipelineExecutionError(RuntimeError):
     pass
 
 
+class PipelineCancelledError(PipelineExecutionError):
+    pass
+
+
 class PipelineStep(BaseModel):
     model_config = ConfigDict(strict=True)
 
@@ -88,6 +92,10 @@ class StepExecutor(Protocol):
         step: PipelineStep,
         context: PipelineContext,
     ) -> StepExecutionResult: ...
+
+
+class CancellationChecker(Protocol):
+    def check_cancellation(self, context: PipelineContext) -> bool: ...
 
 
 class PipelineObserver(Protocol):
@@ -165,11 +173,13 @@ class PipelineEngine:
         state_machine: AIgntStateMachine | None = None,
         observer: PipelineObserver | None = None,
         supervisor: Supervisor | None = None,
+        cancellation_checker: CancellationChecker | None = None,
     ) -> None:
         self.settings = settings or AppSettings()
         self.executors = self._normalize_executors(executors or {})
         self.state_machine = state_machine or AIgntStateMachine()
         self.observer = observer
+        self.cancellation_checker = cancellation_checker
 
         if supervisor is None:
             # Create default supervisor using settings
@@ -200,6 +210,12 @@ class PipelineEngine:
 
         try:
             while True:
+                if (
+                    self.cancellation_checker
+                    and self.cancellation_checker.check_cancellation(context)
+                ):
+                    raise PipelineCancelledError("Pipeline execution was cancelled.")
+
                 current_state = self.state_machine.current_state
 
                 if current_state in {"REQUEST", "SPEC_DISCOVERY", "SPEC_NORMALIZATION"}:

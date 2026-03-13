@@ -26,6 +26,7 @@ from sqlalchemy.sql import update
 from aignt_os.parsing import ParsingArtifactError, validate_named_artifact_content
 from aignt_os.pipeline import (
     PRIMARY_EXECUTOR_ROUTE,
+    PipelineCancelledError,
     PipelineContext,
     PipelineEngine,
     PipelineObserver,
@@ -205,6 +206,35 @@ class RunRepository:
             current_state=current_state,
             locked=False,
             failure_message=failure_message,
+            updated_at=timestamp,
+            completed_at=timestamp,
+        )
+
+    def mark_run_cancelling(self, run_id: str) -> None:
+        """Marks run as cancelling. 
+        Does NOT unlock the run - the worker needs to see this signal while holding lock.
+        Throws ValueError if run is already finished.
+        """
+        run = self.get_run(run_id)
+        if run.status in ("completed", "failed", "cancelled"):
+            raise ValueError(f"Cannot cancel finished run (status={run.status})")
+        
+        self._update_run(
+            run_id,
+            status="cancelling",
+            updated_at=_timestamp(),
+        )
+
+    def mark_run_cancelled(self, run_id: str, *, current_state: str) -> None:
+        """Finalizes run as cancelled.
+        Unlocks the run.
+        """
+        timestamp = _timestamp()
+        self._update_run(
+            run_id,
+            status="cancelled",
+            current_state=current_state,
+            locked=False,
             updated_at=timestamp,
             completed_at=timestamp,
         )
@@ -563,6 +593,17 @@ class PipelinePersistenceObserver(PipelineObserver):
     ) -> None:
         run_id = self._run_id(context)
         state = context.current_state if step is None else step.state
+
+        if isinstance(error, PipelineCancelledError):
+            self.repository.mark_run_cancelled(run_id, current_state=state)
+            self.repository.record_event(
+                run_id,
+                state=state,
+                event_type="run_cancelled",
+                message=str(error) or "Run cancelled.",
+            )
+            return
+
         guardrail_event = _security_guardrail_event(error)
         if guardrail_event is not None:
             self.repository.record_event(
@@ -673,6 +714,21 @@ class PersistedPipelineRunner:
             raise RuntimeError(f"Could not acquire lock for run '{run_id}'.")
         self._validate_run_provenance(run_record)
 
+        repository = self.repository
+
+        class DBCancellationChecker:
+            def check_cancellation(self, _: PipelineContext) -> bool:
+                try:
+                    current_run = repository.get_run(run_id)
+                    return current_run.status in ("cancelling", "cancelled")
+                except Exception:
+                    # If we cannot read the run state, let the exception propagate
+                    # to stop the potentially broken execution environment.
+                    raise
+        
+        cancellation_checker = DBCancellationChecker()
+
+
         executors = dict(self.executors)
         executors.setdefault(
             "DOCUMENT",
@@ -685,6 +741,7 @@ class PersistedPipelineRunner:
             executors=executors,
             observer=PipelinePersistenceObserver(self.repository, self.artifact_store),
             supervisor=self.supervisor,
+            cancellation_checker=cancellation_checker,
         )
         return engine.run(
             Path(run_record.spec_path),

@@ -460,6 +460,7 @@ class RunDashboard(App[None]):
 
     BINDINGS = [
         ("q", "quit", "Quit"),
+        ("k", "cancel_run", "Cancel Run"),
         ("enter", "show_logs", "Show Logs"),
         ("a", "show_artifacts", "Artifacts"),
         ("f", "filter_failed", "Filter Failed"),
@@ -500,6 +501,23 @@ class RunDashboard(App[None]):
         self.current_filter = "all"
         self.refresh_data()
         self.notify("Filter: All steps")
+
+    def action_cancel_run(self) -> None:
+        """Cancel the current run."""
+        try:
+            run = self.repository.get_run(self.run_id)
+            if run.status in ("completed", "failed", "cancelled"):
+                self.notify(f"Run is already {run.status}.", severity="warning")
+                return
+
+            if run.locked:
+                self.repository.mark_run_cancelling(self.run_id)
+                self.notify("Cancellation signal sent.", severity="information")
+            else:
+                self.repository.mark_run_cancelled(self.run_id, current_state=run.current_state)
+                self.notify("Run cancelled.", severity="information")
+        except Exception as exc:
+            self.notify(f"Cancellation failed: {exc}", severity="error")
 
     def action_show_artifacts(self) -> None:
         """Switch to artifacts tab."""

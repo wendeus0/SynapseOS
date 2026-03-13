@@ -732,6 +732,43 @@ def runs_submit(
     render_run_submission(result)
 
 
+@runs_app.command("cancel")
+def runs_cancel(
+    run_id: str,
+    auth_token: Annotated[
+        str | None,
+        typer.Option("--auth-token", envvar="AIGNT_OS_AUTH_TOKEN"),
+    ] = None,
+) -> None:
+    """
+    Cancel a pending or running run.
+    """
+    try:
+        _resolve_principal_id(permission="run:write", auth_token=auth_token)
+        repository = _run_repository()
+
+        try:
+            run = repository.get_run(run_id)
+        except NoResultFound:
+            exit_for_cli_error(not_found_error(f"Run '{run_id}' not found."))
+
+        if run.status in ("completed", "failed", "cancelled"):
+            typer.echo(f"Run '{run_id}' is already {run.status}.")
+            return
+
+        if run.locked:
+            repository.mark_run_cancelling(run_id)
+            typer.echo(f"Cancellation signal sent to run '{run_id}'.")
+        else:
+            repository.mark_run_cancelled(run_id, current_state=run.current_state)
+            typer.echo(f"Run '{run_id}' cancelled.")
+
+    except CLIError as exc:
+        exit_for_cli_error(exc)
+    except ValueError as exc:
+        exit_for_cli_error(execution_error(str(exc)))
+
+
 @runs_app.command("show")
 def runs_show(
     run_id: str,
