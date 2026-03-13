@@ -190,13 +190,19 @@ def test_auth_registry_store_raises_for_missing_registry(tmp_path: Path) -> None
 def test_authorize_requires_operator_for_mutating_permissions() -> None:
     auth_module = import_module("aignt_os.auth")
 
-    viewer = auth_module.AuthenticatedPrincipal(principal_id="viewer", roles=("viewer",))
-    operator = auth_module.AuthenticatedPrincipal(principal_id="ops", roles=("operator",))
+    viewer = auth_module.AuthenticatedPrincipal(
+        principal_id="viewer", roles=("viewer",), permissions=frozenset(["run:read"])
+    )
+    operator = auth_module.AuthenticatedPrincipal(
+        principal_id="ops",
+        roles=("operator",),
+        permissions=frozenset(["run:read", "run:write", "runtime:manage"]),
+    )
 
-    assert auth_module.is_authorized(viewer, permission="runs.submit") is False
-    assert auth_module.is_authorized(operator, permission="runs.submit") is True
-    assert auth_module.is_authorized(viewer, permission="runtime.manage") is False
-    assert auth_module.is_authorized(operator, permission="runtime.manage") is True
+    assert auth_module.is_authorized(viewer, permission="run:write") is False
+    assert auth_module.is_authorized(operator, permission="run:write") is True
+    assert auth_module.is_authorized(viewer, permission="runtime:manage") is False
+    assert auth_module.is_authorized(operator, permission="runtime:manage") is True
 
 
 def stat_mode(path: Path) -> int:

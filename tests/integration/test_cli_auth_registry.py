@@ -111,10 +111,15 @@ def test_auth_issue_creates_new_viewer_principal_when_role_is_provided(
         ["auth", "init", "--principal-id", "local-operator"],
         env=_auth_env(tmp_path),
     )
+    admin_token = _extract_value(init_result.stdout, "Auth Token")
+
+    env = _auth_env(tmp_path)
+    env["AIGNT_OS_AUTH_TOKEN"] = admin_token
+
     issue_result = cli_runner.invoke(
         cli_app,
         ["auth", "issue", "--principal-id", "viewer-user", "--role", "viewer"],
-        env=_auth_env(tmp_path),
+        env=env,
     )
 
     registry_path = tmp_path / "runtime" / "auth-registry.json"
@@ -132,21 +137,26 @@ def test_auth_issue_rejects_role_conflict_for_existing_principal(
     cli_runner,
     cli_app,
 ) -> None:
-    cli_runner.invoke(
+    init_result = cli_runner.invoke(
         cli_app,
         ["auth", "init", "--principal-id", "local-operator"],
         env=_auth_env(tmp_path),
     )
+    admin_token = _extract_value(init_result.stdout, "Auth Token")
+
+    env = _auth_env(tmp_path)
+    env["AIGNT_OS_AUTH_TOKEN"] = admin_token
+
     cli_runner.invoke(
         cli_app,
         ["auth", "issue", "--principal-id", "viewer-user", "--role", "viewer"],
-        env=_auth_env(tmp_path),
+        env=env,
     )
 
     result = cli_runner.invoke(
         cli_app,
         ["auth", "issue", "--principal-id", "viewer-user", "--role", "operator"],
-        env=_auth_env(tmp_path),
+        env=env,
     )
 
     assert result.exit_code == 2
@@ -158,15 +168,20 @@ def test_auth_disable_revokes_token_used_by_runs_submit(
     cli_runner,
     cli_app,
 ) -> None:
-    cli_runner.invoke(
+    init_result = cli_runner.invoke(
         cli_app,
         ["auth", "init", "--principal-id", "local-operator"],
         env=_auth_env(tmp_path),
     )
+    admin_token = _extract_value(init_result.stdout, "Auth Token")
+
+    env = _auth_env(tmp_path)
+    env["AIGNT_OS_AUTH_TOKEN"] = admin_token
+
     issue_result = cli_runner.invoke(
         cli_app,
         ["auth", "issue", "--principal-id", "local-operator"],
-        env=_auth_env(tmp_path),
+        env=env,
     )
     token = _extract_value(issue_result.stdout, "Auth Token")
     token_id = _extract_value(issue_result.stdout, "Token ID")
@@ -174,7 +189,7 @@ def test_auth_disable_revokes_token_used_by_runs_submit(
     disable_result = cli_runner.invoke(
         cli_app,
         ["auth", "disable", "--token-id", token_id],
-        env=_auth_env(tmp_path),
+        env=env,  # Use env with admin token
     )
 
     spec_path = tmp_path / "SPEC.md"

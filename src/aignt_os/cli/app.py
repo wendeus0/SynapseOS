@@ -1,6 +1,7 @@
 import os
 import secrets
 import sys
+import time
 from collections.abc import Sequence
 from pathlib import Path, PurePosixPath
 from typing import Annotated
@@ -14,6 +15,7 @@ from aignt_os.auth import (
     AuthRegistryStore,
     Permission,
     Role,
+    get_auth_provider,
     is_authorized,
 )
 from aignt_os.cli.errors import (
@@ -34,6 +36,7 @@ from aignt_os.cli.rendering import (
     render_run_submission,
     render_runs_list,
     render_runtime_status,
+    truncate_logs,
 )
 from aignt_os.config import AppSettings
 from aignt_os.persistence import ArtifactStore, PersistedPipelineRunner, RunRepository
@@ -377,6 +380,10 @@ def _dispatch_service(*, initiated_by: str | None = None) -> RunDispatchService:
 
 def _auth_registry_store() -> AuthRegistryStore:
     settings = AppSettings()
+    if settings.auth_provider != "file":
+        raise usage_error(
+            f"Auth provider '{settings.auth_provider}' does not support local token management."
+        )
     try:
         return AuthRegistryStore(settings.auth_registry_file)
     except ValueError as exc:
@@ -385,8 +392,8 @@ def _auth_registry_store() -> AuthRegistryStore:
 
 def _validate_role(role: str) -> Role:
     normalized = role.strip().lower()
-    if normalized not in {"viewer", "operator"}:
-        raise usage_error("role must be one of: viewer, operator.")
+    if normalized not in {"admin", "operator", "viewer"}:
+        raise usage_error("role must be one of: admin, operator, viewer.")
     return normalized  # type: ignore[return-value]
 
 
@@ -412,11 +419,11 @@ def _resolve_principal_id(
         raise authentication_error("Authentication token is required for this command.")
 
     try:
-        store = AuthRegistryStore(settings.auth_registry_file)
+        provider = get_auth_provider(settings)
     except ValueError as exc:
         raise environment_error(str(exc)) from exc
     try:
-        principal = store.authenticate(auth_token)
+        principal = provider.authenticate(auth_token)
     except AuthConfigurationError as exc:
         raise environment_error(str(exc)) from exc
 
@@ -430,7 +437,7 @@ def _resolve_principal_id(
 @auth_app.command("init")
 def auth_init(
     principal_id: Annotated[str, typer.Option("--principal-id")] = "",
-    role: Annotated[str, typer.Option("--role")] = "operator",
+    role: Annotated[str, typer.Option("--role")] = "admin",
 ) -> None:
     try:
         store = _auth_registry_store()
@@ -456,8 +463,13 @@ def auth_init(
 def auth_issue(
     principal_id: Annotated[str, typer.Option("--principal-id")] = "",
     role: Annotated[str | None, typer.Option("--role")] = None,
+    auth_token: Annotated[
+        str | None,
+        typer.Option("--auth-token", envvar="AIGNT_OS_AUTH_TOKEN"),
+    ] = None,
 ) -> None:
     try:
+        _resolve_principal_id(permission="auth:manage", auth_token=auth_token)
         store = _auth_registry_store()
         issued_token = store.issue_token(
             principal_id=principal_id.strip(),
@@ -480,8 +492,13 @@ def auth_issue(
 @auth_app.command("disable")
 def auth_disable(
     token_id: Annotated[str, typer.Option("--token-id")] = "",
+    auth_token: Annotated[
+        str | None,
+        typer.Option("--auth-token", envvar="AIGNT_OS_AUTH_TOKEN"),
+    ] = None,
 ) -> None:
     try:
+        _resolve_principal_id(permission="auth:manage", auth_token=auth_token)
         _auth_registry_store().disable_token(token_id=token_id.strip())
     except CLIError as exc:
         exit_for_cli_error(exc)
@@ -504,7 +521,7 @@ def runtime_start(
     ] = None,
 ) -> None:
     try:
-        principal_id = _resolve_principal_id(permission="runtime.manage", auth_token=auth_token)
+        principal_id = _resolve_principal_id(permission="runtime:manage", auth_token=auth_token)
         service = _runtime_service()
         state = service.start(started_by=principal_id)
     except CLIError as exc:
@@ -542,7 +559,7 @@ def runtime_run(
     ] = None,
 ) -> None:
     try:
-        principal_id = _resolve_principal_id(permission="runtime.manage", auth_token=auth_token)
+        principal_id = _resolve_principal_id(permission="runtime:manage", auth_token=auth_token)
     except CLIError as exc:
         exit_for_cli_error(exc)
 
@@ -595,7 +612,7 @@ def runtime_stop(
     ] = None,
 ) -> None:
     try:
-        principal_id = _resolve_principal_id(permission="runtime.manage", auth_token=auth_token)
+        principal_id = _resolve_principal_id(permission="runtime:manage", auth_token=auth_token)
         service = _runtime_service()
         state = service.status()
         if (
@@ -621,6 +638,10 @@ def runtime_stop(
 def watch(
     run_id: str = typer.Argument(..., help="ID of the run to monitor"),
     refresh: float = typer.Option(1.0, help="Refresh interval in seconds"),
+    auth_token: Annotated[
+        str | None,
+        typer.Option("--auth-token", envvar="AIGNT_OS_AUTH_TOKEN"),
+    ] = None,
 ) -> None:
     """
     Monitor a run in real-time using a TUI dashboard.
@@ -628,6 +649,7 @@ def watch(
     from aignt_os.cli.dashboard import RunDashboard
 
     try:
+        _resolve_principal_id(permission="run:read", auth_token=auth_token)
         repo = _run_repository()
         if not repo.get_run(run_id):
             typer.echo(f"Error: Run {run_id} not found.", err=True)
@@ -643,8 +665,14 @@ def watch(
 
 
 @runs_app.command("list")
-def runs_list() -> None:
+def runs_list(
+    auth_token: Annotated[
+        str | None,
+        typer.Option("--auth-token", envvar="AIGNT_OS_AUTH_TOKEN"),
+    ] = None,
+) -> None:
     try:
+        _resolve_principal_id(permission="run:read", auth_token=auth_token)
         repository = _run_repository()
         runs = repository.list_runs()
     except CLIError as exc:
@@ -677,7 +705,7 @@ def runs_submit(
     ] = None,
 ) -> None:
     try:
-        principal_id = _resolve_principal_id(permission="runs.submit", auth_token=auth_token)
+        principal_id = _resolve_principal_id(permission="run:write", auth_token=auth_token)
         dispatch_service = (
             _dispatch_service(initiated_by=principal_id)
             if principal_id is not None
@@ -706,12 +734,108 @@ def runs_submit(
     render_run_submission(result)
 
 
+@runs_app.command("follow")
+def runs_follow(
+    run_id: str,
+    raw: bool = typer.Option(False, "--raw", help="Show raw output instead of clean output."),
+    poll_interval: float = typer.Option(
+        0.1, "--poll-interval", help="Polling interval in seconds."
+    ),
+    auth_token: Annotated[
+        str | None,
+        typer.Option("--auth-token", envvar="AIGNT_OS_AUTH_TOKEN"),
+    ] = None,
+) -> None:
+    """
+    Follow the logs of a run in real-time.
+    """
+    try:
+        _resolve_principal_id(permission="run:read", auth_token=auth_token)
+        settings = AppSettings()
+        repo = RunRepository(settings.runs_db_path_resolved)
+    except CLIError as exc:
+        exit_for_cli_error(exc)
+
+    try:
+        run = repo.get_run(run_id)
+    except NoResultFound:
+        raise not_found_error(f"Run '{run_id}' not found.") from None
+
+    typer.echo(f"Following logs for run {run_id}...")
+    typer.echo("Press Ctrl+C to stop.")
+
+    last_step_id = -1
+    seen_steps: set[int] = set()
+
+    try:
+        while True:
+            # Refresh run status
+            try:
+                run = repo.get_run(run_id)
+            except NoResultFound:
+                # Should not happen if it existed before
+                break
+
+            steps = repo.list_steps(run_id)
+            if not steps:
+                time.sleep(poll_interval)
+                continue
+
+            # Sort steps by ID to process in order
+            steps.sort(key=lambda s: s.step_id)
+
+            # Process new steps
+            for step in steps:
+                if step.step_id <= last_step_id:
+                    continue
+
+                # Found a new step or next step
+                last_step_id = step.step_id
+                seen_steps.add(step.step_id)
+
+                typer.echo(
+                    f"\n--- Step {step.step_id}: {step.state} ({step.tool_name or 'system'}) ---\n"
+                )
+
+                # Determine log path
+                log_path_str = step.raw_output_path if raw else step.clean_output_path
+                # Fallback if preferred one is missing
+                if not log_path_str:
+                    log_path_str = step.clean_output_path if raw else step.raw_output_path
+
+                if not log_path_str:
+                    typer.echo("(No log output path recorded yet)")
+                else:
+                    try:
+                        p = Path(log_path_str)
+                        if p.exists():
+                            content = p.read_text(encoding="utf-8", errors="replace")
+                            typer.echo(truncate_logs(content, settings.tui_log_buffer_lines))
+                        else:
+                            typer.echo(f"(Log file not found: {log_path_str})")
+                    except Exception as e:
+                        typer.echo(f"(Error reading log: {e})")
+
+            if run.status in ("completed", "failed", "stopped"):
+                break
+
+            time.sleep(poll_interval)
+
+    except KeyboardInterrupt:
+        typer.echo("\nStopped following.")
+
+
 @runs_app.command("show")
 def runs_show(
     run_id: str,
     preview: Annotated[str | None, typer.Option("--preview")] = None,
+    auth_token: Annotated[
+        str | None,
+        typer.Option("--auth-token", envvar="AIGNT_OS_AUTH_TOKEN"),
+    ] = None,
 ) -> None:
     try:
+        _resolve_principal_id(permission="run:read", auth_token=auth_token)
         repository = _run_repository()
         artifact_store = _artifact_store()
         run = repository.get_run(run_id)
