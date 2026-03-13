@@ -79,3 +79,22 @@ def test_doctor_returns_environment_error_when_runs_db_parent_is_not_writable(
     assert "fail" in combined_output
     assert "fix" in combined_output or "permission" in combined_output or "path" in combined_output
     assert "traceback" not in combined_output
+
+
+def test_doctor_returns_environment_error_when_persistence_paths_escape_workspace_root(
+    tmp_path: Path,
+    cli_runner,
+    cli_app,
+) -> None:
+    env = _doctor_env(tmp_path)
+    env["AIGNT_OS_RUNS_DB_PATH"] = str((tmp_path / ".." / "outside" / "runs.sqlite3").resolve())
+    env["AIGNT_OS_ARTIFACTS_DIR"] = str((tmp_path / ".." / "outside-artifacts").resolve())
+
+    result = cli_runner.invoke(cli_app, ["doctor"], env=env)
+
+    assert result.exit_code == 5
+    combined_output = f"{result.stdout}\n{result.stderr}".lower()
+    assert "runs_db" in combined_output
+    assert "artifacts_dir" in combined_output
+    assert "path escapes trusted root" in combined_output
+    assert "traceback" not in combined_output

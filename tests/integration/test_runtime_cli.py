@@ -19,6 +19,8 @@ def invoke_runtime_command(tmp_path: Path, *args: str):
     env = {
         "AIGNT_OS_ENVIRONMENT": "test",
         "AIGNT_OS_RUNTIME_STATE_DIR": str(tmp_path),
+        "AIGNT_OS_RUNS_DB_PATH": str(tmp_path / "runs" / "runs.sqlite3"),
+        "AIGNT_OS_ARTIFACTS_DIR": str(tmp_path / "artifacts"),
         "AIGNT_OS_WORKSPACE_ROOT": str(tmp_path),
     }
     return runner.invoke(cli_module.app, ["runtime", *args], env=env)
@@ -33,6 +35,8 @@ def spawn_runtime_foreground(tmp_path: Path) -> subprocess.Popen[str]:
     )
     env["AIGNT_OS_ENVIRONMENT"] = "test"
     env["AIGNT_OS_RUNTIME_STATE_DIR"] = str(tmp_path)
+    env["AIGNT_OS_RUNS_DB_PATH"] = str(tmp_path / "runs" / "runs.sqlite3")
+    env["AIGNT_OS_ARTIFACTS_DIR"] = str(tmp_path / "artifacts")
     env["AIGNT_OS_WORKSPACE_ROOT"] = str(tmp_path)
 
     return subprocess.Popen(

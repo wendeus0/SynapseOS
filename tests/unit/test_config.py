@@ -73,6 +73,20 @@ def test_settings_exposes_run_persistence_paths(monkeypatch: pytest.MonkeyPatch)
     assert settings.artifacts_dir.name == "artifacts"
 
 
+def test_settings_resolves_run_persistence_paths_within_workspace_root(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    config_module = import_module("aignt_os.config")
+    monkeypatch.setenv("AIGNT_OS_WORKSPACE_ROOT", str(tmp_path))
+    monkeypatch.setenv("AIGNT_OS_RUNS_DB_PATH", str(tmp_path / "runs" / "runs.sqlite3"))
+    monkeypatch.setenv("AIGNT_OS_ARTIFACTS_DIR", str(tmp_path / "artifacts"))
+
+    settings = config_module.AppSettings()
+
+    assert settings.runs_db_path_resolved == (tmp_path / "runs" / "runs.sqlite3").resolve()
+    assert settings.artifacts_dir_resolved == (tmp_path / "artifacts").resolve()
+
+
 def test_settings_runtime_state_file_is_child_of_state_dir() -> None:
     config_module = import_module("aignt_os.config")
 
@@ -185,6 +199,40 @@ def test_settings_rejects_runtime_state_dir_outside_workspace_root(
 
     with pytest.raises(ValueError, match="Path escapes trusted root"):
         _ = settings.auth_registry_file
+
+
+def test_settings_rejects_runs_db_path_outside_workspace_root(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    config_module = import_module("aignt_os.config")
+    workspace_root = tmp_path / "workspace"
+    workspace_root.mkdir()
+    monkeypatch.setenv("AIGNT_OS_WORKSPACE_ROOT", str(workspace_root))
+    monkeypatch.setenv("AIGNT_OS_RUNS_DB_PATH", str(tmp_path / "outside" / "runs.sqlite3"))
+
+    settings = config_module.AppSettings()
+
+    with pytest.raises(ValueError, match="Path escapes trusted root"):
+        _ = settings.runs_db_path_resolved
+
+
+def test_settings_rejects_symlinked_artifacts_dir_that_resolves_outside_workspace_root(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    config_module = import_module("aignt_os.config")
+    workspace_root = tmp_path / "workspace"
+    outside_root = tmp_path / "outside-artifacts"
+    artifacts_link = workspace_root / "artifacts-link"
+    workspace_root.mkdir()
+    outside_root.mkdir()
+    artifacts_link.symlink_to(outside_root, target_is_directory=True)
+    monkeypatch.setenv("AIGNT_OS_WORKSPACE_ROOT", str(workspace_root))
+    monkeypatch.setenv("AIGNT_OS_ARTIFACTS_DIR", str(artifacts_link))
+
+    settings = config_module.AppSettings()
+
+    with pytest.raises(ValueError, match="Path escapes trusted root"):
+        _ = settings.artifacts_dir_resolved
 
 
 def test_settings_rejects_symlinked_runtime_state_dir_that_resolves_outside_workspace_root(

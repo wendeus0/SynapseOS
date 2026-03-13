@@ -47,8 +47,8 @@ def _submit_env(tmp_path: Path, *, workspace_root: Path | None = None) -> dict[s
     env["PYTHONPATH"] = f"{python_path}{os.pathsep}{existing}" if existing else python_path
     env["AIGNT_OS_ENVIRONMENT"] = "test"
     env["AIGNT_OS_RUNTIME_STATE_DIR"] = str(trusted_workspace_root / ".aignt-os" / "runtime")
-    env["AIGNT_OS_RUNS_DB_PATH"] = str(tmp_path / "runs" / "runs.sqlite3")
-    env["AIGNT_OS_ARTIFACTS_DIR"] = str(tmp_path / "artifacts")
+    env["AIGNT_OS_RUNS_DB_PATH"] = str(trusted_workspace_root / "runs" / "runs.sqlite3")
+    env["AIGNT_OS_ARTIFACTS_DIR"] = str(trusted_workspace_root / "artifacts")
     env["AIGNT_OS_WORKSPACE_ROOT"] = str(trusted_workspace_root)
     env["AIGNT_OS_RUNTIME_POLL_INTERVAL_SECONDS"] = "0.05"
     return env
@@ -261,6 +261,31 @@ def test_runs_submit_fails_predictably_when_spec_is_invalid(
         "validation error:" in result.stdout.lower() or "validation error:" in result.stderr.lower()
     )
     assert repository.list_runs() == []
+
+
+def test_runs_submit_fails_with_environment_error_when_runs_db_path_escapes_workspace_root(
+    tmp_path: Path,
+    cli_runner,
+    cli_app,
+) -> None:
+    trusted_workspace_root = tmp_path / "workspace"
+    trusted_workspace_root.mkdir()
+    spec_path = trusted_workspace_root / "SPEC.md"
+    _write_valid_spec(spec_path)
+    env = _submit_env(tmp_path, workspace_root=trusted_workspace_root)
+    env["AIGNT_OS_RUNS_DB_PATH"] = str(tmp_path / "outside" / "runs.sqlite3")
+
+    result = cli_runner.invoke(
+        cli_app,
+        ["runs", "submit", str(spec_path), "--mode", "sync", "--stop-at", "SPEC_VALIDATION"],
+        env=env,
+    )
+
+    assert result.exit_code == 5
+    combined_output = f"{result.stdout}\n{result.stderr}".lower()
+    assert "environment error:" in combined_output
+    assert "path escapes trusted root" in combined_output
+    assert "traceback" not in combined_output
 
 
 def test_runs_submit_rejects_spec_outside_workspace_root(

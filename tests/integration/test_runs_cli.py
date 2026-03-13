@@ -7,7 +7,7 @@ from pathlib import Path
 def _runs_env(tmp_path: Path) -> dict[str, str]:
     return {
         "AIGNT_OS_ENVIRONMENT": "test",
-        "AIGNT_OS_RUNS_DB_PATH": str(tmp_path / "runs.sqlite3"),
+        "AIGNT_OS_RUNS_DB_PATH": str(tmp_path / "runs" / "runs.sqlite3"),
         "AIGNT_OS_ARTIFACTS_DIR": str(tmp_path / "artifacts"),
         "AIGNT_OS_WORKSPACE_ROOT": str(tmp_path),
     }
@@ -19,7 +19,7 @@ def _seed_run(tmp_path: Path, *, status: str, current_state: str) -> str:
     spec_path = tmp_path / f"{status}-{current_state}.md"
     spec_path.write_text("# Fixture\n", encoding="utf-8")
 
-    repository = persistence.RunRepository(tmp_path / "runs.sqlite3")
+    repository = persistence.RunRepository(tmp_path / "runs" / "runs.sqlite3")
     run_id = repository.create_run(
         spec_path=spec_path,
         initial_state="REQUEST",
@@ -198,6 +198,40 @@ def test_runs_show_fails_predictably_when_run_is_missing(
     assert result.exit_code == 3
     assert "missing-run" in result.stdout or "missing-run" in result.stderr
     assert "not found:" in result.stdout.lower() or "not found:" in result.stderr.lower()
+
+
+def test_runs_list_fails_with_environment_error_when_runs_db_path_escapes_workspace_root(
+    tmp_path: Path,
+    cli_runner,
+    cli_app,
+) -> None:
+    env = _runs_env(tmp_path)
+    env["AIGNT_OS_RUNS_DB_PATH"] = str((tmp_path / ".." / "outside" / "runs.sqlite3").resolve())
+
+    result = cli_runner.invoke(cli_app, ["runs", "list"], env=env)
+
+    assert result.exit_code == 5
+    combined_output = f"{result.stdout}\n{result.stderr}".lower()
+    assert "environment error:" in combined_output
+    assert "path escapes trusted root" in combined_output
+    assert "traceback" not in combined_output
+
+
+def test_runs_show_fails_with_environment_error_when_artifacts_dir_escapes_workspace_root(
+    tmp_path: Path,
+    cli_runner,
+    cli_app,
+) -> None:
+    env = _runs_env(tmp_path)
+    env["AIGNT_OS_ARTIFACTS_DIR"] = str((tmp_path / ".." / "outside-artifacts").resolve())
+
+    result = cli_runner.invoke(cli_app, ["runs", "show", "missing-run"], env=env)
+
+    assert result.exit_code == 5
+    combined_output = f"{result.stdout}\n{result.stderr}".lower()
+    assert "environment error:" in combined_output
+    assert "path escapes trusted root" in combined_output
+    assert "traceback" not in combined_output
 
 
 def test_runs_show_preview_report_renders_truncated_content_and_source_path(
