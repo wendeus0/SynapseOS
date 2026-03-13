@@ -5,9 +5,11 @@ Implementação de um dashboard TUI interativo (`aignt runs watch <run_id>`) par
 
 ## Escopo Entregue
 - **Comando CLI**: `aignt runs watch <run_id>` adicionado ao grupo `runs`.
-- **Interface TUI**:
-    - **Header**: Exibe status, estado atual e caminho da SPEC.
-    - **Steps Table**: Lista os passos executados, duração e resultado.
+- **Interface TUI Moderna (v2)**:
+    - **Layout**: Dividido em Header, Sidebar (Steps List) e Content (Step Details).
+    - **Header**: Status com cores semânticas (Verde/Vermelho/Amarelo).
+    - **Sidebar**: Lista de steps interativa com ícones de status (✅, ❌, ⏳, ⏭️).
+    - **Content**: Painel de detalhes exibindo metadados completos do step selecionado.
     - **Refresh Automático**: Atualização a cada 1s via polling no SQLite.
 - **Testes**: Cobertura unitária completa do comando e validação de argumentos.
 
