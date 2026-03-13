@@ -220,9 +220,9 @@ def test_runs_show_preview_report_renders_truncated_content_and_source_path(
     )
     repository.acquire_lock(run_id)
     repository.mark_run_running(run_id, current_state="DOCUMENT")
-    report_content = "Bearer secret-token\n" + "\n".join(
-        f"line {index}" for index in range(1, 46)
-    ) + "\n"
+    report_content = (
+        "Bearer secret-token\n" + "\n".join(f"line {index}" for index in range(1, 46)) + "\n"
+    )
     artifact_store.save_run_report(run_id=run_id, content=report_content)
     repository.mark_run_completed(run_id, current_state="DOCUMENT")
 

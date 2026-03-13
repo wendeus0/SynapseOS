@@ -114,7 +114,7 @@ def test_base_cli_adapter_masks_secrets_and_normalizes_unicode_in_clean_streams(
     assert "Bearer secret-token" not in result.stdout_clean
     assert "sk-secret123" not in result.stderr_clean
     assert "é" in result.stdout_clean
-    assert "\u202E" not in result.stdout_clean
+    assert "\u202e" not in result.stdout_clean
     assert "F" in result.stdout_clean
     assert "[REDACTED]" in result.stdout_clean
     assert "[REDACTED]" in result.stderr_clean
@@ -514,9 +514,7 @@ def test_codex_cli_adapter_opens_circuit_breaker_after_two_operational_failures(
     assert store.is_open("codex") is True
 
 
-def test_codex_cli_adapter_blocks_without_spawn_when_circuit_is_open(
-    tmp_path, monkeypatch
-) -> None:  # type: ignore[no-untyped-def]
+def test_codex_cli_adapter_blocks_without_spawn_when_circuit_is_open(tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
     adapters = _adapters_module()
     circuit_breaker_module = import_module("aignt_os.runtime.circuit_breaker")
 

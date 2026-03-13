@@ -19,6 +19,7 @@
 
 - `main` local permanece sincronizada com `origin/main`, sem diff aberto no baseline usado para o handoff atual.
 - O baseline atual ja incorpora `F15-public-run-submission`, `F16-run-detail-expansion`, `F21-cli-error-model-and-exit-codes`, `F18-canonical-happy-path`, `F19-environment-doctor`, `F20-public-onboarding`, `F17-artifact-preview`, `F22-release-readiness` e a sequencia `F23 -> F27`.
+- O baseline atual tambem ja incorpora `F28-adapter-circuit-breaker`, `F29-auth-rbac-foundation` e `F30-auth-registry-cli`, com `aignt auth init|issue|disable` e o alinhamento de `docs/IDEAS.md`/README ao estado pos-F30.
 - A release tecnica da etapa 2 e a primeira trilha de guardrails ja estao refletidas no codigo e na superficie publica da CLI; a proxima decisao passa a ser abrir a proxima SPEC apos `F27`, nao reconciliar merges pendentes.
 
 # Stable decisions
@@ -36,12 +37,12 @@
 # Active fronts
 
 - Nao ha feature de produto ativa no momento; a etapa 2 e a primeira onda de guardrails pos-release ja foram mergeadas em `main`.
-- O backlog aberto da `IDEA-001` ficou reduzido aos itens ainda nao absorvidos, com `G-09` e `G-11` como candidatos remanescentes de maior porte.
+- A frente operacional ativa agora e restaurar o `repo-checks`, porque a PR `#65` da `F30` precisou de merge explicito enquanto `ruff format --check .` ainda listava 6 arquivos preexistentes fora do padrao.
 
 # Open decisions
 
-- A proxima decisao pratica em aberto e qual sera a primeira feature apos `F27`; o repositorio ainda nao tem SPEC ativa para essa fase.
-- O candidato mais logico no backlog atual e `IDEA-001 / G-09`, porque `G-01` a `G-08` e `G-10` ja foram absorvidos pelas features `F23 -> F27`, enquanto `G-11` continua maior e explicitamente pos-MVP.
+- A proxima decisao pratica em aberto continua sendo qual sera a primeira feature apos `F27`, mas ela deve esperar a restauracao do `repo-checks` na baseline.
+- O backlog de guardrails ficou com `G-11` remoto/socket como residual real; os follow-ups locais de auth ja foram absorvidos por `F29` e `F30`.
 - Decidir em momento futuro se o smoke autenticado do Codex deve virar gate obrigatorio; por ora o `401 Unauthorized` ficou classificado como bloqueio operacional externo e nao como requisito de produto.
 
 # Recurrent pitfalls
@@ -55,9 +56,9 @@
 
 # Next recommended steps
 
-- Manter `memory.md`, `PENDING_LOG.md`, `docs/IDEAS.md` e `WORKTREE_FEATURES.md` coerentes entre si apos a merge de `F27`.
-- Nao abrir `F14-tui-watch-command` por inercia; a proxima frente deve nascer de SPEC propria apos `F27`, nao de backlog informal.
-- Priorizar a triagem da proxima SPEC entre `G-09` e `G-11`, com vies pratico para `G-09` por ser o menor recorte restante do programa de guardrails.
+- Restaurar `ruff format --check .` e o `repo-checks` na baseline atual com uma chore pequena e auditavel.
+- Sincronizar `memory.md`, `PENDING_LOG.md` e `ERROR_LOG.md` ao estado pos-F30 e ao incidente operacional da PR `#65`.
+- So depois reabrir a triagem da proxima SPEC de produto, mantendo `G-11` remoto/socket como backlog futuro e evitando abrir nova frente com a baseline ainda instavel.
 
 # Last handoff summary
 
