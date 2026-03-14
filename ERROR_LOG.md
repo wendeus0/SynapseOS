@@ -1,5 +1,15 @@
 # ERROR_LOG
 
+## 2026-03-13 - PR `#87` da F40 entrou com delta misto alem do recorte funcional
+
+- Contexto: reavaliacao do baseline apos a merge da `F40-local-cancellation`.
+- Ação/comando relacionado: `gh pr view 87 --json title,body,files`, inspecao de `origin/main` e checagem do handoff duravel.
+- Erro observado: a PR `#87` mergeou `F40`, mas o diff remoto incluiu tambem mudancas documentais/operacionais fora do recorte funcional estrito da feature, e `features/F40-local-cancellation/` ficou sem `NOTES.md`, `CHECKLIST.md` e `REPORT.md`.
+- Causa identificada: fechamento Git da feature sem uma passada posterior de consolidacao do baseline e do handoff, mantendo a linha principal funcionalmente correta mas documentalmente desalinhada.
+- Ação tomada: abrir a chore doc-only `chore-post-f40-f42-baseline-sync` para registrar o incidente, retrocompletar os artefatos minimos de `F40`/`F42` e alinhar `memory.md`, `PENDING_LOG.md`, `README.md` e `CHANGELOG.md` ao estado real de `main`.
+- Status: mitigado pela chore de sync/handoff; nao houve reabertura de escopo funcional nem reversao da merge.
+- Observação futura: quando uma PR funcional entrar com delta misto inevitavel, consolidar imediatamente o handoff duravel e os artefatos minimos da feature em vez de deixar o baseline documental em estado parcial.
+
 ## 2026-03-13 - Branch `feature/f39-persistence-path-root-hardening` acumulou drafts pos-MVP fora de escopo
 
 - Contexto: triagem tecnica e limpeza operacional apos `F39` e `F37` ja estarem absorvidas em `origin/main`.

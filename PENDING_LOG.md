@@ -2,6 +2,13 @@
 
 ## Decisões incorporadas recentemente
 
+- Em 2026-03-13, `origin/main` absorveu a merge de `F42-tui-filters` pela PR `#86`, adicionando filtros visuais locais no dashboard TUI para falhas (`f`), atividade (`r`) e restauracao da lista completa (`x`).
+- Em 2026-03-13, `origin/main` absorveu a merge de `F40-local-cancellation` pela PR `#87`, consolidando `aignt runs cancel <run_id>` e o atalho `k` no dashboard como cancelamento local e gracioso de runs.
+- Com `F42` e `F40`, a TUI local atual passa a cobrir watch, logs por `Enter`, explorer de artifacts por `a`, filtros visuais e cancelamento local, sem abrir scheduler, fila remota ou cancelamento distribuido.
+- O drift remanescente voltou a ser documental: `memory.md`, `PENDING_LOG.md`, `ERROR_LOG.md`, `README.md` e `CHANGELOG.md` ficaram atrasados em relacao ao baseline real pos-`F42`/`F40`, e `features/F40-local-cancellation/` e `features/F42-tui-filters/` ficaram sem artefatos minimos de fechamento.
+- A frente ativa imediata passa a ser a chore doc-only `chore-post-f40-f42-baseline-sync`, para consolidar handoff e documentacao publica antes da proxima decisao de produto.
+- A proxima decisao de produto volta a ficar bloqueada ate essa chore fechar e uma nova `technical-triage` escolher uma unica frente a partir de `main`.
+
 - Em 2026-03-13, `origin/main` absorveu as merges de `F41-dashboard-artifacts-explorer` (`#80`), `F44-auth-backend-abstraction` (`#81`), `F47-advanced-rbac` (`#82`), `F43-runtime-robustness` (`#83`) e `F45-tui-performance-optimization` (`#84`), consolidando a TUI local, a robustez basica de timeout/retry e o baseline atual de auth local.
 - Com essas merges, `main` passou a refletir explorer de artifacts na TUI, buffering de logs, timeout global por step, retry simples para falhas transientes, abstracao local de `AuthProvider` e RBAC local com `viewer`/`operator`/`admin`.
 - O drift remanescente deixou de ser funcional e passou a ser documental: `memory.md`, `PENDING_LOG.md`, `docs/IDEAS.md`, `README.md` e `CHANGELOG.md` ficaram atrasados em relacao ao baseline real pos-`F47`.
@@ -167,8 +174,8 @@
 
 - Fixtures de testes aspiracionais marcadas como 🔜 no TDD.md: `tests/fixtures/worker/` (ainda ausente).
 - Property-based testing com `hypothesis` ainda não implementado (mencionado como evolução futura em TDD.md).
-- Fechar a `chore-post-f47-baseline-handoff-sync` atualizando `PENDING_LOG.md`, `memory.md`, `docs/IDEAS.md`, `README.md` e `CHANGELOG.md` ao estado pos-`F47`.
-- Rodar nova `technical-triage` depois da `chore-post-f47-baseline-handoff-sync` para escolher a proxima frente fora de `remote_multi_host_auth`.
+- Fechar a `chore-post-f40-f42-baseline-sync` atualizando `PENDING_LOG.md`, `memory.md`, `ERROR_LOG.md`, `README.md` e `CHANGELOG.md` ao estado pos-`F42`/`F40`.
+- Rodar nova `technical-triage` depois da `chore-post-f40-f42-baseline-sync` para escolher a proxima frente fora de `remote_multi_host_auth`.
 - Manter `remote_multi_host_auth` explicitamente adiado ate existir demanda concreta, recorte proprio e validavel.
 
 ## Pontos de atenção futuros

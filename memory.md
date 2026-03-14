@@ -21,7 +21,8 @@
 - A limpeza operacional pos-`F37` confirmou que o problema imediato nao era gap de MVP nem de baseline em `main`, mas drift local numa branch antiga de `F39` reutilizada para drafts pos-MVP.
 - O estado misto foi preservado em `origin/archive/2026-03-13-f39-drift-snapshot`.
 - As merges de `F41-dashboard-artifacts-explorer`, `F43-runtime-robustness`, `F44-auth-backend-abstraction`, `F45-tui-performance-optimization` e `F47-advanced-rbac` ja estao absorvidas em `main`.
-- Os recortes ainda transversais (`F40`, `F42`, `F46`, testes de lifecycle e docs especulativos de roadmap longo) permanecem apenas no archive branch, fora da fila ativa.
+- `main` atual tambem ja incorpora `F42-tui-filters` pela PR `#86` e `F40-local-cancellation` pela PR `#87`, consolidando filtros no dashboard TUI e cancelamento local/gracioso de runs.
+- O recorte ainda transversal restante fora da fila ativa fica concentrado em `F46`, testes de lifecycle e docs especulativos de roadmap longo; `F40` e `F42` deixaram de ser backlog pendente.
 - O baseline atual ja incorpora `F15-public-run-submission`, `F16-run-detail-expansion`, `F21-cli-error-model-and-exit-codes`, `F18-canonical-happy-path`, `F19-environment-doctor`, `F20-public-onboarding`, `F17-artifact-preview`, `F22-release-readiness` e a sequencia `F23 -> F27`.
 - O baseline atual tambem ja incorpora `F28-adapter-circuit-breaker`, `F29-auth-rbac-foundation` e `F30-auth-registry-cli`, com `aignt auth init|issue|disable` e o alinhamento de `docs/IDEAS.md`/README ao estado pos-F30.
 - A release tecnica da etapa 2 e a primeira trilha de guardrails ja estao refletidas no codigo e na superficie publica da CLI; a baseline tambem foi reestabilizada apos a PR `#66`, com `repo-checks` novamente verde.
@@ -44,7 +45,7 @@
 # Active fronts
 
 - Nao ha frente de produto aberta no baseline atual.
-- A frente doc-only ativa no momento e `chore-post-f47-baseline-handoff-sync`, restrita a consolidar o handoff do baseline atual antes da proxima triagem.
+- A frente doc-only ativa no momento e `chore-post-f40-f42-baseline-sync`, restrita a consolidar o handoff do baseline atual apos as merges de `F42` e `F40`.
 - Nao ha draft coerente ainda pendente de merge entre `F41`, `F43`, `F44`, `F45` e `F47`; essas frentes ja foram absorvidas em `main`.
 - Nao ha frente de implementacao de transporte remoto, socket ou auth distribuida em andamento no baseline atual.
 
@@ -65,13 +66,13 @@
 
 # Next recommended steps
 
-- Fechar a `chore-post-f47-baseline-handoff-sync` e, em seguida, rodar nova `technical-triage` em branch limpa a partir de `main` para escolher uma unica frente ativa.
+- Fechar a `chore-post-f40-f42-baseline-sync` e, em seguida, rodar nova `technical-triage` em branch limpa a partir de `main` para escolher uma unica frente ativa.
 - Nao reabrir a branch historica de `F39`; usar `draft/*` apenas como estacionamento e extrair dali somente quando houver prioridade aprovada.
 - Manter `remote_multi_host_auth` explicitamente adiado e evitar reabrir follow-up local/residente de auth, porque esse recorte ja foi absorvido por `F29`, `F30`, `F44`, `F47`, `F32`, `F34`, `F35` e `F36`.
 
 # Last handoff summary
 
 - Read before acting: releia `AGENTS.md`, `CONTEXT.md`, `memory.md`, `PENDING_LOG.md`, `ERROR_LOG.md`, `git status` e `git diff --stat`.
-- Current state: `main` ja incorpora `F17`, `F22`, `F23 -> F39`, `F41`, `F43`, `F44`, `F45` e `F47`; a baseline operacional segue verde e apenas os recortes transversais continuam no archive branch.
+- Current state: `main` ja incorpora `F17`, `F22`, `F23 -> F40`, `F41`, `F42`, `F43`, `F44`, `F45` e `F47`; a baseline operacional segue verde e os recortes pendentes voltam a ser escolhidos por triagem a partir de `main`.
 - Open points: concluir esta chore doc-only e depois escolher uma unica proxima frente a partir de `main`.
-- Recommended next front: nova `technical-triage` em branch limpa depois do merge da `chore-post-f47-baseline-handoff-sync`.
+- Recommended next front: nova `technical-triage` em branch limpa depois do merge da `chore-post-f40-f42-baseline-sync`.

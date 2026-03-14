@@ -38,7 +38,7 @@ CLI funcional → SPEC válida → State Machine → Parser → Adapter base asy
 ### Esteira principal do MVP
 
 ```
-SPEC → TEST_RED → CODE_GREEN → REFACTOR → SECURITY_REVIEW → REPORT → COMMIT
+SPEC → TEST_RED → CODE_GREEN → REFACTOR → QUALITY_GATE → SECURITY_REVIEW → REPORT → COMMIT
 ```
 
 Dentro do macroestágio `SPEC`, o AIgnt-Synapse-Flow pode decompor a execução em `SPEC_DISCOVERY`, `SPEC_NORMALIZATION` e `SPEC_VALIDATION`.
@@ -219,6 +219,31 @@ Limites do recorte atual:
 - `raw_output` continua fora de escopo;
 - nao ha leitura arbitraria de path informado pelo usuario;
 - se o artifact ainda nao existir, a CLI retorna `Not found:` conforme o contrato da F21.
+
+## TUI Watch e Cancelamento Local
+
+O dashboard TUI atual do AIgnt OS continua local e terminal-first. Ele observa uma run especifica ja persistida e renderiza o estado atual do AIgnt-Synapse-Flow, a engine propria de pipeline do AIgnt OS, sem abrir web UI nem operacao distribuida.
+
+Superficie publica atual:
+
+- `aignt runs watch <run_id>` abre o dashboard TUI local da run
+- `aignt runs cancel <run_id>` solicita cancelamento local e gracioso da run
+
+Atalhos reais do dashboard atual:
+
+- `Enter` abre a aba de logs do step selecionado
+- `a` abre o explorer de artifacts
+- `f` filtra apenas steps `failed`
+- `r` filtra steps `running` e `pending`
+- `x` restaura a visualizacao de todos os steps
+- `k` solicita cancelamento da run observada
+
+Boundary do recorte atual:
+
+- o watch/dashboard continua local; nao ha painel remoto, web UI nem streaming distribuido
+- o cancelamento atual e apenas local e gracioso; nao existe `kill -9` nem interrupcao forcada de subprocessos externos
+- nao ha scheduler, fila remota de cancelamento nem coordenacao multi-host
+- os filtros atuais sao apenas visuais e nao persistem entre sessoes
 
 ## Auth Registry Local
 

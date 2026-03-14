@@ -5,6 +5,8 @@
 Baseline atual apos as merges mais recentes em `main`:
 
 - `aignt runs watch <run_id>` consolidado como dashboard TUI local, com explorer de artifacts e visualizacao de logs com buffer limitado
+- dashboard TUI com filtros visuais por falha (`f`), atividade (`r`) e restauracao da lista completa (`x`)
+- `aignt runs cancel <run_id>` e atalho `k` no dashboard para cancelamento local e gracioso de runs
 - runtime com timeout global por step e retry simples para falhas transientes
 - auth local com RBAC (`viewer`, `operator`, `admin`) e documentacao publica de `--role`
 - abstracao local de `auth_provider=file` pronta para futuros backends sem promover auth remota
