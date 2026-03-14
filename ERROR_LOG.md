@@ -1,5 +1,15 @@
 # ERROR_LOG
 
+## 2026-03-14 - Merge direto para `main` bloqueado por branch protection no ambiente sandbox
+
+- Contexto: encerramento da feature `F49-pipeline-full-flow-integration` após 3 commits pushed na branch `claude/F49-pipeline-full-flow-integration-RxaIg`.
+- Ação/comando relacionado: `git push -u origin main` após merge fast-forward local.
+- Erro observado: `HTTP 403` — remote rejeitou o push direto para `main`.
+- Causa identificada: `main` possui branch protection no GitHub. `gh` CLI indisponível no sandbox (`/usr/local/bin/gh` ausente); API REST do GitHub inacessível via proxy local (porta 41927 roteia apenas operações git, retorna `Invalid path format` para chamadas REST).
+- Ação tomada: merge local revertido (`git reset --hard origin/main`); branch permanece como `claude/F49-pipeline-full-flow-integration-RxaIg`, 3 commits à frente, pronta para PR via web.
+- Status: bloqueio operacional de ambiente — sem impacto no código da feature.
+- Observação futura: em ambientes sandbox sem `gh` CLI e com `main` protegida, o fluxo de merge sempre exige interface web do GitHub ou token com permissão de merge. Não tentar `git push origin main` diretamente.
+
 ## 2026-03-13 - PR `#87` da F40 entrou com delta misto alem do recorte funcional
 
 - Contexto: reavaliacao do baseline apos a merge da `F40-local-cancellation`.

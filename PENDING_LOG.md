@@ -2,6 +2,10 @@
 
 ## Decisões incorporadas recentemente
 
+- Em 2026-03-14, `F49-pipeline-full-flow-integration` foi concluída na branch `claude/F49-pipeline-full-flow-integration-RxaIg`: 12 testes de integração do `PipelineEngine` em `tests/pipeline/test_full_flow.py` cobrindo os estados finais do Synapse-Flow (REVIEW, SECURITY, DOCUMENT, COMPLETE). REPORT.md gerado. Ruff clean. Zero mudanças em código de produção. PR pendente de merge via web (restrição de ambiente: `main` protegida, `gh` CLI indisponível no sandbox).
+- Em 2026-03-14, o rename `AIgnt OS → SynapseOS` foi confirmado como absorvido em `main` via PR #94 (commit `427ead4`). `memory.md` atualizado para refletir esse estado. Frente de rename encerrada formalmente.
+- **Pendência aberta:** merge da PR F49 via interface web do GitHub antes de iniciar próxima feature.
+
 - Em 2026-03-13, `origin/main` absorveu a merge de `F42-tui-filters` pela PR `#86`, adicionando filtros visuais locais no dashboard TUI para falhas (`f`), atividade (`r`) e restauracao da lista completa (`x`).
 - Em 2026-03-13, `origin/main` absorveu a merge de `F40-local-cancellation` pela PR `#87`, consolidando `synapse runs cancel <run_id>` e o atalho `k` no dashboard como cancelamento local e gracioso de runs.
 - Com `F42` e `F40`, a TUI local atual passa a cobrir watch, logs por `Enter`, explorer de artifacts por `a`, filtros visuais e cancelamento local, sem abrir scheduler, fila remota ou cancelamento distribuido.
