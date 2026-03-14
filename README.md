@@ -25,17 +25,18 @@ O runtime interno é coordenado pelo **AIgnt-Synapse-Flow**, a **engine própria
 
 ---
 
-## Objetivo do MVP
+## Baseline Atual do Repositório
 
-Entregar, em 10 dias de trabalho focado, o **núcleo funcional mínimo** do sistema:
+O AIgnt OS ja ultrapassou o recorte inicial de MVP e hoje expõe um baseline tecnico coerente para submissao, observabilidade e operacao local de runs. O AIgnt-Synapse-Flow continua sendo a engine propria de pipeline do AIgnt OS e o repositorio atual ja incorpora:
 
-```
-CLI funcional → SPEC válida → State Machine → Parser → Adapter base async
-     → Pipeline linear → Persistência → Worker leve → Supervisor → RUN_REPORT.md
-                                                             → 1 adapter real
-```
+- etapa 2 consolidada com `doctor`, `runs submit`, `runs show`, artifact preview e onboarding publico local
+- guardrails pos-release absorvidos (`F23 -> F27`) para sanitizacao, boundary de workspace/artifacts, AST guard, provenance e concorrencia local
+- auth local e RBAC absorvidos (`F29`, `F30`, `F44`, `F47`) com `auth_provider=file` e roles fixas `viewer`, `operator`, `admin`
+- ownership local do runtime absorvida (`F32`, `F34`, `F35`, `F36`) para o recorte residente/local de auth
+- dashboard TUI local e observabilidade adicional absorvidos (`F40`, `F41`, `F42`, `F45`) com logs, artifacts, filtros e cancelamento local/gracioso
+- robustez de runtime absorvida (`F43`) com timeout global por step e retry simples para falhas transientes
 
-### Esteira principal do MVP
+### Fluxo oficial do repositório
 
 ```
 SPEC → TEST_RED → CODE_GREEN → REFACTOR → QUALITY_GATE → SECURITY_REVIEW → REPORT → COMMIT
@@ -43,36 +44,26 @@ SPEC → TEST_RED → CODE_GREEN → REFACTOR → QUALITY_GATE → SECURITY_REVI
 
 Dentro do macroestágio `SPEC`, o AIgnt-Synapse-Flow pode decompor a execução em `SPEC_DISCOVERY`, `SPEC_NORMALIZATION` e `SPEC_VALIDATION`.
 
-O `DOCKER_PREFLIGHT` do projeto deixou de ser etapa inicial fixa da esteira e passou a ser gate operacional condicional. Por padrão, ele é leve: valida apenas `compose config`, sem build nem `up`. O build explícito fica para workflows e comandos de imagem, e o runtime completo fica para workflow dedicado de integração/runtime ou para execução explícita quando a feature tocar boot, ciclo de vida, persistência ou integração.
-Os hooks locais permanecem leves por padrão para feedback rápido de repositório e não substituem o `DOCKER_PREFLIGHT` operacional real quando houver início prático dependente de Docker.
+O `DOCKER_PREFLIGHT` do projeto continua sendo gate operacional condicional. Por padrão, ele é leve: valida apenas `compose config`, sem build nem `up`. O build explícito fica para workflows e comandos de imagem, e o runtime completo fica para workflow dedicado de integração/runtime ou para execução explícita quando a feature tocar boot, ciclo de vida, persistência ou integração. Os hooks locais continuam leves e não substituem o `DOCKER_PREFLIGHT` operacional real.
 
-### Entregas obrigatórias
+### Superfície pública atual da CLI
 
-- `SPEC_VALIDATION` bloqueando avanço para `PLAN` quando a spec for inválida
-- State machine com transições auditáveis
-- Parsing robusto de outputs ruidosos de CLIs
-- Adapter base assíncrono com timeout, sanitização e contrato único
-- AIgnt-Synapse-Flow linear, a engine própria de pipeline do AIgnt OS (sem dependência de orquestrador externo)
-- Persistência operacional (SQLite + artifacts em disco)
-- Worker leve com polling, lock e retomada de runs
-- Supervisor com retry determinístico, reroute simples e falha terminal
-- Geração de `RUN_REPORT.md` por execução
-- 1 adapter real integrado e testado ponta a ponta
+- `aignt doctor`
+- `aignt runs submit <spec_path> --mode auto|sync|async --stop-at <STEP>`
+- `aignt runs list`
+- `aignt runs show <run_id>`
+- `aignt runs show <run_id> --preview report`
+- `aignt runs watch <run_id>`
+- `aignt runs cancel <run_id>`
+- `aignt auth init|issue|disable`
+- `aignt runtime start|status|run|ready|stop`
 
-### Artefatos gerados por run
+### Boundaries atuais do baseline
 
-```
-artifacts/<run_id>/
-  REQUEST.md
-  SPEC.md
-  PLAN.md
-  TESTS_RED.md
-  <código gerado>
-  REVIEW.md
-  SECURITY.md
-  DOCUMENT.md
-  RUN_REPORT.md
-```
+- o baseline publico continua local e CLI-first; nao existe web UI nem operacao distribuida
+- watch, filtros e cancelamento continuam locais; nao ha scheduler, fila remota nem cancelamento multi-host
+- auth e RBAC continuam locais com provider `file`; auth remota e rotacao distribuida seguem fora de escopo
+- o runtime residente continua leve e local; sync e async coexistem no mesmo baseline
 
 ---
 
@@ -176,13 +167,17 @@ aignt-os/
 6. **Ver o fechamento da etapa 2 e a transição pós-release** → `docs/architecture/PHASE_2_ROADMAP.md`
 7. **Operar o sistema** → consulte `docs/operations/LIFECYCLE.md`
 
-## Etapa 2 do projeto
+## Estado Atual do Projeto
 
-O cronograma de 10 dias acima descreve o MVP inicial já concluído. A etapa 2 do projeto também já foi consolidada no baseline atual com `F15-public-run-submission`, `F16-run-detail-expansion`, `F21-cli-error-model-and-exit-codes`, `F18-canonical-happy-path`, `F19-environment-doctor`, `F20-public-onboarding`, `F17-artifact-preview` e `F22-release-readiness`.
+O estado atual do repositório já vai além do fechamento da etapa 2. O quadro vigente combina:
 
-No estado atual do repositório, não há feature remanescente da etapa 2 em aberto. A próxima frente deve ser definida por uma nova SPEC pós-`F22`.
+- release técnica pública consolidada para o fluxo local `sync-first`
+- hardening operacional e de artefatos pós-release
+- auth local com RBAC e ownership local do runtime
+- dashboard TUI local com visualização de logs, explorer de artifacts, filtros e cancelamento local
+- manual operacional dedicado em `docs/operations/LIFECYCLE.md`
 
-O roadmap completo, o fechamento da etapa 2 e o boundary para a fila pós-release seguem em `docs/architecture/PHASE_2_ROADMAP.md`.
+Para detalhes operacionais de bootstrap, lifecycle e pipeline, use `docs/operations/LIFECYCLE.md`. Para histórico formal de release, consulte `CHANGELOG.md` e `docs/release/`.
 
 ---
 
@@ -282,41 +277,11 @@ Boundary do recorte atual:
 | `artifacts_dir = fail` | O diretório de artifacts nao pode ser preparado pelo processo atual. | Ajuste permissao ou configuracao do path antes de inspecionar outputs persistidos. |
 | `SPEC invalida` no submit | A SPEC nao passou em `SPEC_VALIDATION`. | Corrija o front matter YAML e as secoes `# Contexto` e `# Objetivo` antes de reenviar. |
 
-## Desenvolvimento por feature
+## Operação e Desenvolvimento
 
-O desenvolvimento segue o ciclo **Session Primer → Spec → Spec Validation → Red → Task Planning (se 3+ passos) → Green → Refactor → Security Review → Report → Commit**, com uma feature por worktree.
+O desenvolvimento continua feature-by-feature, com `SPEC.md` validada antes de código e uma feature por worktree.
 
-### Features do MVP (concluídas)
-
-```
-feature/f01-bootstrap-contracts         — contratos base e configuração
-feature/f02-spec-engine-mvp             — engine de validação de SPEC
-feature/f03-state-machine-mvp           — máquina de estados do AIgnt-Synapse-Flow
-feature/f04-parsing-engine-mvp          — parsing robusto de outputs de CLIs
-feature/f05-cli-adapter-base            — adapter base assíncrono
-feature/f06-pipeline-engine-linear      — pipeline linear state-driven
-feature/f07-persistence-artifacts       — persistência SQLite + filesystem
-feature/f08-worker-runtime-dual         — runtime dual CLI efêmero + worker leve
-feature/f09-supervisor-mvp              — supervisor com retry e reroute
-feature/f10-run-report-one-real-adapter — RUN_REPORT.md + CodexCLIAdapter
-```
-
-### Features pós-MVP (concluídas)
-
-```
-feature/f11-repo-automation             — infraestrutura Docker, CI e scripts operacionais
-feature/f12-codex-adapter-operational-hardening — hardening do CodexCLIAdapter container-first
-feature/f13-rich-cli-output             — saída enriquecida com Rich no `aignt runtime status`
-feature/f14-runs-observability-cli      — `aignt runs list/show` para observabilidade CLI-first
-feature/f15-public-run-submission       — `aignt runs submit <spec_path>` para submissão pública de runs
-feature/f16-run-detail-expansion        — detalhe expandido de `runs show` para diagnóstico operacional
-feature/f21-cli-error-model-and-exit-codes — contrato previsível de erros e exit codes da CLI pública
-feature/f18-canonical-happy-path        — caminho canônico `runs submit -> runs show` para a primeira demonstração oficial
-```
-
-Nenhuma feature avança para código sem `SPEC.md` aprovada e testes mínimos escritos. O `DOCKER_PREFLIGHT` entra quando a mudança exigir validação prática em Docker.
-
-## Checks Locais vs. DOCKER_PREFLIGHT
+### Checks locais vs. DOCKER_PREFLIGHT
 
 - Hook local leve: `.githooks/pre-commit` roda `./scripts/commit-check.sh --hook-mode` para checks rápidos de repositório sem executar o preflight Docker real.
 - Caminho operacional padrão para checks/testes locais: execute `./scripts/commit-check.sh --sync-dev` em uma branch de trabalho para sincronizar dependências dev no ambiente gerenciado por `uv` e rodar format, lint, typecheck e testes sem depender de `.venv` legada do host.
@@ -326,7 +291,7 @@ Nenhuma feature avança para código sem `SPEC.md` aprovada e testes mínimos es
 - Build explícito de imagem: execute `./scripts/docker-preflight.sh --build` quando o objetivo for validar a imagem Docker.
 - Runtime completo: execute `./scripts/docker-preflight.sh --full-runtime` apenas quando a mudança tocar boot, ciclo de vida, persistência ou integração.
 
-## Ambiente isolado do Codex
+### Ambiente isolado do Codex
 
 - O runtime da aplicação continua no serviço `aignt-os` definido em `compose.yaml`.
 - O Codex roda isolado no serviço `codex-dev` definido em `compose.dev.yaml`, com apenas o repositório montado em `/workspace`.
@@ -337,3 +302,8 @@ Nenhuma feature avança para código sem `SPEC.md` aprovada e testes mínimos es
 - O toolset `actions` do MCP oficial do GitHub cobre o caso de GitHub Actions; não há servidor `github-actions` separado no baseline atual.
 - O MCP de SQLite fica desabilitado por padrão até existir um banco real a ser exposto no workspace.
 - O MCP de Docker também fica fora do baseline do `codex-dev`, porque esse ambiente isolado não monta `docker.sock`.
+
+### Referência operacional
+
+- `docs/operations/LIFECYCLE.md` centraliza bootstrap, lifecycle do runtime residente e pipeline management.
+- `CHANGELOG.md` e `docs/release/` guardam o histórico formal de release; o README resume apenas o quadro atual.
