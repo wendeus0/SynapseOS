@@ -620,6 +620,23 @@ class PipelinePersistenceObserver(PipelineObserver):
             message=str(error),
         )
 
+        try:
+            from aignt_os.reporting import RunReportGenerator
+
+            generator = RunReportGenerator(
+                repository=cast(Any, self.repository),
+                artifact_store=cast(Any, self.artifact_store),
+            )
+            content = generator.build(run_id)
+            self.artifact_store.save_run_report(run_id=run_id, content=content)
+        except Exception as report_error:
+            self.repository.record_event(
+                run_id,
+                state=state,
+                event_type="reporting_failed",
+                message=f"Failed to generate RUN_REPORT.md: {report_error}",
+            )
+
     def on_supervisor_decision(
         self,
         step: PipelineStep,
