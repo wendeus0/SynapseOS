@@ -2,6 +2,9 @@
 
 ## Decisões incorporadas recentemente
 
+- Em 2026-03-14, a branch `copilot/evaluate-branch-treatment-need` foi avaliada contra `origin/main` via Branch Sync Gate e classificada como **descartável** para continuidade de produto: `ahead=2 behind=232`, com delta funcional restrito a `RUN_REPORT.md` desatualizado (snapshot histórico de `F40`) e sem feature ativa válida.
+- Como o branch está muito atrasado e não contém recorte técnico reaproveitável no baseline atual, a recomendação operacional é **não tratar por rebase/merge** e encerrar a frente em favor de nova branch limpa a partir de `main`.
+
 - Em 2026-03-13, `origin/main` absorveu as merges de `F41-dashboard-artifacts-explorer` (`#80`), `F44-auth-backend-abstraction` (`#81`), `F47-advanced-rbac` (`#82`), `F43-runtime-robustness` (`#83`) e `F45-tui-performance-optimization` (`#84`), consolidando a TUI local, a robustez basica de timeout/retry e o baseline atual de auth local.
 - Com essas merges, `main` passou a refletir explorer de artifacts na TUI, buffering de logs, timeout global por step, retry simples para falhas transientes, abstracao local de `AuthProvider` e RBAC local com `viewer`/`operator`/`admin`.
 - O drift remanescente deixou de ser funcional e passou a ser documental: `memory.md`, `PENDING_LOG.md`, `docs/IDEAS.md`, `README.md` e `CHANGELOG.md` ficaram atrasados em relacao ao baseline real pos-`F47`.
