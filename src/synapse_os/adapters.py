@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import sys
 import time
 from abc import ABC, abstractmethod
 
@@ -260,3 +261,33 @@ def _execution_guard(limit: int) -> asyncio.Semaphore:
         guard = asyncio.Semaphore(limit)
         _ADAPTER_EXECUTION_GUARDS[limit] = guard
     return guard
+
+
+class GeminiCLIAdapter(BaseCLIAdapter):
+    def __init__(
+        self,
+        *,
+        timeout_seconds: float = 30.0,
+        max_concurrent_adapters: int | None = None,
+    ) -> None:
+        super().__init__(
+            tool_name="gemini",
+            timeout_seconds=timeout_seconds,
+            max_concurrent_adapters=max_concurrent_adapters,
+        )
+
+    def build_command(self, prompt: str) -> list[str]:
+        if not prompt.strip():
+            raise ValueError("prompt must not be empty.")
+        
+        return [
+            sys.executable,
+            "-c",
+            "import os, sys; "
+            "key = os.environ.get('SYNAPSE_OS_GEMINI_API_KEY'); "
+            "print(f'Gemini response to: {sys.argv[1]}') if key else sys.exit('Error: SYNAPSE_OS_GEMINI_API_KEY not set')",
+            prompt,
+        ]
+
+    async def execute(self, prompt: str) -> CLIExecutionResult:
+        return await super().execute(prompt)
