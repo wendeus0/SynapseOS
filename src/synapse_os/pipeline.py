@@ -13,7 +13,7 @@ from synapse_os.specs import (
 from synapse_os.specs import (
     SpecValidationError as _SpecValidationError,
 )
-from synapse_os.state_machine import LINEAR_STATE_FLOW, SynapseStateMachine
+from synapse_os.state_machine import LINEAR_STATE_FLOW, PipelineState, SynapseStateMachine
 from synapse_os.supervisor import (
     RetryableStepError,
     Supervisor,
@@ -22,28 +22,28 @@ from synapse_os.supervisor import (
 
 PRIMARY_EXECUTOR_ROUTE = "primary"
 PIPELINE_STOP_STATES = (
-    "SPEC_VALIDATION",
-    "PLAN",
-    "TEST_RED",
-    "CODE_GREEN",
-    "QUALITY_GATE",
-    "REVIEW",
-    "SECURITY",
-    "DOCUMENT",
+    PipelineState.SPEC_VALIDATION,
+    PipelineState.PLAN,
+    PipelineState.TEST_RED,
+    PipelineState.CODE_GREEN,
+    PipelineState.QUALITY_GATE,
+    PipelineState.REVIEW,
+    PipelineState.SECURITY,
+    PipelineState.DOCUMENT,
 )
 PIPELINE_ENTRY_STATES = (
-    "REQUEST",
-    "SPEC_DISCOVERY",
-    "SPEC_NORMALIZATION",
-    "SPEC_VALIDATION",
-    "PLAN",
-    "TEST_RED",
-    "CODE_GREEN",
-    "QUALITY_GATE",
-    "REVIEW",
-    "SECURITY",
-    "DOCUMENT",
-    "COMPLETE",
+    PipelineState.REQUEST,
+    PipelineState.SPEC_DISCOVERY,
+    PipelineState.SPEC_NORMALIZATION,
+    PipelineState.SPEC_VALIDATION,
+    PipelineState.PLAN,
+    PipelineState.TEST_RED,
+    PipelineState.CODE_GREEN,
+    PipelineState.QUALITY_GATE,
+    PipelineState.REVIEW,
+    PipelineState.SECURITY,
+    PipelineState.DOCUMENT,
+    PipelineState.COMPLETE,
 )
 
 
@@ -127,36 +127,36 @@ class PipelineObserver(Protocol):
 
 
 PIPELINE_STEPS: dict[str, PipelineStep] = {
-    "SPEC_VALIDATION": PipelineStep(
-        state="SPEC_VALIDATION",
+    PipelineState.SPEC_VALIDATION: PipelineStep(
+        state=PipelineState.SPEC_VALIDATION,
         description="Validate the feature SPEC before planning.",
     ),
-    "PLAN": PipelineStep(
-        state="PLAN",
+    PipelineState.PLAN: PipelineStep(
+        state=PipelineState.PLAN,
         description="Produce the planning hand-off for the current feature.",
     ),
-    "TEST_RED": PipelineStep(
-        state="TEST_RED",
+    PipelineState.TEST_RED: PipelineStep(
+        state=PipelineState.TEST_RED,
         description="Produce the failing test hand-off for the current feature.",
     ),
-    "CODE_GREEN": PipelineStep(
-        state="CODE_GREEN",
+    PipelineState.CODE_GREEN: PipelineStep(
+        state=PipelineState.CODE_GREEN,
         description="Produce the minimal implementation to satisfy the failing tests.",
     ),
-    "QUALITY_GATE": PipelineStep(
-        state="QUALITY_GATE",
+    PipelineState.QUALITY_GATE: PipelineStep(
+        state=PipelineState.QUALITY_GATE,
         description="Validate tests, lint, typecheck and regression before security review.",
     ),
-    "REVIEW": PipelineStep(
-        state="REVIEW",
+    PipelineState.REVIEW: PipelineStep(
+        state=PipelineState.REVIEW,
         description="Review the current delta and request rework when needed.",
     ),
-    "SECURITY": PipelineStep(
-        state="SECURITY",
+    PipelineState.SECURITY: PipelineStep(
+        state=PipelineState.SECURITY,
         description="Review security-sensitive aspects before reporting completion.",
     ),
-    "DOCUMENT": PipelineStep(
-        state="DOCUMENT",
+    PipelineState.DOCUMENT: PipelineStep(
+        state=PipelineState.DOCUMENT,
         description="Generate the final RUN_REPORT.md for the current run.",
     ),
 }
@@ -217,38 +217,42 @@ class PipelineEngine:
 
                 current_state = self.state_machine.current_state
 
-                if current_state in {"REQUEST", "SPEC_DISCOVERY", "SPEC_NORMALIZATION"}:
+                if current_state in {
+                    PipelineState.REQUEST,
+                    PipelineState.SPEC_DISCOVERY,
+                    PipelineState.SPEC_NORMALIZATION,
+                }:
                     self.state_machine.advance_to(self._next_state(current_state))
                     context.current_state = self.state_machine.current_state
                     continue
 
-                if current_state == "COMPLETE":
+                if current_state == PipelineState.COMPLETE:
                     context.current_state = current_state
                     if self.observer is not None:
                         self.observer.on_run_completed(context)
                     return context
 
-                if current_state == "SPEC_VALIDATION":
+                if current_state == PipelineState.SPEC_VALIDATION:
                     current_step = PIPELINE_STEPS[current_state]
                     self._execute_spec_validation(context)
                     if self.observer is not None:
                         self.observer.on_step_completed(current_step, context, None)
-                    if stop_at == "SPEC_VALIDATION":
+                    if stop_at == PipelineState.SPEC_VALIDATION:
                         if self.observer is not None:
                             self.observer.on_run_completed(context)
                         return context
-                    self.state_machine.advance_to("PLAN")
+                    self.state_machine.advance_to(PipelineState.PLAN)
                     context.current_state = self.state_machine.current_state
                     continue
 
                 if current_state in {
-                    "PLAN",
-                    "TEST_RED",
-                    "CODE_GREEN",
-                    "QUALITY_GATE",
-                    "REVIEW",
-                    "SECURITY",
-                    "DOCUMENT",
+                    PipelineState.PLAN,
+                    PipelineState.TEST_RED,
+                    PipelineState.CODE_GREEN,
+                    PipelineState.QUALITY_GATE,
+                    PipelineState.REVIEW,
+                    PipelineState.SECURITY,
+                    PipelineState.DOCUMENT,
                 }:
                     current_step = PIPELINE_STEPS[current_state]
                     result = self._run_runtime_step(current_step, context)
@@ -280,8 +284,8 @@ class PipelineEngine:
         context.validated_spec = spec_document
         context.artifacts["spec_id"] = spec_document.metadata.id
         context.artifacts["spec_summary"] = spec_document.metadata.summary
-        context.step_history.append("SPEC_VALIDATION")
-        context.current_state = "SPEC_VALIDATION"
+        context.step_history.append(PipelineState.SPEC_VALIDATION)
+        context.current_state = PipelineState.SPEC_VALIDATION
 
     def _execute_runtime_step(
         self,
@@ -340,7 +344,7 @@ class PipelineEngine:
                 if decision.action == "return_to_code_green":
                     context.step_history.append(step.state)
                     context.current_state = step.state
-                    self.state_machine.advance_to("CODE_GREEN")
+                    self.state_machine.advance_to(PipelineState.CODE_GREEN)
                     context.current_state = self.state_machine.current_state
                     return None
 

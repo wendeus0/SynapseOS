@@ -11,6 +11,7 @@ from synapse_os.persistence import (
     RunRepository,
 )
 from synapse_os.runtime.state import RuntimeState, RuntimeStateStore
+from synapse_os.state_machine import PipelineState
 
 LEGACY_INITIATED_BY_VALUES = frozenset({"unknown", "system", "local_cli"})
 RUNTIME_OWNER_SKIP_EVENT = "runtime_owner_skip"
@@ -82,7 +83,7 @@ class RuntimeWorker:
             return
         self.repository.record_event(
             run_record.run_id,
-            state="REQUEST",
+            state=PipelineState.REQUEST,
             event_type=RUNTIME_OWNER_SKIP_EVENT,
             message=message,
         )
