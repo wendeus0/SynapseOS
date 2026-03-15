@@ -35,6 +35,7 @@ from synapse_os.pipeline import (
     StepExecutor,
 )
 from synapse_os.security import compute_file_sha256, resolve_path_within_root, sanitize_clean_text
+from synapse_os.state_machine import PipelineState
 from synapse_os.supervisor import Supervisor, SupervisorDecision
 
 ARTIFACT_DIR_MODE = 0o700
@@ -670,7 +671,7 @@ class PipelinePersistenceObserver(PipelineObserver):
         if result is not None:
             return dict(result.artifacts)
 
-        if step.state == "SPEC_VALIDATION":
+        if step.state == PipelineState.SPEC_VALIDATION:
             return {
                 key: value
                 for key, value in context.artifacts.items()
@@ -698,7 +699,7 @@ class PersistedPipelineRunner:
         self,
         spec_path: Path,
         *,
-        stop_at: str = "TEST_RED",
+        stop_at: str = PipelineState.TEST_RED,
         initiated_by: str = "system",
         spec_hash: str | None = None,
     ) -> PipelineContext:
@@ -714,7 +715,7 @@ class PersistedPipelineRunner:
         self,
         spec_path: Path,
         *,
-        stop_at: str = "TEST_RED",
+        stop_at: str = PipelineState.TEST_RED,
         initiated_by: str = "system",
         spec_hash: str | None = None,
     ) -> str:
@@ -747,7 +748,7 @@ class PersistedPipelineRunner:
 
         executors = dict(self.executors)
         executors.setdefault(
-            "DOCUMENT",
+            PipelineState.DOCUMENT,
             _RunReportStepExecutor(
                 repository=self.repository,
                 artifact_store=self.artifact_store,
@@ -779,14 +780,14 @@ class PersistedPipelineRunner:
         )
         run_id = self.repository.create_run(
             spec_path=resolved_spec_path,
-            initial_state="REQUEST",
+            initial_state=PipelineState.REQUEST,
             stop_at=stop_at,
             spec_hash=persisted_spec_hash,
             initiated_by=initiated_by,
         )
         self.repository.record_event(
             run_id,
-            state="REQUEST",
+            state=PipelineState.REQUEST,
             event_type="security_provenance_recorded",
             message=(
                 f"Provenance recorded for initiated_by={initiated_by} "
