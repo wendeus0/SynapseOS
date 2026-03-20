@@ -1,4 +1,3 @@
-
 import pytest
 
 from synapse_os.persistence import ArtifactStore, PersistedPipelineRunner, RunRepository
