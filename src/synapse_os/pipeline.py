@@ -6,6 +6,12 @@ from typing import Protocol
 from pydantic import BaseModel, ConfigDict, Field, StrictStr
 
 from synapse_os.config import AppSettings
+from synapse_os.runtime_contracts import (
+    RunContext,
+    RunLifecycleHooks,
+    WorkspaceContext,
+    WorkspaceProvider,
+)
 from synapse_os.specs import (
     SpecDocument,
     validate_spec_file,
@@ -79,6 +85,7 @@ class PipelineContext(BaseModel):
 
     spec_path: Path
     current_state: StrictStr
+    run_context: RunContext
     run_id: StrictStr | None = None
     step_history: list[StrictStr] = Field(default_factory=list)
     artifacts: dict[str, StrictStr] = Field(default_factory=dict)
@@ -98,32 +105,7 @@ class CancellationChecker(Protocol):
     def check_cancellation(self, context: PipelineContext) -> bool: ...
 
 
-class PipelineObserver(Protocol):
-    def on_run_started(self, context: PipelineContext) -> None: ...
-
-    def on_step_completed(
-        self,
-        step: PipelineStep,
-        context: PipelineContext,
-        result: StepExecutionResult | None,
-    ) -> None: ...
-
-    def on_run_completed(self, context: PipelineContext) -> None: ...
-
-    def on_run_failed(
-        self,
-        context: PipelineContext,
-        step: PipelineStep | None,
-        error: Exception,
-    ) -> None: ...
-
-    def on_supervisor_decision(
-        self,
-        step: PipelineStep,
-        context: PipelineContext,
-        decision: SupervisorDecision,
-        error: Exception,
-    ) -> None: ...
+PipelineObserver = RunLifecycleHooks
 
 
 PIPELINE_STEPS: dict[str, PipelineStep] = {
@@ -174,12 +156,14 @@ class PipelineEngine:
         observer: PipelineObserver | None = None,
         supervisor: Supervisor | None = None,
         cancellation_checker: CancellationChecker | None = None,
+        workspace_provider: WorkspaceProvider | None = None,
     ) -> None:
         self.settings = settings or AppSettings()
         self.executors = self._normalize_executors(executors or {})
         self.state_machine = state_machine or SynapseStateMachine()
         self.observer = observer
         self.cancellation_checker = cancellation_checker
+        self.workspace_provider = workspace_provider
 
         if supervisor is None:
             # Create default supervisor using settings
@@ -193,17 +177,36 @@ class PipelineEngine:
         *,
         stop_at: str = "TEST_RED",
         run_id: str | None = None,
+        initiated_by: str = "system",
     ) -> PipelineContext:
         if stop_at not in PIPELINE_STOP_STATES:
             raise ValueError(f"Unsupported stop_at state: {stop_at}.")
 
         self._validate_entry_state()
+        workspace = self._resolve_workspace(spec_path)
         context = PipelineContext(
-            spec_path=spec_path,
+            spec_path=workspace.spec_path,
             current_state=self.state_machine.current_state,
+            run_context=RunContext(
+                run_id=run_id,
+                initiated_by=initiated_by,
+                workspace=workspace,
+            ),
             run_id=run_id,
         )
         current_step: PipelineStep | None = None
+        pending_entry_transition = (
+            self.state_machine.current_state
+            if self.state_machine.current_state
+            in {
+                PipelineState.REQUEST,
+                PipelineState.SPEC_DISCOVERY,
+                PipelineState.SPEC_NORMALIZATION,
+            }
+            else None
+        )
+
+        self._notify_optional("on_run_context_initialized", context)
 
         if self.observer is not None:
             self.observer.on_run_started(context)
@@ -222,8 +225,20 @@ class PipelineEngine:
                     PipelineState.SPEC_DISCOVERY,
                     PipelineState.SPEC_NORMALIZATION,
                 }:
-                    self.state_machine.advance_to(self._next_state(current_state))
+                    next_state = self._next_state(current_state)
+                    self.state_machine.advance_to(next_state)
                     context.current_state = self.state_machine.current_state
+                    if (
+                        context.current_state == PipelineState.SPEC_VALIDATION
+                        and pending_entry_transition is not None
+                    ):
+                        self._notify_optional(
+                            "on_state_transition",
+                            pending_entry_transition,
+                            PipelineState.SPEC_VALIDATION,
+                            context,
+                        )
+                        pending_entry_transition = None
                     continue
 
                 if current_state == PipelineState.COMPLETE:
@@ -234,6 +249,7 @@ class PipelineEngine:
 
                 if current_state == PipelineState.SPEC_VALIDATION:
                     current_step = PIPELINE_STEPS[current_state]
+                    self._notify_optional("on_step_started", current_step, context)
                     self._execute_spec_validation(context)
                     if self.observer is not None:
                         self.observer.on_step_completed(current_step, context, None)
@@ -241,6 +257,12 @@ class PipelineEngine:
                         if self.observer is not None:
                             self.observer.on_run_completed(context)
                         return context
+                    self._notify_optional(
+                        "on_state_transition",
+                        PipelineState.SPEC_VALIDATION,
+                        PipelineState.PLAN,
+                        context,
+                    )
                     self.state_machine.advance_to(PipelineState.PLAN)
                     context.current_state = self.state_machine.current_state
                     continue
@@ -255,6 +277,7 @@ class PipelineEngine:
                     PipelineState.DOCUMENT,
                 }:
                     current_step = PIPELINE_STEPS[current_state]
+                    self._notify_optional("on_step_started", current_step, context)
                     result = self._run_runtime_step(current_step, context)
                     if result is None:
                         continue
@@ -267,7 +290,14 @@ class PipelineEngine:
                         if self.observer is not None:
                             self.observer.on_run_completed(context)
                         return context
-                    self.state_machine.advance_to(self._next_state(current_state))
+                    next_state = self._next_state(current_state)
+                    self._notify_optional(
+                        "on_state_transition",
+                        current_state,
+                        next_state,
+                        context,
+                    )
+                    self.state_machine.advance_to(next_state)
                     context.current_state = self.state_machine.current_state
                     continue
 
@@ -355,6 +385,24 @@ class PipelineEngine:
             raise PipelineExecutionError(
                 f"Current state '{self.state_machine.current_state}' is not supported by F10."
             )
+
+    def _resolve_workspace(self, spec_path: Path) -> WorkspaceContext:
+        if self.workspace_provider is not None:
+            return self.workspace_provider.resolve(spec_path)
+
+        resolved_spec_path = spec_path.resolve()
+        return WorkspaceContext(
+            root_path=resolved_spec_path.parent,
+            spec_path=resolved_spec_path,
+        )
+
+    def _notify_optional(self, method_name: str, *args: object) -> None:
+        if self.observer is None:
+            return
+        callback = getattr(self.observer, method_name, None)
+        if callback is None:
+            return
+        callback(*args)
 
     def _next_state(self, current_state: str) -> str:
         try:

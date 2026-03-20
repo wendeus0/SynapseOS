@@ -112,6 +112,12 @@ def test_runs_show_reports_run_metadata_steps_events_and_artifacts(
     repository.record_event(
         run_id,
         state="PLAN",
+        event_type="step_started",
+        message="Step PLAN started.",
+    )
+    repository.record_event(
+        run_id,
+        state="PLAN",
         event_type="step_completed",
         message="Step PLAN completed.",
     )
@@ -127,6 +133,8 @@ def test_runs_show_reports_run_metadata_steps_events_and_artifacts(
     assert "latest timestamp" in result.stdout.lower()
     assert "spec path" in result.stdout.lower()
     assert str(spec_path) in result.stdout
+    assert "workspace path" in result.stdout.lower()
+    assert str(tmp_path) in result.stdout
     assert "completed" in result.stdout.lower()
     assert "document" in result.stdout.lower()
     assert "next action" in result.stdout.lower()

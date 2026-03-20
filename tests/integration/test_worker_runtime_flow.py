@@ -176,7 +176,10 @@ def test_runtime_foreground_worker_consumes_pending_run(tmp_path: Path) -> None:
     assert run_record.current_state == "SPEC_VALIDATION"
     assert [step.state for step in steps] == ["SPEC_VALIDATION"]
     assert [event.event_type for event in events] == [
+        "run_context_initialized",
         "run_started",
+        "state_transitioned",
+        "step_started",
         "step_completed",
         "run_completed",
     ]

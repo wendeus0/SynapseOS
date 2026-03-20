@@ -7,6 +7,7 @@ from typing import Protocol
 
 class _RunRecordProtocol(Protocol):
     initiated_by: str
+    workspace_path: str
     spec_hash: str | None
     status: str
     current_state: str
@@ -67,6 +68,7 @@ class RunReportGenerator:
             f"- **Status**: {run_record.status}",
             f"- **Estado final**: {run_record.current_state}",
             f"- **Initiated By**: {run_record.initiated_by}",
+            f"- **Workspace Path**: {run_record.workspace_path}",
             f"- **Spec Hash**: {run_record.spec_hash or '-'}",
             f"- **SPEC ID**: {spec_id}",
             f"- **SPEC Summary**: {spec_summary}",

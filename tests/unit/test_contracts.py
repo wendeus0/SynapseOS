@@ -160,3 +160,30 @@ def test_cli_execution_result_allows_zero_duration() -> None:
     )
 
     assert result.duration_ms == 0
+
+
+def test_tool_spec_requires_non_empty_capabilities() -> None:
+    contracts_module = import_module("synapse_os.contracts")
+
+    with pytest.raises(ValidationError):
+        contracts_module.ToolSpec(
+            name="codex",
+            capabilities=(),
+            command_prefix=("./scripts/dev-codex.sh",),
+        )
+
+
+def test_tool_spec_serializes_capabilities_and_command_prefix() -> None:
+    contracts_module = import_module("synapse_os.contracts")
+
+    tool_spec = contracts_module.ToolSpec(
+        name="codex",
+        capabilities=("cli_execution", "code_generation"),
+        command_prefix=("./scripts/dev-codex.sh", "--", "exec"),
+    )
+
+    assert tool_spec.model_dump() == {
+        "name": "codex",
+        "capabilities": ("cli_execution", "code_generation"),
+        "command_prefix": ("./scripts/dev-codex.sh", "--", "exec"),
+    }

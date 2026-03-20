@@ -40,11 +40,13 @@ LINEAR_STATE_FLOW: tuple[PipelineState, ...] = (
     PipelineState.COMPLETE,
 )
 
-TERMINAL_STATES: frozenset[PipelineState] = frozenset({
-    PipelineState.COMPLETE,
-    PipelineState.FAILED,
-    PipelineState.CANCELLED,
-})
+TERMINAL_STATES: frozenset[PipelineState] = frozenset(
+    {
+        PipelineState.COMPLETE,
+        PipelineState.FAILED,
+        PipelineState.CANCELLED,
+    }
+)
 
 
 @dataclass
@@ -62,17 +64,15 @@ class SynapseStateMachine:
         # Ensure current_state is treated as PipelineState for dict lookup
         current = PipelineState(self.current_state)
         allowed_states = self._allowed_transitions.get(current, set())
-        
+
         if target not in allowed_states:
-            raise InvalidStateTransition(
-                f"Cannot transition from {current} to {target}."
-            )
+            raise InvalidStateTransition(f"Cannot transition from {current} to {target}.")
 
         self.current_state = target
 
     def fail(self) -> None:
         self.advance_to(PipelineState.FAILED)
-        
+
     def cancel(self) -> None:
         self.advance_to(PipelineState.CANCELLED)
 

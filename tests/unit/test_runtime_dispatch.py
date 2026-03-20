@@ -64,6 +64,62 @@ def test_run_dispatch_service_executes_inline_when_mode_is_sync(tmp_path: Path) 
     assert run_record.spec_hash == hashlib.sha256(spec_path.read_bytes()).hexdigest()
 
 
+def test_run_dispatch_service_uses_workspace_provider_to_resolve_spec_path(tmp_path: Path) -> None:
+    persistence = import_module("synapse_os.persistence")
+    dispatch_module = import_module("synapse_os.runtime.dispatch")
+    runtime_contracts = import_module("synapse_os.runtime_contracts")
+
+    workspace_root = tmp_path / "workspace"
+    workspace_root.mkdir()
+    spec_path = workspace_root / "SPEC.md"
+    _write_valid_spec(spec_path)
+    repository = persistence.RunRepository(tmp_path / "runs.sqlite3")
+    artifact_store = persistence.ArtifactStore(tmp_path / "artifacts")
+    runner = persistence.PersistedPipelineRunner(
+        repository=repository,
+        artifact_store=artifact_store,
+    )
+    service = dispatch_module.RunDispatchService(
+        repository=repository,
+        runner=runner,
+        is_runtime_ready=lambda: False,
+        workspace_root=workspace_root,
+        workspace_provider=runtime_contracts.LocalWorkspaceProvider(workspace_root),
+    )
+
+    result = service.dispatch(spec_path, stop_at="SPEC_VALIDATION", mode="sync")
+
+    run_record = repository.get_run(result.run_id)
+    assert run_record.spec_path == str(spec_path.resolve())
+
+
+def test_run_dispatch_service_preserves_default_workspace_when_run_isolation_is_not_enabled(
+    tmp_path: Path,
+) -> None:
+    persistence = import_module("synapse_os.persistence")
+    dispatch_module = import_module("synapse_os.runtime.dispatch")
+
+    spec_path = tmp_path / "SPEC.md"
+    _write_valid_spec(spec_path)
+    repository = persistence.RunRepository(tmp_path / "runs.sqlite3")
+    artifact_store = persistence.ArtifactStore(tmp_path / "artifacts")
+    runner = persistence.PersistedPipelineRunner(
+        repository=repository,
+        artifact_store=artifact_store,
+    )
+    service = dispatch_module.RunDispatchService(
+        repository=repository,
+        runner=runner,
+        is_runtime_ready=lambda: False,
+        workspace_root=tmp_path,
+    )
+
+    result = service.dispatch(spec_path, stop_at="SPEC_VALIDATION", mode="sync")
+
+    run_record = repository.get_run(result.run_id)
+    assert run_record.workspace_path == str(tmp_path)
+
+
 def test_run_dispatch_service_auto_queues_when_runtime_is_ready(tmp_path: Path) -> None:
     persistence = import_module("synapse_os.persistence")
     dispatch_module = import_module("synapse_os.runtime.dispatch")

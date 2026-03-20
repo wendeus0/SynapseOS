@@ -17,6 +17,7 @@ def test_render_run_detail_is_legible_without_tty() -> None:
         RunRecord(
             run_id="run-123",
             spec_path="SPEC.md",
+            workspace_path="/workspace/runs/run-123",
             spec_hash="abc123",
             initiated_by="local_cli",
             stop_at="DOCUMENT",
@@ -47,9 +48,12 @@ def test_render_run_detail_is_legible_without_tty() -> None:
             RunEventRecord(
                 event_id=1,
                 run_id="run-123",
-                state="PLAN",
-                event_type="step_completed",
-                message="Step PLAN completed.",
+                state="REQUEST",
+                event_type="run_context_initialized",
+                message=(
+                    "Run context initialized for initiated_by=local_cli "
+                    "workspace=/workspace/runs/run-123."
+                ),
                 created_at="2026-03-12T00:00:11+00:00",
             )
         ],
@@ -62,18 +66,20 @@ def test_render_run_detail_is_legible_without_tty() -> None:
     assert "Diagnostic Summary" in rendered
     assert "run-123" in rendered
     assert "Latest Signal" in rendered
-    assert "step_completed @ PLAN" in rendered
+    assert "run_context_initialized @ REQUEST" in rendered
     assert "Latest Timestamp" in rendered
     assert "Next Action" in rendered
     assert "Spec Hash" in rendered
     assert "abc123" in rendered
+    assert "Workspace Path" in rendered
+    assert "/workspace/runs/run-123" in rendered
     assert "Initiated By" in rendered
     assert "local_cli" in rendered
     assert "Inspect generated artifacts or report" in rendered
     assert "PLAN" in rendered
     assert "run-123/PLAN/raw.txt" in rendered
     assert "run-123/PLAN/clean.txt" in rendered
-    assert "step_completed" in rendered
+    assert "run_context_initialized" in rendered
     assert "2026-03-12T00:00:11+00:00" in rendered
     assert "RUN_REPORT.md" in rendered
 
@@ -87,6 +93,7 @@ def test_render_run_detail_completed_at_spec_validation_guides_canonical_happy_p
         RunRecord(
             run_id="run-spec-validation",
             spec_path="SPEC.md",
+            workspace_path="/workspace/runs/run-spec-validation",
             spec_hash="abc123",
             initiated_by="local_cli",
             stop_at="SPEC_VALIDATION",
@@ -119,6 +126,7 @@ def test_render_run_detail_surfaces_artifact_preview_panel() -> None:
         RunRecord(
             run_id="run-preview",
             spec_path="SPEC.md",
+            workspace_path="/workspace/runs/run-preview",
             spec_hash="abc123",
             initiated_by="local_cli",
             stop_at="DOCUMENT",

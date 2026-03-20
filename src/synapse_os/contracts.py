@@ -10,6 +10,15 @@ from pydantic import (
     StrictStr,
 )
 
+from synapse_os.runtime_contracts import ToolSpec
+
+__all__ = [
+    "RunRequest",
+    "CLIExecutionResult",
+    "CodexExecutionAssessment",
+    "ToolSpec",
+]
+
 
 class RunRequest(BaseModel):
     prompt: Annotated[str, Field(min_length=1)]

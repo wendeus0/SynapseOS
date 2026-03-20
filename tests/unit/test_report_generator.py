@@ -60,14 +60,44 @@ def test_run_report_generator_matches_expected_fixture(tmp_path: Path) -> None:
     repository.record_event(
         run_id,
         state="REQUEST",
+        event_type="run_context_initialized",
+        message=(f"Run context initialized for initiated_by=local_cli workspace={tmp_path}."),
+    )
+    repository.record_event(
+        run_id,
+        state="REQUEST",
         event_type="run_started",
-        message="Run started at REQUEST.",
+        message=f"Run started at REQUEST. workspace={tmp_path}",
+    )
+    repository.record_event(
+        run_id,
+        state="REQUEST",
+        event_type="state_transitioned",
+        message="REQUEST -> SPEC_VALIDATION",
+    )
+    repository.record_event(
+        run_id,
+        state="SPEC_VALIDATION",
+        event_type="step_started",
+        message="Step SPEC_VALIDATION started.",
     )
     repository.record_event(
         run_id,
         state="SPEC_VALIDATION",
         event_type="step_completed",
         message="Step SPEC_VALIDATION completed.",
+    )
+    repository.record_event(
+        run_id,
+        state="SPEC_VALIDATION",
+        event_type="state_transitioned",
+        message="SPEC_VALIDATION -> PLAN",
+    )
+    repository.record_event(
+        run_id,
+        state="PLAN",
+        event_type="step_started",
+        message="Step PLAN started.",
     )
     repository.record_event(
         run_id,
@@ -90,4 +120,4 @@ def test_run_report_generator_matches_expected_fixture(tmp_path: Path) -> None:
         Path(__file__).resolve().parents[1] / "fixtures" / "reports" / "expected_run_report.md"
     ).read_text(encoding="utf-8")
 
-    assert report_content == expected_report.format(run_id=run_id)
+    assert report_content == expected_report.format(run_id=run_id, workspace_path=tmp_path)

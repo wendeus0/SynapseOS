@@ -56,15 +56,19 @@ def test_persisted_pipeline_records_steps_events_and_artifacts_until_plan(
     tmp_path: Path,
 ) -> None:
     persistence = import_module("synapse_os.persistence")
+    runtime_contracts = import_module("synapse_os.runtime_contracts")
 
     spec_path = tmp_path / "SPEC.md"
     _write_valid_spec(spec_path)
     repository = persistence.RunRepository(tmp_path / "runs.sqlite3")
     artifact_store = persistence.ArtifactStore(tmp_path / "artifacts")
+    run_workspaces_root = tmp_path / "run-workspaces"
     runner = persistence.PersistedPipelineRunner(
         repository=repository,
         artifact_store=artifact_store,
         executors={"PLAN": _PlanExecutor()},
+        workspace_provider=runtime_contracts.LocalWorkspaceProvider(tmp_path),
+        run_workspace_root=run_workspaces_root,
     )
 
     context = runner.run(spec_path, stop_at="PLAN")
@@ -76,11 +80,19 @@ def test_persisted_pipeline_records_steps_events_and_artifacts_until_plan(
 
     assert run_record.status == "completed"
     assert run_record.current_state == "PLAN"
+    assert run_record.workspace_path == str(run_workspaces_root / context.run_id)
+    assert context.run_context.workspace.root_path == run_workspaces_root / context.run_id
+    assert (run_workspaces_root / context.run_id).is_dir()
     assert [step.state for step in steps] == ["SPEC_VALIDATION", "PLAN"]
     assert [event.event_type for event in events] == [
         "security_provenance_recorded",
+        "run_context_initialized",
         "run_started",
+        "state_transitioned",
+        "step_started",
         "step_completed",
+        "state_transitioned",
+        "step_started",
         "step_completed",
         "run_completed",
     ]
@@ -120,7 +132,10 @@ def test_persisted_pipeline_marks_failed_run_when_spec_validation_blocks_plan(
     assert run_record.failure_message is not None
     assert [event.event_type for event in events] == [
         "security_provenance_recorded",
+        "run_context_initialized",
         "run_started",
+        "state_transitioned",
+        "step_started",
         "run_failed",
     ]
     assert not (artifact_store.base_path / run_record.run_id / "PLAN").exists()
@@ -177,20 +192,35 @@ def test_persisted_pipeline_records_supervisor_decision_events(tmp_path: Path) -
 
     assert [event.event_type for event in events] == [
         "security_provenance_recorded",
+        "run_context_initialized",
         "run_started",
+        "state_transitioned",
+        "step_started",
         "step_completed",
+        "state_transitioned",
+        "step_started",
         "step_completed",
+        "state_transitioned",
+        "step_started",
         "step_completed",
+        "state_transitioned",
+        "step_started",
         "supervisor_decision",
         "step_completed",
+        "state_transitioned",
+        "step_started",
         "step_completed",
+        "state_transitioned",
+        "step_started",
         "step_completed",
+        "state_transitioned",
+        "step_started",
         "step_completed",
         "run_completed",
     ]
-    assert events[4].state == "TEST_RED"
-    assert events[5].state == "CODE_GREEN"
-    assert "retry" in events[5].message
+    assert events[13].state == "CODE_GREEN"
+    assert events[14].state == "CODE_GREEN"
+    assert "retry" in events[14].message
 
 
 def test_persisted_pipeline_generates_run_report_until_document(tmp_path: Path) -> None:
@@ -296,8 +326,13 @@ def test_persisted_pipeline_blocks_unsafe_python_artifact_promotion(tmp_path: Pa
     assert all(plan_prefix not in artifact_path for artifact_path in artifact_paths)
     assert [event.event_type for event in events] == [
         "security_provenance_recorded",
+        "run_context_initialized",
         "run_started",
+        "state_transitioned",
+        "step_started",
         "step_completed",
+        "state_transitioned",
+        "step_started",
         "security_guardrail_triggered",
         "run_failed",
     ]

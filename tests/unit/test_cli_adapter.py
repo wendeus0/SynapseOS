@@ -373,6 +373,16 @@ def test_codex_cli_adapter_builds_container_first_exec_command() -> None:
     ]
 
 
+def test_codex_cli_adapter_exposes_tool_spec_with_capabilities() -> None:
+    adapters = _adapters_module()
+
+    tool_spec = adapters.CodexCLIAdapter().tool_spec
+
+    assert tool_spec.name == "codex"
+    assert tool_spec.capabilities == ("cli_execution", "code_generation")
+    assert tool_spec.command_prefix == ("./scripts/dev-codex.sh", "--", "exec")
+
+
 def test_base_cli_adapter_raises_operational_error_when_launcher_is_unavailable(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

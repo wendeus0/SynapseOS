@@ -1,5 +1,21 @@
 # PENDING_LOG
 
+## Triagem atual — evolução arquitetural incremental
+
+- Em 2026-03-20, a análise comparativa entre SynapseOS, Superset, Mastra e coding-agent foi consolidada como direção de produto e arquitetura para a próxima onda de evolução local.
+- A conclusão prática é que o SynapseOS não deve tentar reproduzir o produto Superset nem migrar o runtime central para TypeScript neste momento; o ganho líquido imediato está em absorver boundaries, contratos internos e padrões de extensibilidade de forma incremental sobre o core Python atual.
+- Em 2026-03-20, a onda local `F51` → `F53` foi executada sequencialmente:
+- `F51-runtime-boundaries-foundation` abriu contratos explícitos de `ToolSpec`/capabilities, `WorkspaceProvider`, `RunContext` e lifecycle hooks no Synapse-Flow.
+- `F52-workspace-isolation-foundation` tornou o workspace efetivo da run auditável com `workspace_path` persistido e provider `run-scoped` opcional.
+- `F53-observability-runtime-events` enriqueceu a timeline local com `run_context_initialized`, `step_started` e `state_transitioned`, além de refletir `workspace_path` em `runs show` e `RUN_REPORT.md`.
+- Com isso, a frente ativa imediata deixa de ser `F51` e passa a ser nenhuma: a próxima decisão de produto volta a ser escolher um novo bucket pequeno sobre baseline já ampliada.
+- A fila seguinte recomendada, em ordem, fica restrita por enquanto a quatro buckets pequenos e verificáveis:
+- `multi-agent-session-orchestration`: formalizar registry/capabilities e coordenação entre adapters sem abrir UI desktop.
+- `local-control-plane-foundation`: expor API local mínima para TUI/integrações futuras, mantendo CLI-first e shell desktop como hipótese posterior.
+- `baseline-handoff-sync`: alinhar `PENDING_LOG.md`, `ERROR_LOG.md`, README e artefatos de feature ao estado real pós-`F53`.
+- O bucket `desktop-shell` fica explicitamente fora da fila principal neste momento; ele só volta à mesa depois que `runtime boundaries`, `workspace isolation`, `observability` e `control plane` estiverem estabilizados.
+- O bucket `TypeScript-first runtime migration` fica explicitamente descartado por ora; qualquer uso futuro de TypeScript deve ficar limitado a shell/UI opcional consumindo um core Python autoritativo.
+
 ## Decisões incorporadas recentemente
 
 - Em 2026-03-13, `origin/main` absorveu a merge de `F42-tui-filters` pela PR `#86`, adicionando filtros visuais locais no dashboard TUI para falhas (`f`), atividade (`r`) e restauracao da lista completa (`x`).
@@ -174,8 +190,9 @@
 
 - Fixtures de testes aspiracionais marcadas como 🔜 no TDD.md: `tests/fixtures/worker/` (ainda ausente).
 - Property-based testing com `hypothesis` ainda não implementado (mencionado como evolução futura em TDD.md).
-- Fechar a `chore-post-f40-f42-baseline-sync` atualizando `PENDING_LOG.md`, `memory.md`, `ERROR_LOG.md`, `README.md` e `CHANGELOG.md` ao estado pos-`F42`/`F40`.
-- Rodar nova `technical-triage` depois da `chore-post-f40-f42-baseline-sync` para escolher a proxima frente fora de `remote_multi_host_auth`.
+- Fechar o bucket `baseline-handoff-sync` alinhando `ERROR_LOG.md`, `README.md` e eventuais docs publicas ao baseline local pos-`F53`.
+- Rodar nova `technical-triage` depois do `baseline-handoff-sync` para escolher uma unica frente entre `multi-agent-session-orchestration` e `local-control-plane-foundation`.
+- Manter `desktop-shell` e `TypeScript-first runtime migration` explicitamente fora da fila principal ate o core Python atual estabilizar boundaries, isolamento e observabilidade.
 - Manter `remote_multi_host_auth` explicitamente adiado ate existir demanda concreta, recorte proprio e validavel.
 
 ## Pontos de atenção futuros

@@ -6,7 +6,7 @@ import time
 from abc import ABC, abstractmethod
 
 from synapse_os.config import AppSettings
-from synapse_os.contracts import CLIExecutionResult, CodexExecutionAssessment
+from synapse_os.contracts import CLIExecutionResult, CodexExecutionAssessment, ToolSpec
 from synapse_os.runtime.circuit_breaker import AdapterCircuitBreakerStore
 from synapse_os.security import sanitize_clean_text
 
@@ -76,6 +76,22 @@ class BaseCLIAdapter(ABC):
     def build_command(self, prompt: str) -> list[str]:
         raise NotImplementedError
 
+    @property
+    def capabilities(self) -> tuple[str, ...]:
+        return ("cli_execution",)
+
+    @property
+    def command_prefix(self) -> tuple[str, ...]:
+        return tuple()
+
+    @property
+    def tool_spec(self) -> ToolSpec:
+        return ToolSpec(
+            name=self.tool_name,
+            capabilities=self.capabilities,
+            command_prefix=self.command_prefix,
+        )
+
     async def execute(self, prompt: str) -> CLIExecutionResult:
         command = self.build_command(prompt)
         self._validate_command(command)
@@ -143,6 +159,14 @@ class BaseCLIAdapter(ABC):
 
 
 class CodexCLIAdapter(BaseCLIAdapter):
+    @property
+    def capabilities(self) -> tuple[str, ...]:
+        return ("cli_execution", "code_generation")
+
+    @property
+    def command_prefix(self) -> tuple[str, ...]:
+        return ("./scripts/dev-codex.sh", "--", "exec")
+
     def __init__(
         self,
         *,
@@ -264,6 +288,14 @@ def _execution_guard(limit: int) -> asyncio.Semaphore:
 
 
 class GeminiCLIAdapter(BaseCLIAdapter):
+    @property
+    def capabilities(self) -> tuple[str, ...]:
+        return ("cli_execution", "planning")
+
+    @property
+    def command_prefix(self) -> tuple[str, ...]:
+        return ("gemini", "--prompt")
+
     def __init__(
         self,
         *,
@@ -279,13 +311,14 @@ class GeminiCLIAdapter(BaseCLIAdapter):
     def build_command(self, prompt: str) -> list[str]:
         if not prompt.strip():
             raise ValueError("prompt must not be empty.")
-        
+
         return [
             sys.executable,
             "-c",
             "import os, sys; "
             "key = os.environ.get('SYNAPSE_OS_GEMINI_API_KEY'); "
-            "print(f'Gemini response to: {sys.argv[1]}') if key else sys.exit('Error: SYNAPSE_OS_GEMINI_API_KEY not set')",
+            "print(f'Gemini response to: {sys.argv[1]}') "
+            "if key else sys.exit('Error: SYNAPSE_OS_GEMINI_API_KEY not set')",
             prompt,
         ]
 

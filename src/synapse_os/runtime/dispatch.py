@@ -7,7 +7,8 @@ from typing import Literal
 
 from synapse_os.persistence import PersistedPipelineRunner, RunRepository
 from synapse_os.runtime.state import RuntimeState
-from synapse_os.security import compute_file_sha256, resolve_path_within_root
+from synapse_os.runtime_contracts import LocalWorkspaceProvider, WorkspaceProvider
+from synapse_os.security import compute_file_sha256
 from synapse_os.specs import validate_spec_file
 
 DispatchMode = Literal["sync", "async", "auto"]
@@ -41,11 +42,13 @@ class RunDispatchService:
         initiated_by: str = "local_cli",
         runtime_state_provider: Callable[[], RuntimeState] | None = None,
         enforce_async_runtime_ownership: bool = False,
+        workspace_provider: WorkspaceProvider | None = None,
     ) -> None:
         self.repository = repository
         self.runner = runner
         self.is_runtime_ready = is_runtime_ready
         self.workspace_root = workspace_root
+        self.workspace_provider = workspace_provider or LocalWorkspaceProvider(workspace_root)
         self.initiated_by = initiated_by
         self.runtime_state_provider = runtime_state_provider
         self.enforce_async_runtime_ownership = enforce_async_runtime_ownership
@@ -89,14 +92,7 @@ class RunDispatchService:
 
     def _validate_dispatch_inputs(self, spec_path: Path, *, mode: DispatchMode) -> Path:
         self._resolve_mode(mode)
-        try:
-            resolved_spec_path = resolve_path_within_root(spec_path, root=self.workspace_root)
-        except ValueError as exc:
-            raise FileNotFoundError(f"SPEC file not found: {spec_path}") from exc
-        if not resolved_spec_path.exists():
-            raise FileNotFoundError(f"SPEC file not found: {spec_path}")
-        if not resolved_spec_path.is_file():
-            raise FileNotFoundError(f"SPEC file not found: {spec_path}")
+        resolved_spec_path = self.workspace_provider.resolve(spec_path).spec_path
         validate_spec_file(resolved_spec_path)
         return resolved_spec_path
 

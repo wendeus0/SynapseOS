@@ -34,6 +34,12 @@ from synapse_os.pipeline import (
     StepExecutionResult,
     StepExecutor,
 )
+from synapse_os.runtime_contracts import (
+    LocalWorkspaceProvider,
+    RunScopedWorkspaceProvider,
+    WorkspaceContext,
+    WorkspaceProvider,
+)
 from synapse_os.security import compute_file_sha256, resolve_path_within_root, sanitize_clean_text
 from synapse_os.state_machine import PipelineState
 from synapse_os.supervisor import Supervisor, SupervisorDecision
@@ -47,6 +53,7 @@ _SAFE_SEGMENT_PATTERN = re.compile(r"[^A-Za-z0-9._-]+")
 class RunRecord:
     run_id: str
     spec_path: str
+    workspace_path: str
     spec_hash: str | None
     initiated_by: str
     stop_at: str
@@ -101,6 +108,7 @@ class RunRepository:
             self.metadata,
             Column("run_id", String, primary_key=True),
             Column("spec_path", Text, nullable=False),
+            Column("workspace_path", Text, nullable=False),
             Column("spec_hash", String, nullable=True),
             Column("initiated_by", String, nullable=False, server_default="unknown"),
             Column("stop_at", String, nullable=False),
@@ -143,19 +151,25 @@ class RunRepository:
     def create_run(
         self,
         *,
+        run_id: str | None = None,
         spec_path: Path,
+        workspace_path: Path | None = None,
         initial_state: str,
         stop_at: str,
         spec_hash: str | None = None,
         initiated_by: str = "unknown",
     ) -> str:
-        run_id = uuid4().hex
+        resolved_run_id = uuid4().hex if run_id is None else run_id
+        resolved_workspace_path = (
+            spec_path.resolve().parent if workspace_path is None else workspace_path
+        )
         timestamp = _timestamp()
         with self.engine.begin() as connection:
             connection.execute(
                 insert(self.runs).values(
-                    run_id=run_id,
+                    run_id=resolved_run_id,
                     spec_path=str(spec_path),
+                    workspace_path=str(resolved_workspace_path),
                     spec_hash=spec_hash,
                     initiated_by=initiated_by,
                     stop_at=stop_at,
@@ -168,7 +182,7 @@ class RunRepository:
                     completed_at=None,
                 )
             )
-        return run_id
+        return resolved_run_id
 
     def acquire_lock(self, run_id: str) -> bool:
         timestamp = _timestamp()
@@ -412,6 +426,20 @@ class RunRepository:
                 connection.exec_driver_sql(
                     "UPDATE runs SET initiated_by = 'unknown' WHERE initiated_by IS NULL"
                 )
+            if "workspace_path" not in existing_columns:
+                connection.exec_driver_sql(
+                    "ALTER TABLE runs ADD COLUMN workspace_path TEXT NOT NULL DEFAULT '.'"
+                )
+                legacy_runs = connection.execute(
+                    select(self.runs.c.run_id, self.runs.c.spec_path)
+                ).mappings()
+                for row in legacy_runs:
+                    workspace_path = str(Path(cast(str, row["spec_path"])).resolve().parent)
+                    connection.execute(
+                        update(self.runs)
+                        .where(self.runs.c.run_id == cast(str, row["run_id"]))
+                        .values(workspace_path=workspace_path)
+                    )
 
 
 class ArtifactStore:
@@ -530,7 +558,46 @@ class PipelinePersistenceObserver(PipelineObserver):
             run_id,
             state=context.current_state,
             event_type="run_started",
-            message=f"Run started at {context.current_state}.",
+            message=(
+                f"Run started at {context.current_state}. "
+                f"workspace={context.run_context.workspace.root_path}"
+            ),
+        )
+
+    def on_run_context_initialized(self, context: PipelineContext) -> None:
+        run_id = self._run_id(context)
+        self.repository.record_event(
+            run_id,
+            state=context.current_state,
+            event_type="run_context_initialized",
+            message=(
+                "Run context initialized for "
+                f"initiated_by={context.run_context.initiated_by} "
+                f"workspace={context.run_context.workspace.root_path}."
+            ),
+        )
+
+    def on_step_started(self, step: PipelineStep, context: PipelineContext) -> None:
+        run_id = self._run_id(context)
+        self.repository.record_event(
+            run_id,
+            state=step.state,
+            event_type="step_started",
+            message=f"Step {step.state} started.",
+        )
+
+    def on_state_transition(
+        self,
+        from_state: str,
+        to_state: str,
+        context: PipelineContext,
+    ) -> None:
+        run_id = self._run_id(context)
+        self.repository.record_event(
+            run_id,
+            state=from_state,
+            event_type="state_transitioned",
+            message=f"{from_state} -> {to_state}",
         )
 
     def on_step_completed(
@@ -689,11 +756,15 @@ class PersistedPipelineRunner:
         artifact_store: ArtifactStore,
         executors: dict[str, StepExecutor | dict[str, StepExecutor]] | None = None,
         supervisor: Supervisor | None = None,
+        workspace_provider: WorkspaceProvider | None = None,
+        run_workspace_root: Path | None = None,
     ) -> None:
         self.repository = repository
         self.artifact_store = artifact_store
         self.executors = dict(executors or {})
         self.supervisor = supervisor
+        self.workspace_provider = workspace_provider
+        self.run_workspace_root = run_workspace_root
 
     def run(
         self,
@@ -754,16 +825,19 @@ class PersistedPipelineRunner:
                 artifact_store=self.artifact_store,
             ),
         )
+        workspace_provider = self._workspace_provider_for_run(run_record)
         engine = PipelineEngine(
             executors=executors,
             observer=PipelinePersistenceObserver(self.repository, self.artifact_store),
             supervisor=self.supervisor,
             cancellation_checker=cancellation_checker,
+            workspace_provider=workspace_provider,
         )
         return engine.run(
             Path(run_record.spec_path),
             stop_at=run_record.stop_at,
             run_id=run_id,
+            initiated_by=run_record.initiated_by,
         )
 
     def _create_pending_run_with_provenance(
@@ -775,11 +849,18 @@ class PersistedPipelineRunner:
         spec_hash: str | None = None,
     ) -> str:
         resolved_spec_path = spec_path.resolve()
+        run_id = uuid4().hex
+        workspace = self._resolve_workspace(
+            resolved_spec_path,
+            run_id_hint=run_id,
+        )
         persisted_spec_hash = (
             spec_hash if spec_hash is not None else compute_file_sha256(resolved_spec_path)
         )
         run_id = self.repository.create_run(
+            run_id=run_id,
             spec_path=resolved_spec_path,
+            workspace_path=workspace.root_path,
             initial_state=PipelineState.REQUEST,
             stop_at=stop_at,
             spec_hash=persisted_spec_hash,
@@ -795,6 +876,37 @@ class PersistedPipelineRunner:
             ),
         )
         return run_id
+
+    def _resolve_workspace(
+        self,
+        spec_path: Path,
+        *,
+        run_id_hint: str | None,
+    ) -> WorkspaceContext:
+        base_provider = self.workspace_provider or LocalWorkspaceProvider(spec_path.parent)
+        if self.run_workspace_root is None or run_id_hint is None:
+            return base_provider.resolve(spec_path)
+
+        return RunScopedWorkspaceProvider(
+            base_provider,
+            run_workspace_root=self.run_workspace_root,
+            run_id=run_id_hint,
+        ).resolve(spec_path)
+
+    def _workspace_provider_for_run(self, run_record: RunRecord) -> WorkspaceProvider:
+        if self.run_workspace_root is None:
+            return self.workspace_provider or LocalWorkspaceProvider(
+                Path(run_record.workspace_path)
+            )
+
+        base_provider = self.workspace_provider or LocalWorkspaceProvider(
+            Path(run_record.spec_path).parent
+        )
+        return RunScopedWorkspaceProvider(
+            base_provider,
+            run_workspace_root=self.run_workspace_root,
+            run_id=run_record.run_id,
+        )
 
     def _validate_run_provenance(self, run_record: RunRecord) -> None:
         if run_record.spec_hash is None:
@@ -868,6 +980,7 @@ def _run_record_from_row(row: RowMapping) -> RunRecord:
     return RunRecord(
         run_id=_string_value(row, "run_id"),
         spec_path=_string_value(row, "spec_path"),
+        workspace_path=_string_value(row, "workspace_path"),
         spec_hash=_optional_string_value(row, "spec_hash"),
         initiated_by=_string_value(row, "initiated_by"),
         stop_at=_string_value(row, "stop_at"),

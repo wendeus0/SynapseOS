@@ -122,6 +122,7 @@ def render_run_detail(
     summary_table.add_row("Current State", run.current_state)
     summary_table.add_row("Stop At", run.stop_at)
     summary_table.add_row("Spec Path", run.spec_path)
+    summary_table.add_row("Workspace Path", run.workspace_path)
     summary_table.add_row("Spec Hash", run.spec_hash or "-")
     summary_table.add_row("Initiated By", run.initiated_by)
     summary_table.add_row("Locked", "yes" if run.locked else "no")
