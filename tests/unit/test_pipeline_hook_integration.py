@@ -1,23 +1,24 @@
 from __future__ import annotations
 
-import types
 import sys
-from pathlib import Path
-from unittest.mock import MagicMock
+import types
 
 import pytest
 
 from synapse_os.config import AppSettings
-from synapse_os.hooks import HookDispatcher, HookRejectedError
+from synapse_os.hooks import HookDispatcher
 from synapse_os.pipeline import (
-    PipelineContext,
     PipelineEngine,
-    PipelineStep,
     PipelineState,
-    StepExecutionResult,
 )
-from synapse_os.runtime_contracts import HookConfig, HookContext
+from synapse_os.runtime_contracts import HookConfig
 from synapse_os.state_machine import SynapseStateMachine
+
+SPEC_TEXT = (
+    "---\nid: F1\ntype: feature\nsummary: test\n"
+    "inputs: [a]\noutputs: [b]\nacceptance_criteria: [c]\n"
+    "non_goals: []\n---\n\n# Contexto\ntest\n\n# Objetivo\ntest\n"
+)
 
 
 class TestPipelineHookIntegration:
@@ -44,9 +45,7 @@ class TestPipelineHookIntegration:
             engine = self._make_engine(hook_dispatcher=dispatcher)
 
             spec_path = tmp_path / "SPEC.md"
-            spec_path.write_text(
-                "---\nid: F1\ntype: feature\nsummary: test\ninputs: [a]\noutputs: [b]\nacceptance_criteria: [c]\nnon_goals: []\n---\n\n# Contexto\ntest\n\n# Objetivo\ntest\n"
-            )
+            spec_path.write_text(SPEC_TEXT)
 
             ctx = engine.run(spec_path, stop_at="SPEC_VALIDATION")
             assert "pre_step:test_int_hook.handle" in ctx.hooks_active
@@ -56,9 +55,7 @@ class TestPipelineHookIntegration:
     def test_hooks_active_empty_without_dispatcher(self, tmp_path) -> None:
         engine = self._make_engine()
         spec_path = tmp_path / "SPEC.md"
-        spec_path.write_text(
-            "---\nid: F1\ntype: feature\nsummary: test\ninputs: [a]\noutputs: [b]\nacceptance_criteria: [c]\nnon_goals: []\n---\n\n# Contexto\ntest\n\n# Objetivo\ntest\n"
-        )
+        spec_path.write_text(SPEC_TEXT)
         ctx = engine.run(spec_path, stop_at="SPEC_VALIDATION")
         assert ctx.hooks_active == []
 
@@ -80,9 +77,7 @@ class TestPipelineHookIntegration:
             engine = self._make_engine(hook_dispatcher=dispatcher)
 
             spec_path = tmp_path / "SPEC.md"
-            spec_path.write_text(
-                "---\nid: F1\ntype: feature\nsummary: test\ninputs: [a]\noutputs: [b]\nacceptance_criteria: [c]\nnon_goals: []\n---\n\n# Contexto\ntest\n\n# Objetivo\ntest\n"
-            )
+            spec_path.write_text(SPEC_TEXT)
 
             from synapse_os.supervisor import RetryableStepError
 
@@ -107,11 +102,9 @@ class TestPipelineHookIntegration:
             engine = self._make_engine(hook_dispatcher=dispatcher)
 
             spec_path = tmp_path / "SPEC.md"
-            spec_path.write_text(
-                "---\nid: F1\ntype: feature\nsummary: test\ninputs: [a]\noutputs: [b]\nacceptance_criteria: [c]\nnon_goals: []\n---\n\n# Contexto\ntest\n\n# Objetivo\ntest\n"
-            )
+            spec_path.write_text(SPEC_TEXT)
 
-            ctx = engine.run(spec_path, stop_at="SPEC_VALIDATION")
+            engine.run(spec_path, stop_at="SPEC_VALIDATION")
             dispatcher.join_post_handlers(timeout=5)
             assert calls == ["unknown"]
         finally:
@@ -124,15 +117,19 @@ class TestPipelineHookIntegration:
         )()
         sys.modules["test_int_hook4"] = mod
         try:
-            global_hooks = [HookConfig(point="pre_step", handler="test_int_hook4.handle")]
-            spec_hooks = [HookConfig(point="post_step", handler="test_int_hook4.handle")]
-            dispatcher = HookDispatcher(global_hooks=global_hooks, spec_hooks=spec_hooks)
+            global_hooks = [
+                HookConfig(point="pre_step", handler="test_int_hook4.handle")
+            ]
+            spec_hooks = [
+                HookConfig(point="post_step", handler="test_int_hook4.handle")
+            ]
+            dispatcher = HookDispatcher(
+                global_hooks=global_hooks, spec_hooks=spec_hooks
+            )
             engine = self._make_engine(hook_dispatcher=dispatcher)
 
             spec_path = tmp_path / "SPEC.md"
-            spec_path.write_text(
-                "---\nid: F1\ntype: feature\nsummary: test\ninputs: [a]\noutputs: [b]\nacceptance_criteria: [c]\nnon_goals: []\n---\n\n# Contexto\ntest\n\n# Objetivo\ntest\n"
-            )
+            spec_path.write_text(SPEC_TEXT)
 
             ctx = engine.run(spec_path, stop_at="SPEC_VALIDATION")
             assert len(ctx.hooks_active) == 2
