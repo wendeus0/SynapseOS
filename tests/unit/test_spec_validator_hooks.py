@@ -25,7 +25,7 @@ class TestValidateHooksInRawMetadata:
             _validate_hooks_in_raw_metadata({"hooks": "not_a_list"})
 
     def test_hook_not_dict_raises(self) -> None:
-        with pytest.raises(SpecValidationError, match="hooks\[0\] must be a dict"):
+        with pytest.raises(SpecValidationError, match=r"hooks\[0\] must be a dict"):
             _validate_hooks_in_raw_metadata({"hooks": ["string"]})
 
     def test_hook_missing_handler_raises(self) -> None:

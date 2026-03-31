@@ -15,10 +15,7 @@ class TestHooksListCommand:
     def test_hooks_list_no_hooks(self) -> None:
         result = runner.invoke(app, ["hooks", "list"])
         assert result.exit_code == 0
-        assert (
-            "No hooks configured" in result.output
-            or "nenhum hook" in result.output.lower()
-        )
+        assert "No hooks configured" in result.output or "nenhum hook" in result.output.lower()
 
     def test_hooks_list_with_global_hooks(self) -> None:
         from synapse_os.runtime_contracts import HookConfig
@@ -109,6 +106,4 @@ class TestHooksStatusCommand:
     def test_hooks_status_no_active_hooks(self) -> None:
         result = runner.invoke(app, ["hooks", "status"])
         assert result.exit_code == 0
-        assert (
-            "No active hooks" in result.output or "nenhum hook" in result.output.lower()
-        )
+        assert "No active hooks" in result.output or "nenhum hook" in result.output.lower()

@@ -120,9 +120,7 @@ def test_runtime_worker_fails_pending_run_when_spec_hash_changes(
     spec_path = tmp_path / "SPEC.md"
     _write_valid_spec(spec_path, "F26-mismatch")
     run_id = runner.create_pending_run(spec_path, stop_at="SPEC_VALIDATION")
-    spec_path.write_text(
-        spec_path.read_text(encoding="utf-8") + "\n# tampered\n", encoding="utf-8"
-    )
+    spec_path.write_text(spec_path.read_text(encoding="utf-8") + "\n# tampered\n", encoding="utf-8")
 
     processed_run_id = worker.poll_once()
     run_record = repository.get_run(run_id)

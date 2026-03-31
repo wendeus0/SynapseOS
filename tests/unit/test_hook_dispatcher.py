@@ -43,9 +43,7 @@ class TestHookDispatcherMerge:
 
     def test_spec_disable_removes_global(self) -> None:
         global_hooks = [HookConfig(point="pre_step", handler="os.path.join")]
-        spec_hooks = [
-            HookConfig(point="pre_step", handler="os.path.join", enabled=False)
-        ]
+        spec_hooks = [HookConfig(point="pre_step", handler="os.path.join", enabled=False)]
         d = HookDispatcher(global_hooks=global_hooks, spec_hooks=spec_hooks)
         assert d.hooks_active == []
 
@@ -54,9 +52,7 @@ class TestHookDispatcherMerge:
             HookConfig(point="pre_step", handler="os.path.join"),
             HookConfig(point="post_step", handler="os.path.join"),
         ]
-        spec_hooks = [
-            HookConfig(point="pre_step", handler="os.path.join", enabled=False)
-        ]
+        spec_hooks = [HookConfig(point="pre_step", handler="os.path.join", enabled=False)]
         d = HookDispatcher(global_hooks=global_hooks, spec_hooks=spec_hooks)
         assert len(d.hooks_active) == 1
         assert "post_step:os.path.join" in d.hooks_active
@@ -122,9 +118,7 @@ class TestHookDispatcherLoadHandlers:
         assert d.hooks_active == []
 
     def test_no_dot_in_handler(self) -> None:
-        global_hooks = [
-            HookConfig(point="pre_step", handler="nodots", failure_mode="hard_fail")
-        ]
+        global_hooks = [HookConfig(point="pre_step", handler="nodots", failure_mode="hard_fail")]
         with pytest.raises(RuntimeError, match="dotted path"):
             HookDispatcher(global_hooks=global_hooks)
 
@@ -278,8 +272,7 @@ class TestHookDispatcherDispatchPost:
                 d.dispatch_post("post_step", ctx)
                 d.join_post_handlers(timeout=5)
             assert any(
-                "post boom" in r.message or "test_hook_mod8" in r.message
-                for r in caplog.records
+                "post boom" in r.message or "test_hook_mod8" in r.message for r in caplog.records
             )
         finally:
             del sys.modules["test_hook_mod8"]

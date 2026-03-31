@@ -57,9 +57,7 @@ class HookDispatcher:
         try:
             module_path, func_name = config.handler.rsplit(".", 1)
         except ValueError:
-            self._handle_invalid_handler(
-                config, "Handler must be a dotted path (e.g. module.func)"
-            )
+            self._handle_invalid_handler(config, "Handler must be a dotted path (e.g. module.func)")
             return None
 
         try:
@@ -68,9 +66,7 @@ class HookDispatcher:
             self._handle_invalid_handler(config, f"Module '{module_path}' not found")
             return None
         except ImportError:
-            self._handle_invalid_handler(
-                config, f"Cannot import module '{module_path}'"
-            )
+            self._handle_invalid_handler(config, f"Cannot import module '{module_path}'")
             return None
 
         try:
