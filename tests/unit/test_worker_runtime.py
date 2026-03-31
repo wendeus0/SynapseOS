@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from importlib import import_module
 from pathlib import Path
+from unittest.mock import MagicMock
 
 
 def _write_valid_spec(path: Path, feature_id: str) -> None:
@@ -120,7 +121,9 @@ def test_runtime_worker_fails_pending_run_when_spec_hash_changes(
     spec_path = tmp_path / "SPEC.md"
     _write_valid_spec(spec_path, "F26-mismatch")
     run_id = runner.create_pending_run(spec_path, stop_at="SPEC_VALIDATION")
-    spec_path.write_text(spec_path.read_text(encoding="utf-8") + "\n# tampered\n", encoding="utf-8")
+    spec_path.write_text(
+        spec_path.read_text(encoding="utf-8") + "\n# tampered\n", encoding="utf-8"
+    )
 
     processed_run_id = worker.poll_once()
     run_record = repository.get_run(run_id)
@@ -338,15 +341,12 @@ def test_runtime_owner_returns_none_when_provider_is_none(tmp_path: Path) -> Non
 
 
 def test_runtime_worker_handles_runner_exception_gracefully(tmp_path: Path) -> None:
+
     persistence = import_module("synapse_os.persistence")
     worker_module = import_module("synapse_os.runtime.worker")
 
     repository = persistence.RunRepository(tmp_path / "runs.sqlite3")
-    artifact_store = persistence.ArtifactStore(tmp_path / "artifacts")
-    runner = persistence.PersistedPipelineRunner(
-        repository=repository,
-        artifact_store=artifact_store,
-    )
+    runner = MagicMock()
     worker = worker_module.RuntimeWorker(repository=repository, runner=runner)
 
     spec_path = tmp_path / "SPEC.md"
@@ -357,8 +357,18 @@ def test_runtime_worker_handles_runner_exception_gracefully(tmp_path: Path) -> N
         stop_at="SPEC_VALIDATION",
     )
 
+    def failing_run_existing(run_id: str, **kwargs):
+        repository.mark_run_failed(
+            run_id,
+            current_state="REQUEST",
+            failure_message="pipeline crashed",
+        )
+        raise RuntimeError("pipeline crashed")
+
+    runner.run_existing.side_effect = failing_run_existing
+
     processed_run_id = worker.poll_once()
 
     assert processed_run_id == run_id
     run_record = repository.get_run(run_id)
-    assert run_record.status in ("completed", "failed")
+    assert run_record.status == "failed"

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import get_args
 
 import yaml  # type: ignore[import-untyped]
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -12,12 +13,7 @@ class SpecValidationError(ValueError):
     pass
 
 
-VALID_HOOK_POINTS = {
-    "pre_step",
-    "post_step",
-    "pre_state_transition",
-    "post_state_transition",
-}
+VALID_HOOK_POINTS = set(get_args(HookConfig.model_fields["point"].annotation))
 
 
 class SpecMetadata(BaseModel):
@@ -90,11 +86,17 @@ def _validate_hooks_in_raw_metadata(raw_metadata: dict[str, object]) -> None:
         raise SpecValidationError("SPEC metadata is invalid: hooks must be a list")
     for i, hook in enumerate(hooks_raw):
         if not isinstance(hook, dict):
-            raise SpecValidationError(f"SPEC metadata is invalid: hooks[{i}] must be a dict")
+            raise SpecValidationError(
+                f"SPEC metadata is invalid: hooks[{i}] must be a dict"
+            )
         if "handler" not in hook or not hook["handler"]:
-            raise SpecValidationError(f"SPEC metadata is invalid: hooks[{i}].handler is required")
+            raise SpecValidationError(
+                f"SPEC metadata is invalid: hooks[{i}].handler is required"
+            )
         if "point" not in hook:
-            raise SpecValidationError(f"SPEC metadata is invalid: hooks[{i}].point is required")
+            raise SpecValidationError(
+                f"SPEC metadata is invalid: hooks[{i}].point is required"
+            )
         if hook["point"] not in VALID_HOOK_POINTS:
             raise SpecValidationError(
                 f"SPEC metadata is invalid: hooks[{i}].point '{hook['point']}' is not valid"
@@ -117,7 +119,9 @@ def _parse_sections(body: str) -> dict[str, str]:
     return {name: "\n".join(lines).strip() for name, lines in sections.items()}
 
 
-def _require_sections(sections: dict[str, str], required_sections: tuple[str, ...]) -> None:
+def _require_sections(
+    sections: dict[str, str], required_sections: tuple[str, ...]
+) -> None:
     for section in required_sections:
         if section not in sections or not sections[section]:
             raise SpecValidationError(f"SPEC requires section '{section}'.")

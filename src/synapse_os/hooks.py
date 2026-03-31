@@ -3,12 +3,13 @@ from __future__ import annotations
 import importlib
 import logging
 import threading
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 from synapse_os.runtime_contracts import HookConfig, HookContext, HookResult
 
 if TYPE_CHECKING:
-    from synapse_os.specs.validator import SpecMetadata
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -48,8 +49,9 @@ class HookDispatcher:
     ) -> list[HookConfig]:
         disabled = {(h.handler, h.point) for h in spec_hooks if not h.enabled}
         enabled_spec = [h for h in spec_hooks if h.enabled]
+        enabled_global = [h for h in global_hooks if h.enabled]
 
-        result = [h for h in global_hooks if (h.handler, h.point) not in disabled]
+        result = [h for h in enabled_global if (h.handler, h.point) not in disabled]
         result.extend(enabled_spec)
         return result
 
@@ -57,7 +59,9 @@ class HookDispatcher:
         try:
             module_path, func_name = config.handler.rsplit(".", 1)
         except ValueError:
-            self._handle_invalid_handler(config, "Handler must be a dotted path (e.g. module.func)")
+            self._handle_invalid_handler(
+                config, "Handler must be a dotted path (e.g. module.func)"
+            )
             return None
 
         try:
@@ -66,7 +70,9 @@ class HookDispatcher:
             self._handle_invalid_handler(config, f"Module '{module_path}' not found")
             return None
         except ImportError:
-            self._handle_invalid_handler(config, f"Cannot import module '{module_path}'")
+            self._handle_invalid_handler(
+                config, f"Cannot import module '{module_path}'"
+            )
             return None
 
         try:
@@ -105,8 +111,9 @@ class HookDispatcher:
 
             if not result.allowed:
                 if config.failure_mode == "hard_fail":
+                    reason = result.reason or "no reason"
                     raise HookRejectedError(
-                        f"Hook rejected step '{context.step_name or point}': {result.reason or 'no reason'}"
+                        f"Hook rejected step '{context.step_name or point}': {reason}"
                     )
                 return context
 
@@ -147,6 +154,7 @@ class HookDispatcher:
                     "Post-hook handler '%s' raised an exception at point '%s'",
                     config.handler,
                     point,
+                    exc_info=True,
                 )
 
     def join_post_handlers(self, timeout: float | None = None) -> None:

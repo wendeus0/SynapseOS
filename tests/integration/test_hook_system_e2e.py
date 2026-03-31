@@ -1,22 +1,19 @@
 from __future__ import annotations
 
-import types
 import sys
-import time
-from pathlib import Path
+import threading
+import types
 
 import pytest
 
 from synapse_os.config import AppSettings
-from synapse_os.hooks import HookDispatcher, HookRejectedError
+from synapse_os.hooks import HookDispatcher
 from synapse_os.pipeline import (
-    PipelineContext,
     PipelineEngine,
     PipelineState,
     StepExecutionResult,
 )
-from synapse_os.runtime_contracts import HookConfig, HookContext
-from synapse_os.specs import validate_spec_file
+from synapse_os.runtime_contracts import HookConfig
 from synapse_os.state_machine import SynapseStateMachine
 
 
@@ -56,7 +53,9 @@ class TestHookSystemE2E:
     def _write_spec(self, tmp_path, spec_id="F1"):
         spec_path = tmp_path / "SPEC.md"
         spec_path.write_text(
-            f"---\nid: {spec_id}\ntype: feature\nsummary: test\ninputs: [a]\noutputs: [b]\nacceptance_criteria: [c]\nnon_goals: []\n---\n\n# Contexto\ntest\n\n# Objetivo\ntest\n"
+            f"---\nid: {spec_id}\ntype: feature\nsummary: test\n"
+            f"inputs: [a]\noutputs: [b]\nacceptance_criteria: [c]\n"
+            f"non_goals: []\n---\n\n# Contexto\ntest\n\n# Objetivo\ntest\n"
         )
         return spec_path
 
@@ -105,10 +104,11 @@ class TestHookSystemE2E:
 
     def test_post_hook_runs_in_background(self, tmp_path) -> None:
         results = []
+        handler_done = threading.Event()
 
         def post_handler(ctx):
-            time.sleep(0.1)
             results.append(ctx.step_name)
+            handler_done.set()
 
         mod = types.ModuleType("test_e2e_hook3")
         mod.handle = post_handler
@@ -119,7 +119,8 @@ class TestHookSystemE2E:
             engine = self._make_engine_with_executors(hook_dispatcher=dispatcher)
             spec_path = self._write_spec(tmp_path)
 
-            ctx = engine.run(spec_path, stop_at="PLAN")
+            engine.run(spec_path, stop_at="PLAN")
+            assert handler_done.wait(timeout=5), "Post handler did not complete"
             dispatcher.join_post_handlers(timeout=5)
             assert "PLAN" in results
         finally:
@@ -130,7 +131,9 @@ class TestHookSystemE2E:
 
         def pre_transition(ctx):
             transitions.append(f"pre:{ctx.current_state}")
-            return type("R", (), {"allowed": True, "reason": None, "context_patch": None})()
+            return type(
+                "R", (), {"allowed": True, "reason": None, "context_patch": None}
+            )()
 
         def post_transition(ctx):
             transitions.append(f"post:{ctx.current_state}")
@@ -143,14 +146,18 @@ class TestHookSystemE2E:
         sys.modules["test_e2e_hook4b"] = mod_post
         try:
             hooks = [
-                HookConfig(point="pre_state_transition", handler="test_e2e_hook4a.handle"),
-                HookConfig(point="post_state_transition", handler="test_e2e_hook4b.handle"),
+                HookConfig(
+                    point="pre_state_transition", handler="test_e2e_hook4a.handle"
+                ),
+                HookConfig(
+                    point="post_state_transition", handler="test_e2e_hook4b.handle"
+                ),
             ]
             dispatcher = HookDispatcher(global_hooks=hooks)
             engine = self._make_engine_with_executors(hook_dispatcher=dispatcher)
             spec_path = self._write_spec(tmp_path)
 
-            ctx = engine.run(spec_path, stop_at="PLAN")
+            engine.run(spec_path, stop_at="PLAN")
             dispatcher.join_post_handlers(timeout=5)
             assert any("pre:SPEC_VALIDATION" in t for t in transitions)
             assert any("post:PLAN" in t for t in transitions)
@@ -187,11 +194,17 @@ class TestHookSystemE2E:
         )()
         sys.modules["test_e2e_hook6"] = mod
         try:
-            global_hooks = [HookConfig(point="pre_step", handler="test_e2e_hook6.handle")]
-            spec_hooks = [
-                HookConfig(point="pre_step", handler="test_e2e_hook6.handle", enabled=False)
+            global_hooks = [
+                HookConfig(point="pre_step", handler="test_e2e_hook6.handle")
             ]
-            dispatcher = HookDispatcher(global_hooks=global_hooks, spec_hooks=spec_hooks)
+            spec_hooks = [
+                HookConfig(
+                    point="pre_step", handler="test_e2e_hook6.handle", enabled=False
+                )
+            ]
+            dispatcher = HookDispatcher(
+                global_hooks=global_hooks, spec_hooks=spec_hooks
+            )
             engine = self._make_engine_with_executors(hook_dispatcher=dispatcher)
             spec_path = self._write_spec(tmp_path)
 

@@ -228,8 +228,9 @@ class PipelineEngine:
 
         try:
             while True:
-                if self.cancellation_checker and self.cancellation_checker.check_cancellation(
-                    context
+                if (
+                    self.cancellation_checker
+                    and self.cancellation_checker.check_cancellation(context)
                 ):
                     raise PipelineCancelledError("Pipeline execution was cancelled.")
 
@@ -472,10 +473,10 @@ class PipelineEngine:
             )
             try:
                 self.hook_dispatcher.dispatch_pre("pre_step", hook_ctx)
-            except HookRejectedError:
+            except HookRejectedError as exc:
                 context.step_history.append(step.state)
                 context.current_state = step.state
-                raise RetryableStepError(f"Hook rejected step '{step.state}'")
+                raise RetryableStepError(f"Hook rejected step '{step.state}'") from exc
 
         if step.state == PipelineState.SPEC_VALIDATION:
             self._execute_spec_validation(context)

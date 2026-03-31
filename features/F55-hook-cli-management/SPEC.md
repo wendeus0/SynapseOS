@@ -59,10 +59,9 @@ Ver non_goals no frontmatter.
 
 ## Artefatos Esperados
 
-- `src/synapse_os/cli/commands/hooks.py` (novo)
-- `src/synapse_os/cli/__init__.py` (modificado: registrar subcomando hooks)
+- `src/synapse_os/cli/hooks.py` (novo)
+- `src/synapse_os/cli/app.py` (modificado: registrar subcomando hooks via app.add_typer)
 - `tests/unit/test_hooks_cli.py` (novo)
-- `tests/integration/test_hooks_cli_e2e.py` (novo)
 
 ## Observações para Planejamento
 

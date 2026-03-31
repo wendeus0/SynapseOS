@@ -9,7 +9,6 @@ from rich.console import Console
 from rich.table import Table
 
 from synapse_os.config import AppSettings
-from synapse_os.hooks import HookDispatcher
 from synapse_os.runtime_contracts import HookConfig
 from synapse_os.specs import validate_spec_file
 
@@ -81,11 +80,7 @@ def hooks_validate(handler: str) -> None:
         )
         raise typer.Exit(code=1)
 
-    try:
-        module_path, func_name = handler.rsplit(".", 1)
-    except ValueError:
-        console.print(f"[red]Error: '{handler}' is not a valid dotted path.[/red]")
-        raise typer.Exit(code=1)
+    module_path, func_name = handler.rsplit(".", 1)
 
     try:
         module = importlib.import_module(module_path)
@@ -104,10 +99,18 @@ def hooks_validate(handler: str) -> None:
         )
         raise typer.Exit(code=1) from None
 
+    if not callable(func):
+        console.print(
+            f"[red]Error: '{handler}' resolves to a non-callable attribute.[/red]"
+        )
+        raise typer.Exit(code=1)
+
     console.print(f"[green]OK: {handler} -> {func.__name__}[/green]")
 
 
 @hooks_app.command("status")
 def hooks_status() -> None:
     console.print("[dim]No active hooks from recent runs.[/dim]")
-    console.print("[dim]Run a pipeline with hooks configured to see active hooks.[/dim]")
+    console.print(
+        "[dim]Run a pipeline with hooks configured to see active hooks.[/dim]"
+    )
