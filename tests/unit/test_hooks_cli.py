@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
 from typer.testing import CliRunner
 
 from synapse_os.cli.app import app
@@ -15,7 +14,10 @@ class TestHooksListCommand:
     def test_hooks_list_no_hooks(self) -> None:
         result = runner.invoke(app, ["hooks", "list"])
         assert result.exit_code == 0
-        assert "No hooks configured" in result.output or "nenhum hook" in result.output.lower()
+        assert (
+            "No hooks configured" in result.output
+            or "nenhum hook" in result.output.lower()
+        )
 
     def test_hooks_list_with_global_hooks(self) -> None:
         from synapse_os.runtime_contracts import HookConfig
@@ -34,11 +36,14 @@ class TestHooksListCommand:
         assert "post_step" in result.output
 
     def test_hooks_list_with_spec_hooks(self, tmp_path: Path) -> None:
-        from synapse_os.runtime_contracts import HookConfig
 
         spec_path = tmp_path / "SPEC.md"
         spec_path.write_text(
-            "---\nid: F1\ntype: feature\nsummary: test\ninputs: [a]\noutputs: [b]\nacceptance_criteria: [c]\nnon_goals: []\nhooks:\n  - point: pre_step\n    handler: os.path.join\n---\n\n# Contexto\ntest\n\n# Objetivo\ntest\n"
+            "---\nid: F1\ntype: feature\nsummary: test\n"
+            "inputs: [a]\noutputs: [b]\nacceptance_criteria: [c]\n"
+            "non_goals: []\nhooks:\n  - point: pre_step\n"
+            "    handler: os.path.join\n---\n\n# Contexto\ntest\n"
+            "\n# Objetivo\ntest\n"
         )
 
         with patch("synapse_os.cli.hooks.AppSettings") as MockSettings:
@@ -53,7 +58,11 @@ class TestHooksListCommand:
 
         spec_path = tmp_path / "SPEC.md"
         spec_path.write_text(
-            "---\nid: F1\ntype: feature\nsummary: test\ninputs: [a]\noutputs: [b]\nacceptance_criteria: [c]\nnon_goals: []\nhooks:\n  - point: post_step\n    handler: os.path.dirname\n---\n\n# Contexto\ntest\n\n# Objetivo\ntest\n"
+            "---\nid: F1\ntype: feature\nsummary: test\n"
+            "inputs: [a]\noutputs: [b]\nacceptance_criteria: [c]\n"
+            "non_goals: []\nhooks:\n  - point: post_step\n"
+            "    handler: os.path.dirname\n---\n\n# Contexto\ntest\n"
+            "\n# Objetivo\ntest\n"
         )
 
         with patch("synapse_os.cli.hooks.AppSettings") as MockSettings:
@@ -69,7 +78,11 @@ class TestHooksListCommand:
     def test_hooks_list_with_malformed_spec(self, tmp_path: Path) -> None:
         spec_path = tmp_path / "SPEC.md"
         spec_path.write_text(
-            "---\nid: F1\ntype: feature\nsummary: test\ninputs: [a]\noutputs: [b]\nacceptance_criteria: [c]\nnon_goals: []\nhooks:\n  - point: invalid_point\n    handler: some.func\n---\n\n# Contexto\ntest\n\n# Objetivo\ntest\n"
+            "---\nid: F1\ntype: feature\nsummary: test\n"
+            "inputs: [a]\noutputs: [b]\nacceptance_criteria: [c]\n"
+            "non_goals: []\nhooks:\n  - point: invalid_point\n"
+            "    handler: some.func\n---\n\n# Contexto\ntest\n"
+            "\n# Objetivo\ntest\n"
         )
 
         with patch("synapse_os.cli.hooks.AppSettings") as MockSettings:
@@ -106,4 +119,6 @@ class TestHooksStatusCommand:
     def test_hooks_status_no_active_hooks(self) -> None:
         result = runner.invoke(app, ["hooks", "status"])
         assert result.exit_code == 0
-        assert "No active hooks" in result.output or "nenhum hook" in result.output.lower()
+        assert (
+            "No active hooks" in result.output or "nenhum hook" in result.output.lower()
+        )

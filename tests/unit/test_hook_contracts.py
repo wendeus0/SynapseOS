@@ -5,6 +5,7 @@ import pytest
 
 def test_hook_config_rejects_invalid_point() -> None:
     from pydantic import ValidationError
+
     from synapse_os.runtime_contracts import HookConfig
 
     with pytest.raises(ValidationError):
@@ -71,6 +72,7 @@ def test_hook_result_allowed_false_with_reason() -> None:
 
 def test_hook_config_rejects_invalid_failure_mode() -> None:
     from pydantic import ValidationError
+
     from synapse_os.runtime_contracts import HookConfig
 
     with pytest.raises(ValidationError):
@@ -79,6 +81,7 @@ def test_hook_config_rejects_invalid_failure_mode() -> None:
 
 def test_hook_config_rejects_empty_handler() -> None:
     from pydantic import ValidationError
+
     from synapse_os.runtime_contracts import HookConfig
 
     with pytest.raises(ValidationError):
@@ -87,6 +90,7 @@ def test_hook_config_rejects_empty_handler() -> None:
 
 def test_hook_result_rejects_non_bool_allowed() -> None:
     from pydantic import ValidationError
+
     from synapse_os.runtime_contracts import HookResult
 
     with pytest.raises(ValidationError):

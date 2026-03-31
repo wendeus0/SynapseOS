@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import logging
-import types
 import sys
-from unittest.mock import MagicMock, patch
+import types
 
 import pytest
 
