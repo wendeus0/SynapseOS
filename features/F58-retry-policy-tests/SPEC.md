@@ -1,42 +1,37 @@
 ---
-feature_id: F58
-feature_name: Retry Policy Tests
-status: draft
-author: opencode
-created: 2026-03-31
+id: F58-retry-policy-tests
+type: feature
+summary: Criar suíte de testes dedicada para o módulo de supervisor/retry cobrindo decisões de retry, reroute, falhas terminais e retorno de REVIEW para CODE_GREEN.
+inputs:
+    - Supervisor com max_retries configurável
+    - RetryableStepError para falhas recuperáveis
+    - ReviewRejectedError para rejeição de review
+outputs:
+    - SupervisorDecision com action, next_state, route e reason
+    - Testes unitários cobrindo todos os caminhos de decisão
+acceptance_criteria:
+    - Dado Supervisor(max_retries=2) e RetryableStepError em estado retryável com attempt <= max_retries, quando decide_after_failure é chamado, então action=retry com reason=retryable_failure_with_budget
+    - Dado Supervisor(max_retries=2) e RetryableStepError com attempt > max_retries e fallback_route disponível, quando decide_after_failure é chamado, então action=reroute com route=fallback
+    - Dado estado SPEC_VALIDATION com qualquer erro, quando decide_after_failure é chamado, então action=fail com reason=spec_validation_is_terminal
+    - Dado estado SECURITY com qualquer erro, quando decide_after_failure é chamado, então action=fail com reason=security_is_terminal
+    - Dado ReviewRejectedError em estado REVIEW, quando decide_after_review_rejection é chamado, então action=return_to_code_green com next_state=CODE_GREEN
+    - Dado RetryableStepError em estado não-retryável, quando decide_after_failure é chamado, então action=fail com reason=terminal_failure
+non_goals:
+    - Testes de integração com pipeline real
+    - Testes de concorrência
 ---
 
 # F58 — Retry Policy Tests
 
-## Objetivo
+# Contexto
 
-Criar suíte de testes dedicada para o módulo de supervisor/retry (`src/synapse_os/supervisor.py`), cobrindo decisões de retry, reroute, falhas terminais e retorno de REVIEW para CODE_GREEN. O módulo já existe mas não possui testes unitários dedicados — apenas testes indiretos em `test_supervisor.py` (4 testes existentes).
+O módulo `src/synapse_os/supervisor.py` implementa o cérebro de recuperação de falhas do pipeline, decidindo entre retry, reroute ou falha terminal. Atualmente possui 4 testes indiretos em `test_supervisor.py`. Esta feature adiciona 6 testes dedicados cobrindo todos os caminhos de decisão.
 
-## Por que isso importa
+# Objetivo
 
-O supervisor é o cérebro de recuperação de falhas do pipeline. Sem testes dedicados:
+Criar suíte de testes dedicada para o supervisor cobrindo decisões de retry, reroute, falhas terminais e retorno de REVIEW para CODE_GREEN.
 
-- Budget de retry pode ser consumido incorretamente
-- Reroute pode não ser acionado quando deveria
-- Falhas terminais podem ser tratadas como retryáveis
-
-## Escopo
-
-### Incluído
-
-- Testes para `decide_after_failure` com estados retryáveis (PLAN, TEST_RED, CODE_GREEN)
-- Testes para `decide_after_failure` com estados terminais (SPEC_VALIDATION, SECURITY)
-- Testes para exhaustion de retry budget com reroute fallback
-- Testes para `decide_after_review_rejection` retornando a CODE_GREEN
-- Testes para ReviewRejectedError em estado REVIEW
-- Testes para RetryableStepError em estados não-retryáveis
-
-### Não incluído
-
-- Testes de integração com pipeline real
-- Testes de concorrência
-
-## Critérios de Aceite
+# Critérios de Aceite
 
 - [ ] AC1: `test_supervisor_requests_retry_after_recoverable_step_failure` — retry com budget disponível
 - [ ] AC2: `test_supervisor_reroutes_after_repeated_step_failures` — reroute após budget esgotado
@@ -49,7 +44,7 @@ O supervisor é o cérebro de recuperação de falhas do pipeline. Sem testes de
 - [ ] AC9: `test_supervisor_ignores_retryable_error_in_non_retryable_state` — estado não-retryável → fail
 - [ ] AC10: `test_supervisor_decision_contains_correct_reason` — reason field correto em cada cenário
 
-## Design de Testes
+# Design de Testes
 
 ### Fixtures
 
@@ -57,8 +52,3 @@ O supervisor é o cérebro de recuperação de falhas do pipeline. Sem testes de
 - Estados retryáveis: PLAN, TEST_RED, CODE_GREEN
 - Estados terminais: SPEC_VALIDATION, SECURITY
 - Exceções: RetryableStepError, ReviewRejectedError, RuntimeError genérico
-
-## Dependências
-
-- `src/synapse_os/supervisor.py` — módulo alvo
-- `src/synapse_os/state_machine.py` — PipelineState
