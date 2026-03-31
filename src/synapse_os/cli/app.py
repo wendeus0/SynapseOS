@@ -28,6 +28,7 @@ from synapse_os.cli.errors import (
     usage_error,
     validation_error,
 )
+from synapse_os.cli.hooks import hooks_app
 from synapse_os.cli.rendering import (
     RunArtifactPreview,
     render_environment_doctor,
@@ -56,6 +57,7 @@ auth_app = typer.Typer(help="Manage the local auth registry.")
 app.add_typer(runtime_app, name="runtime")
 app.add_typer(runs_app, name="runs")
 app.add_typer(auth_app, name="auth")
+app.add_typer(hooks_app, name="hooks")
 
 
 @app.callback()
@@ -130,7 +132,9 @@ def _persistence_doctor_check(
     expects_directory: bool,
 ) -> dict[str, str]:
     inspected_path = target if expects_directory else target.parent
-    failure = _path_preparation_failure(inspected_path, expects_directory=expects_directory)
+    failure = _path_preparation_failure(
+        inspected_path, expects_directory=expects_directory
+    )
 
     if failure is not None:
         return _doctor_check(
@@ -235,7 +239,9 @@ def doctor() -> None:
     render_environment_doctor(overall_status=overall_status, checks=checks)
 
     if overall_status == "fail":
-        exit_for_cli_error(environment_error("Environment doctor found blocking issues."))
+        exit_for_cli_error(
+            environment_error("Environment doctor found blocking issues.")
+        )
 
 
 def _runtime_service() -> RuntimeService:
@@ -278,7 +284,9 @@ def _validate_preview_target(preview_target: str) -> tuple[str, str | None]:
 
 def _relative_artifact_path(artifact_store: ArtifactStore, artifact_path: Path) -> str:
     try:
-        resolved_path = resolve_path_within_root(artifact_path, root=artifact_store.base_path)
+        resolved_path = resolve_path_within_root(
+            artifact_path, root=artifact_store.base_path
+        )
         return str(resolved_path.relative_to(artifact_store.base_path.resolve()))
     except ValueError as exc:
         raise not_found_error(
@@ -324,7 +332,9 @@ def _resolve_run_preview(
     if preview_kind == "report":
         relative_path = str(PurePosixPath(run_id) / "RUN_REPORT.md")
         if relative_path not in artifact_store.list_artifact_paths(run_id):
-            raise not_found_error(f"Run '{run_id}' does not have a persisted report preview.")
+            raise not_found_error(
+                f"Run '{run_id}' does not have a persisted report preview."
+            )
         artifact_path = artifact_store.base_path / Path(relative_path)
         # Canonicalize the report path too so symlinked files cannot escape the run artifacts root.
         _relative_artifact_path(artifact_store, artifact_path)
@@ -428,7 +438,9 @@ def _resolve_principal_id(
     if principal is None:
         raise authentication_error("Authentication token is invalid.")
     if not is_authorized(principal, permission=permission):
-        raise authorization_error("Authenticated principal is not allowed to execute this command.")
+        raise authorization_error(
+            "Authenticated principal is not allowed to execute this command."
+        )
     return principal.principal_id
 
 
@@ -519,7 +531,9 @@ def runtime_start(
     ] = None,
 ) -> None:
     try:
-        principal_id = _resolve_principal_id(permission="runtime:manage", auth_token=auth_token)
+        principal_id = _resolve_principal_id(
+            permission="runtime:manage", auth_token=auth_token
+        )
         service = _runtime_service()
         state = service.start(started_by=principal_id)
     except CLIError as exc:
@@ -557,7 +571,9 @@ def runtime_run(
     ] = None,
 ) -> None:
     try:
-        principal_id = _resolve_principal_id(permission="runtime:manage", auth_token=auth_token)
+        principal_id = _resolve_principal_id(
+            permission="runtime:manage", auth_token=auth_token
+        )
     except CLIError as exc:
         exit_for_cli_error(exc)
 
@@ -610,7 +626,9 @@ def runtime_stop(
     ] = None,
 ) -> None:
     try:
-        principal_id = _resolve_principal_id(permission="runtime:manage", auth_token=auth_token)
+        principal_id = _resolve_principal_id(
+            permission="runtime:manage", auth_token=auth_token
+        )
         service = _runtime_service()
         state = service.status()
         if (
@@ -688,7 +706,9 @@ def _validate_mode(mode: str) -> str:
 def _validate_stop_at(stop_at: str) -> str:
     normalized = stop_at.strip().upper()
     if normalized not in PIPELINE_STOP_STATES:
-        raise usage_error("stop-at must be one of: " + ", ".join(PIPELINE_STOP_STATES) + ".")
+        raise usage_error(
+            "stop-at must be one of: " + ", ".join(PIPELINE_STOP_STATES) + "."
+        )
     return normalized
 
 
@@ -703,7 +723,9 @@ def runs_submit(
     ] = None,
 ) -> None:
     try:
-        principal_id = _resolve_principal_id(permission="run:write", auth_token=auth_token)
+        principal_id = _resolve_principal_id(
+            permission="run:write", auth_token=auth_token
+        )
         dispatch_service = (
             _dispatch_service(initiated_by=principal_id)
             if principal_id is not None

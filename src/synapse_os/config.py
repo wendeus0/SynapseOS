@@ -4,6 +4,7 @@ from typing import Literal
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from synapse_os.runtime_contracts import HookConfig
 from synapse_os.security import DEFAULT_SECRET_MASK_PATTERNS, resolve_path_within_root
 
 
@@ -31,10 +32,13 @@ class AppSettings(BaseSettings):
     execution_timeout_seconds: float = Field(default=300.0, gt=0)
     max_retries: int = Field(default=3, ge=0)
     tui_log_buffer_lines: int = Field(default=1000, gt=0)
+    hooks: list[HookConfig] = Field(default_factory=list)
 
     @property
     def runtime_state_dir_resolved(self) -> Path:
-        return resolve_path_within_root(self.runtime_state_dir, root=self.workspace_root)
+        return resolve_path_within_root(
+            self.runtime_state_dir, root=self.workspace_root
+        )
 
     @property
     def runs_db_path_resolved(self) -> Path:
