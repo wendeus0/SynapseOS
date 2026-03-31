@@ -117,15 +117,9 @@ class TestPipelineHookIntegration:
         )()
         sys.modules["test_int_hook4"] = mod
         try:
-            global_hooks = [
-                HookConfig(point="pre_step", handler="test_int_hook4.handle")
-            ]
-            spec_hooks = [
-                HookConfig(point="post_step", handler="test_int_hook4.handle")
-            ]
-            dispatcher = HookDispatcher(
-                global_hooks=global_hooks, spec_hooks=spec_hooks
-            )
+            global_hooks = [HookConfig(point="pre_step", handler="test_int_hook4.handle")]
+            spec_hooks = [HookConfig(point="post_step", handler="test_int_hook4.handle")]
+            dispatcher = HookDispatcher(global_hooks=global_hooks, spec_hooks=spec_hooks)
             engine = self._make_engine(hook_dispatcher=dispatcher)
 
             spec_path = tmp_path / "SPEC.md"
