@@ -125,9 +125,7 @@ class TestResolvePathWithinRoot:
         with pytest.raises(ValueError, match="Path escapes trusted root"):
             resolve_path_within_root(escape_path, root=tmp_path)
 
-    def test_resolve_path_within_root_rejects_symlink_escape(
-        self, tmp_path: Path
-    ) -> None:
+    def test_resolve_path_within_root_rejects_symlink_escape(self, tmp_path: Path) -> None:
         outside = tmp_path.parent / "outside.txt"
         outside.touch()
         link = tmp_path / "escape_link"
