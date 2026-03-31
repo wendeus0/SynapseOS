@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Any, Literal, Protocol
 
-from pydantic import BaseModel, ConfigDict, Field, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr, field_validator
 
 from synapse_os.security import resolve_path_within_root
 
@@ -84,6 +84,41 @@ class LocalWorkspaceProvider:
             root_path=self.workspace_root,
             spec_path=resolved_spec_path,
         )
+
+
+class HookConfig(BaseModel):
+    model_config = ConfigDict(strict=True)
+
+    point: Literal["pre_step", "post_step", "pre_state_transition", "post_state_transition"]
+    handler: StrictStr = Field(min_length=1)
+    failure_mode: Literal["hard_fail", "supervisor_delegate"] = "supervisor_delegate"
+    enabled: StrictBool = True
+
+
+class HookContext(BaseModel):
+    model_config = ConfigDict(strict=True)
+
+    run_id: StrictStr
+    step_name: StrictStr | None = None
+    current_state: StrictStr | None = None
+    tool_spec: "ToolSpec | None" = None
+    workspace_path: StrictStr | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("tool_spec", mode="before")
+    @classmethod
+    def _validate_tool_spec_type(cls, v: object) -> object:
+        if v is not None and not isinstance(v, ToolSpec):
+            raise ValueError("tool_spec must be a ToolSpec instance or None")
+        return v
+
+
+class HookResult(BaseModel):
+    model_config = ConfigDict(strict=True)
+
+    allowed: StrictBool
+    reason: StrictStr | None = None
+    context_patch: dict[str, Any] | None = None
 
 
 class RunScopedWorkspaceProvider:

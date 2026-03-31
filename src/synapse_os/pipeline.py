@@ -6,7 +6,9 @@ from typing import Protocol
 from pydantic import BaseModel, ConfigDict, Field, StrictStr
 
 from synapse_os.config import AppSettings
+from synapse_os.hooks import HookDispatcher, HookRejectedError
 from synapse_os.runtime_contracts import (
+    HookContext,
     RunContext,
     RunLifecycleHooks,
     WorkspaceContext,
@@ -19,7 +21,11 @@ from synapse_os.specs import (
 from synapse_os.specs import (
     SpecValidationError as _SpecValidationError,
 )
-from synapse_os.state_machine import LINEAR_STATE_FLOW, PipelineState, SynapseStateMachine
+from synapse_os.state_machine import (
+    LINEAR_STATE_FLOW,
+    PipelineState,
+    SynapseStateMachine,
+)
 from synapse_os.supervisor import (
     RetryableStepError,
     Supervisor,
@@ -88,9 +94,10 @@ class PipelineContext(BaseModel):
     run_context: RunContext
     run_id: StrictStr | None = None
     step_history: list[StrictStr] = Field(default_factory=list)
-    artifacts: dict[str, StrictStr] = Field(default_factory=dict)
+    artifacts: dict[StrictStr, StrictStr] = Field(default_factory=dict)
     supervisor_decisions: list[StrictStr] = Field(default_factory=list)
     validated_spec: SpecDocument | None = None
+    hooks_active: list[StrictStr] = Field(default_factory=list)
 
 
 class StepExecutor(Protocol):
@@ -157,6 +164,7 @@ class PipelineEngine:
         supervisor: Supervisor | None = None,
         cancellation_checker: CancellationChecker | None = None,
         workspace_provider: WorkspaceProvider | None = None,
+        hook_dispatcher: HookDispatcher | None = None,
     ) -> None:
         self.settings = settings or AppSettings()
         self.executors = self._normalize_executors(executors or {})
@@ -164,6 +172,7 @@ class PipelineEngine:
         self.observer = observer
         self.cancellation_checker = cancellation_checker
         self.workspace_provider = workspace_provider
+        self.hook_dispatcher = hook_dispatcher
 
         if supervisor is None:
             # Create default supervisor using settings
@@ -208,6 +217,12 @@ class PipelineEngine:
 
         self._notify_optional("on_run_context_initialized", context)
 
+        if self.hook_dispatcher is None and self.settings.hooks:
+            self.hook_dispatcher = HookDispatcher(global_hooks=self.settings.hooks)
+
+        if self.hook_dispatcher is not None:
+            context.hooks_active = list(self.hook_dispatcher.hooks_active)
+
         if self.observer is not None:
             self.observer.on_run_started(context)
 
@@ -250,21 +265,13 @@ class PipelineEngine:
                 if current_state == PipelineState.SPEC_VALIDATION:
                     current_step = PIPELINE_STEPS[current_state]
                     self._notify_optional("on_step_started", current_step, context)
-                    self._execute_spec_validation(context)
-                    if self.observer is not None:
-                        self.observer.on_step_completed(current_step, context, None)
+                    self._run_step_with_hooks(current_step, context)
                     if stop_at == PipelineState.SPEC_VALIDATION:
                         if self.observer is not None:
                             self.observer.on_run_completed(context)
                         return context
-                    self._notify_optional(
-                        "on_state_transition",
-                        PipelineState.SPEC_VALIDATION,
-                        PipelineState.PLAN,
-                        context,
-                    )
-                    self.state_machine.advance_to(PipelineState.PLAN)
-                    context.current_state = self.state_machine.current_state
+                    next_state = self._next_state(current_state)
+                    self._advance_with_hooks(current_state, next_state, context)
                     continue
 
                 if current_state in {
@@ -278,27 +285,15 @@ class PipelineEngine:
                 }:
                     current_step = PIPELINE_STEPS[current_state]
                     self._notify_optional("on_step_started", current_step, context)
-                    result = self._run_runtime_step(current_step, context)
-                    if result is None:
+                    advanced = self._run_step_with_hooks(current_step, context)
+                    if not advanced:
                         continue
-                    context.artifacts.update(result.artifacts)
-                    context.step_history.append(current_step.state)
-                    context.current_state = current_state
-                    if self.observer is not None:
-                        self.observer.on_step_completed(current_step, context, result)
                     if stop_at == current_state:
                         if self.observer is not None:
                             self.observer.on_run_completed(context)
                         return context
                     next_state = self._next_state(current_state)
-                    self._notify_optional(
-                        "on_state_transition",
-                        current_state,
-                        next_state,
-                        context,
-                    )
-                    self.state_machine.advance_to(next_state)
-                    context.current_state = self.state_machine.current_state
+                    self._advance_with_hooks(current_state, next_state, context)
                     continue
 
                 raise PipelineExecutionError(
@@ -463,3 +458,70 @@ class PipelineEngine:
             observer_callback(step, context, decision, error)
 
         return decision
+
+    def _run_step_with_hooks(
+        self,
+        step: PipelineStep,
+        context: PipelineContext,
+    ) -> bool:
+        if self.hook_dispatcher is not None:
+            hook_ctx = HookContext(
+                run_id=context.run_id or "unknown",
+                step_name=step.state,
+                current_state=context.current_state,
+            )
+            try:
+                self.hook_dispatcher.dispatch_pre("pre_step", hook_ctx)
+            except HookRejectedError as exc:
+                context.step_history.append(step.state)
+                context.current_state = step.state
+                raise RetryableStepError(f"Hook rejected step '{step.state}'") from exc
+
+        if step.state == PipelineState.SPEC_VALIDATION:
+            self._execute_spec_validation(context)
+            if self.observer is not None:
+                self.observer.on_step_completed(step, context, None)
+        else:
+            result = self._run_runtime_step(step, context)
+            if result is None:
+                return False
+
+            context.artifacts.update(result.artifacts)
+            context.step_history.append(step.state)
+            context.current_state = step.state
+            if self.observer is not None:
+                self.observer.on_step_completed(step, context, result)
+
+        if self.hook_dispatcher is not None:
+            hook_ctx = HookContext(
+                run_id=context.run_id or "unknown",
+                step_name=step.state,
+                current_state=context.current_state,
+            )
+            self.hook_dispatcher.dispatch_post("post_step", hook_ctx)
+
+        return True
+
+    def _advance_with_hooks(
+        self,
+        from_state: str,
+        to_state: str,
+        context: PipelineContext,
+    ) -> None:
+        if self.hook_dispatcher is not None:
+            hook_ctx = HookContext(
+                run_id=context.run_id or "unknown",
+                current_state=from_state,
+            )
+            self.hook_dispatcher.dispatch_pre("pre_state_transition", hook_ctx)
+
+        self._notify_optional("on_state_transition", from_state, to_state, context)
+        self.state_machine.advance_to(to_state)
+        context.current_state = self.state_machine.current_state
+
+        if self.hook_dispatcher is not None:
+            hook_ctx = HookContext(
+                run_id=context.run_id or "unknown",
+                current_state=to_state,
+            )
+            self.hook_dispatcher.dispatch_post("post_state_transition", hook_ctx)

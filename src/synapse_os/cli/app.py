@@ -28,6 +28,7 @@ from synapse_os.cli.errors import (
     usage_error,
     validation_error,
 )
+from synapse_os.cli.hooks import hooks_app
 from synapse_os.cli.rendering import (
     RunArtifactPreview,
     render_environment_doctor,
@@ -56,6 +57,7 @@ auth_app = typer.Typer(help="Manage the local auth registry.")
 app.add_typer(runtime_app, name="runtime")
 app.add_typer(runs_app, name="runs")
 app.add_typer(auth_app, name="auth")
+app.add_typer(hooks_app, name="hooks")
 
 
 @app.callback()

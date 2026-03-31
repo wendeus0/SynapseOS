@@ -1,13 +1,19 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import get_args
 
 import yaml  # type: ignore[import-untyped]
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from synapse_os.runtime_contracts import HookConfig
+
 
 class SpecValidationError(ValueError):
     pass
+
+
+VALID_HOOK_POINTS = set(get_args(HookConfig.model_fields["point"].annotation))
 
 
 class SpecMetadata(BaseModel):
@@ -20,6 +26,7 @@ class SpecMetadata(BaseModel):
     outputs: list[str] = Field(min_length=1)
     acceptance_criteria: list[str] = Field(min_length=1)
     non_goals: list[str]
+    hooks: list[HookConfig] = Field(default_factory=list)
 
 
 class SpecDocument(BaseModel):
@@ -62,11 +69,32 @@ def _load_metadata(metadata_block: str) -> SpecMetadata:
     if not isinstance(raw_metadata, dict):
         raise SpecValidationError("SPEC front matter YAML is invalid.")
 
+    _validate_hooks_in_raw_metadata(raw_metadata)
+
     try:
         return SpecMetadata.model_validate(raw_metadata)
     except ValidationError as exc:
         message = exc.errors()[0]["loc"][0]
         raise SpecValidationError(f"SPEC metadata is invalid: {message}") from exc
+
+
+def _validate_hooks_in_raw_metadata(raw_metadata: dict[str, object]) -> None:
+    if "hooks" not in raw_metadata:
+        return
+    hooks_raw = raw_metadata["hooks"]
+    if not isinstance(hooks_raw, list):
+        raise SpecValidationError("SPEC metadata is invalid: hooks must be a list")
+    for i, hook in enumerate(hooks_raw):
+        if not isinstance(hook, dict):
+            raise SpecValidationError(f"SPEC metadata is invalid: hooks[{i}] must be a dict")
+        if "handler" not in hook or not hook["handler"]:
+            raise SpecValidationError(f"SPEC metadata is invalid: hooks[{i}].handler is required")
+        if "point" not in hook:
+            raise SpecValidationError(f"SPEC metadata is invalid: hooks[{i}].point is required")
+        if hook["point"] not in VALID_HOOK_POINTS:
+            raise SpecValidationError(
+                f"SPEC metadata is invalid: hooks[{i}].point '{hook['point']}' is not valid"
+            )
 
 
 def _parse_sections(body: str) -> dict[str, str]:
