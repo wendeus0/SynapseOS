@@ -152,7 +152,5 @@ def test_supervisor_decision_contains_correct_reason() -> None:
     )
     assert terminal_decision.reason == "spec_validation_is_terminal"
 
-    review_decision = supervisor.Supervisor(
-        max_retries=2
-    ).decide_after_review_rejection()
+    review_decision = supervisor.Supervisor(max_retries=2).decide_after_review_rejection()
     assert review_decision.reason == "review_requested_rework"
