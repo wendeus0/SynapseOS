@@ -34,9 +34,7 @@ class TestValidateHooksInRawMetadata:
 
     def test_hook_empty_handler_raises(self) -> None:
         with pytest.raises(SpecValidationError, match="handler is required"):
-            _validate_hooks_in_raw_metadata(
-                {"hooks": [{"point": "pre_step", "handler": ""}]}
-            )
+            _validate_hooks_in_raw_metadata({"hooks": [{"point": "pre_step", "handler": ""}]})
 
     def test_hook_missing_point_raises(self) -> None:
         with pytest.raises(SpecValidationError, match="point is required"):
@@ -55,6 +53,4 @@ class TestValidateHooksInRawMetadata:
             "pre_state_transition",
             "post_state_transition",
         ):
-            _validate_hooks_in_raw_metadata(
-                {"hooks": [{"point": point, "handler": "some.func"}]}
-            )
+            _validate_hooks_in_raw_metadata({"hooks": [{"point": point, "handler": "some.func"}]})
