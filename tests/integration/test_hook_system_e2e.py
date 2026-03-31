@@ -131,9 +131,7 @@ class TestHookSystemE2E:
 
         def pre_transition(ctx):
             transitions.append(f"pre:{ctx.current_state}")
-            return type(
-                "R", (), {"allowed": True, "reason": None, "context_patch": None}
-            )()
+            return type("R", (), {"allowed": True, "reason": None, "context_patch": None})()
 
         def post_transition(ctx):
             transitions.append(f"post:{ctx.current_state}")
@@ -146,12 +144,8 @@ class TestHookSystemE2E:
         sys.modules["test_e2e_hook4b"] = mod_post
         try:
             hooks = [
-                HookConfig(
-                    point="pre_state_transition", handler="test_e2e_hook4a.handle"
-                ),
-                HookConfig(
-                    point="post_state_transition", handler="test_e2e_hook4b.handle"
-                ),
+                HookConfig(point="pre_state_transition", handler="test_e2e_hook4a.handle"),
+                HookConfig(point="post_state_transition", handler="test_e2e_hook4b.handle"),
             ]
             dispatcher = HookDispatcher(global_hooks=hooks)
             engine = self._make_engine_with_executors(hook_dispatcher=dispatcher)
@@ -194,17 +188,11 @@ class TestHookSystemE2E:
         )()
         sys.modules["test_e2e_hook6"] = mod
         try:
-            global_hooks = [
-                HookConfig(point="pre_step", handler="test_e2e_hook6.handle")
-            ]
+            global_hooks = [HookConfig(point="pre_step", handler="test_e2e_hook6.handle")]
             spec_hooks = [
-                HookConfig(
-                    point="pre_step", handler="test_e2e_hook6.handle", enabled=False
-                )
+                HookConfig(point="pre_step", handler="test_e2e_hook6.handle", enabled=False)
             ]
-            dispatcher = HookDispatcher(
-                global_hooks=global_hooks, spec_hooks=spec_hooks
-            )
+            dispatcher = HookDispatcher(global_hooks=global_hooks, spec_hooks=spec_hooks)
             engine = self._make_engine_with_executors(hook_dispatcher=dispatcher)
             spec_path = self._write_spec(tmp_path)
 

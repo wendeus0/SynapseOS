@@ -228,9 +228,8 @@ class PipelineEngine:
 
         try:
             while True:
-                if (
-                    self.cancellation_checker
-                    and self.cancellation_checker.check_cancellation(context)
+                if self.cancellation_checker and self.cancellation_checker.check_cancellation(
+                    context
                 ):
                     raise PipelineCancelledError("Pipeline execution was cancelled.")
 

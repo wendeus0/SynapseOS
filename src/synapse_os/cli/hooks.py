@@ -100,9 +100,7 @@ def hooks_validate(handler: str) -> None:
         raise typer.Exit(code=1) from None
 
     if not callable(func):
-        console.print(
-            f"[red]Error: '{handler}' resolves to a non-callable attribute.[/red]"
-        )
+        console.print(f"[red]Error: '{handler}' resolves to a non-callable attribute.[/red]")
         raise typer.Exit(code=1)
 
     console.print(f"[green]OK: {handler} -> {func.__name__}[/green]")
@@ -111,6 +109,4 @@ def hooks_validate(handler: str) -> None:
 @hooks_app.command("status")
 def hooks_status() -> None:
     console.print("[dim]No active hooks from recent runs.[/dim]")
-    console.print(
-        "[dim]Run a pipeline with hooks configured to see active hooks.[/dim]"
-    )
+    console.print("[dim]Run a pipeline with hooks configured to see active hooks.[/dim]")
