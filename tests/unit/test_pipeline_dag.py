@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
+from threading import Lock
 from unittest.mock import MagicMock
 
 import pytest
@@ -262,6 +263,12 @@ class TestDAGContext:
 
 
 class TestDAGExecutor:
+    def test_init_rejects_unknown_mode(self) -> None:
+        spec = DAGSpec(mode="unsupported", steps=[])
+
+        with pytest.raises(DAGSpecificationError, match="Unknown DAG mode"):
+            DAGExecutor(spec=spec)
+
     def test_execute_single_step(self) -> None:
         spec = DAGSpec(
             mode="dag",
@@ -386,13 +393,22 @@ class TestDAGExecutor:
                 DAGStep(id=str(i), executor="codex", depends_on=[]) for i in range(8)
             ],
         )
-        concurrent = []
+        active = 0
+        peak = 0
+        lock = Lock()
 
         def run_step(step_id: str) -> None:
-            concurrent.append(1)
             import time
 
-            time.sleep(0.05)
+            nonlocal active, peak
+            with lock:
+                active += 1
+                peak = max(peak, active)
+            try:
+                time.sleep(0.05)
+            finally:
+                with lock:
+                    active -= 1
 
         executor = DAGExecutor(
             spec=spec,
@@ -401,7 +417,7 @@ class TestDAGExecutor:
         )
         executor.execute()
 
-        assert max(concurrent) <= 2
+        assert peak == 2
 
 
 class TestLinearPipelineAdapter:

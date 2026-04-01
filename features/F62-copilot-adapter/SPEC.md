@@ -38,9 +38,9 @@ Create a `CopilotCLIAdapter` following the existing adapter pattern. The adapter
 4. Inherits circuit breaker and semaphore guard behavior
 5. Has `capabilities = ("cli_execution", "code_generation")` matching Codex
 
-### Environment Variable
+### Authentication
 
-`SYNAPSE_OS_GH_TOKEN` — GitHub CLI token. Required for authentication.
+Não há env var dedicada do SynapseOS para o adapter. A autenticação depende do estado já configurado no `gh` CLI.
 
 ## 2. Scope
 

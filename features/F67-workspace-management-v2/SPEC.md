@@ -28,7 +28,7 @@ O sistema atual de workspace em `runtime_contracts.py` (`WorkspaceProvider`, `Lo
 
 # Objetivo
 
-Introduzir WorkspaceState enum, TrackedWorkspace, WorkspacePool com acquire/release/reset, Lifecycle hooks de cleanup, e WorkspaceManager que integra providers + pool.
+Introduzir WorkspaceState enum, TrackedWorkspace, WorkspacePool com acquire/release/discard, reset interno antes de reuse, Lifecycle hooks de cleanup, e WorkspaceManager que integra providers + pool.
 
 ## 1. Decision
 
@@ -45,7 +45,7 @@ Introduzir:
 
 - `WorkspaceState` enum
 - `TrackedWorkspace` model
-- `WorkspacePool` class com acquire/release/reset
+- `WorkspacePool` class com acquire/release/discard
 - `WorkspaceManager` que integra providers + pool
 - Unit tests
 

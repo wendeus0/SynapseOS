@@ -54,7 +54,9 @@ class DAGValidator:
         if spec.mode == "dag":
             DAGValidator._validate_dag(spec)
         else:
-            raise DAGSpecificationError(f"Unknown DAG mode: {spec.mode!r}. Use 'linear' or 'dag'.")
+            raise DAGSpecificationError(
+                f"Unknown DAG mode: {spec.mode!r}. Use 'linear' or 'dag'."
+            )
 
     @staticmethod
     def _validate_dag(spec: DAGSpec) -> None:
@@ -124,14 +126,17 @@ class DAGContext:
         for step in self.spec.steps:
             if self._states[step.id] != DAGStepStatus.PENDING:
                 continue
-            deps_done = all(self._states[dep] == DAGStepStatus.DONE for dep in step.depends_on)
+            deps_done = all(
+                self._states[dep] == DAGStepStatus.DONE for dep in step.depends_on
+            )
             if deps_done:
                 ready.append(step.id)
         return ready
 
     def is_complete(self) -> bool:
         return all(
-            self._states[sid] in (DAGStepStatus.DONE, DAGStepStatus.FAILED) for sid in self._states
+            self._states[sid] in (DAGStepStatus.DONE, DAGStepStatus.FAILED)
+            for sid in self._states
         )
 
     @property
@@ -150,8 +155,7 @@ class DAGExecutor:
         self.spec = spec
         self.max_workers = max_workers
         self.step_runner = step_runner or (lambda _sid, _ctx: None)
-        if spec.mode == "dag":
-            DAGValidator.validate(spec)
+        DAGValidator.validate(spec)
         self.context = DAGContext(spec)
 
     def execute(self) -> None:

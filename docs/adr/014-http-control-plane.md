@@ -25,7 +25,7 @@ Componentes:
 - **REST API design** com recursos principais: `/health`, `/api/v1/runs`, `/api/v1/runtime/status`, `/api/v1/artifacts/{run_id}`;
 - **Async handlers** para não bloquear o event loop do worker;
 - **State machine projection** — estados internos expostos como endpoints de consulta;
-- **Auth middleware** com Bearer token (`SYNAPSE_OS_API_TOKEN`), health check é público.
+- **Auth middleware** com Bearer token (`SYNAPSE_API_TOKEN`), health check é público.
 
 O HTTP Control Plane é uma **camada opcional** — o sistema continua funcionando 100% via CLI sem a API ativa. A API é ativada via comando explícito `synapse control-plane start`.
 

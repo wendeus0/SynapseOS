@@ -13,8 +13,8 @@ acceptance_criteria:
     - GET /health returns 200 with runtime status
     - POST /api/v1/runs creates a run and returns 201
     - GET /api/v1/runs lists runs with pagination
-    - POST /api/v1/runs/{id}/cancel marks run as cancelled
-    - Auth middleware blocks unauthorized requests with 401
+    - POST /api/v1/runs/{run_id}/cancel marks run as cancelled
+    - Auth middleware blocks unauthorized requests with 401 when API-token auth is enabled
     - All unit tests pass
 non_goals:
     - WebSocket streaming
@@ -104,10 +104,10 @@ Criar uma camada de API HTTP local (localhost-only) que exponha as operações c
 
 ### AC8: Autenticação por token
 
-- Token pode ser configurado via env `SYNAPSE_OS_API_TOKEN` ou config
-- Requests sem token válido retornam `401 Unauthorized`
+- Token pode ser configurado via env `SYNAPSE_API_TOKEN` ou config
+- Requests sem token válido retornam `401 Unauthorized` quando auth por token estiver habilitada
 - Health check (`/health`) é público (sem auth)
-- Se `SYNAPSE_OS_API_TOKEN` não estiver definido, auth é desabilitada (modo dev)
+- Se `SYNAPSE_API_TOKEN` não estiver definido, auth é desabilitada (modo dev)
 
 ### AC9: Porta configurável
 

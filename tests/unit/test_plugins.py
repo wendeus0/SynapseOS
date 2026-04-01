@@ -47,6 +47,17 @@ class TestPluginManifest:
 
 
 class TestPluginRegistry:
+    @pytest.fixture(autouse=True)
+    def reset_registry(self):
+        registry = PluginRegistry()
+        registry._plugins.clear()
+        registry._hook_map.clear()
+        registry._handlers = {hook_type: [] for hook_type in HOOK_TYPES}
+        yield
+        registry._plugins.clear()
+        registry._hook_map.clear()
+        registry._handlers = {hook_type: [] for hook_type in HOOK_TYPES}
+
     def test_singleton_pattern(self):
         registry1 = PluginRegistry()
         registry2 = PluginRegistry()
@@ -172,3 +183,47 @@ class TestPluginRegistry:
         assert registry.is_loaded("test") is False
         registry.register(PluginManifest(name="test", version="1.0.0"))
         assert registry.is_loaded("test") is True
+
+    def test_get_handlers_keeps_shared_callable_for_enabled_plugin_when_other_disabled(
+        self,
+    ):
+        registry = PluginRegistry()
+        shared_handler = MagicMock()
+
+        registry.register(PluginManifest(name="p1", version="1.0.0"))
+        registry.register(PluginManifest(name="p2", version="1.0.0"))
+        registry.register_hook("p1", "pre_step", shared_handler)
+        registry.register_hook("p2", "pre_step", shared_handler)
+
+        registry.disable_plugin("p1")
+
+        assert registry.get_handlers("pre_step") == [shared_handler]
+
+    def test_unregister_preserves_shared_callable_used_by_other_plugin(self):
+        registry = PluginRegistry()
+        shared_handler = MagicMock()
+
+        registry.register(PluginManifest(name="p1", version="1.0.0"))
+        registry.register(PluginManifest(name="p2", version="1.0.0"))
+        registry.register_hook("p1", "pre_step", shared_handler)
+        registry.register_hook("p2", "pre_step", shared_handler)
+
+        registry.unregister("p1")
+
+        assert registry.get_handlers("pre_step") == [shared_handler]
+
+    def test_register_hook_replacing_one_plugin_handler_preserves_shared_callable(self):
+        registry = PluginRegistry()
+        shared_handler = MagicMock()
+        replacement_handler = MagicMock()
+
+        registry.register(PluginManifest(name="p1", version="1.0.0"))
+        registry.register(PluginManifest(name="p2", version="1.0.0"))
+        registry.register_hook("p1", "pre_step", shared_handler)
+        registry.register_hook("p2", "pre_step", shared_handler)
+
+        registry.register_hook("p1", "pre_step", replacement_handler)
+
+        handlers = registry.get_handlers("pre_step")
+        assert replacement_handler in handlers
+        assert shared_handler in handlers
