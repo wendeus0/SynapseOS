@@ -45,6 +45,7 @@ class AdapterOperationalError(RuntimeError):
         self.tool_name = tool_name
         self.command = command
         self.reason = reason
+        self.message = message
 
 
 class BaseCLIAdapter(ABC):
@@ -324,3 +325,149 @@ class GeminiCLIAdapter(BaseCLIAdapter):
 
     async def execute(self, prompt: str) -> CLIExecutionResult:
         return await super().execute(prompt)
+
+
+_LAUNCHER_UNAVAILABLE_COPILOT_PATTERNS = (
+    "gh: command not found",
+    "gh: not found",
+    "command not found: gh",
+)
+_AUTHENTICATION_UNAVAILABLE_COPILOT_PATTERNS = (
+    "authentication required",
+    "not logged in",
+    "unauthorized",
+    "invalid token",
+    "authenticated",
+    "gh auth login",
+)
+
+
+class CopilotCLIAdapter(BaseCLIAdapter):
+    @property
+    def capabilities(self) -> tuple[str, ...]:
+        return ("cli_execution", "code_generation")
+
+    @property
+    def command_prefix(self) -> tuple[str, ...]:
+        return ("gh", "copilot", "ai")
+
+    def __init__(
+        self,
+        *,
+        timeout_seconds: float = 30.0,
+        max_concurrent_adapters: int | None = None,
+    ) -> None:
+        super().__init__(
+            tool_name="copilot",
+            timeout_seconds=timeout_seconds,
+            max_concurrent_adapters=max_concurrent_adapters,
+        )
+
+    def build_command(self, prompt: str) -> list[str]:
+        if not prompt.strip():
+            raise ValueError("prompt must not be empty.")
+        return [
+            "gh",
+            "copilot",
+            "ai",
+            "--color",
+            "never",
+            "--",
+            prompt,
+        ]
+
+    async def execute(self, prompt: str) -> CLIExecutionResult:
+        settings = AppSettings()
+        command = self.build_command(prompt)
+        self._validate_command(command)
+
+        breaker_store = AdapterCircuitBreakerStore(settings.adapter_circuit_breaker_state_file)
+        if breaker_store.is_open(self.tool_name, now=time.time()):
+            return CLIExecutionResult(
+                tool_name=self.tool_name,
+                command=command,
+                return_code=75,
+                stdout_raw="",
+                stderr_raw="Circuit breaker open for copilot.\n",
+                stdout_clean="",
+                stderr_clean="Circuit breaker open for copilot.",
+                duration_ms=0,
+                timed_out=False,
+                success=False,
+            )
+
+        try:
+            result = await super().execute(prompt)
+        except AdapterOperationalError as exc:
+            breaker_store.record_operational_failure(
+                self.tool_name,
+                threshold=settings.adapter_circuit_breaker_failure_threshold,
+                cooldown_seconds=settings.adapter_circuit_breaker_cooldown_seconds,
+                now=time.time(),
+            )
+            return CLIExecutionResult(
+                tool_name=self.tool_name,
+                command=exc.command,
+                return_code=1,
+                stdout_raw="",
+                stderr_raw=exc.message,
+                stdout_clean="",
+                stderr_clean=exc.message,
+                duration_ms=0,
+                timed_out=False,
+                success=False,
+            )
+        assessment = classify_copilot_execution(result)
+        if assessment.category in {
+            "launcher_unavailable",
+            "authentication_unavailable",
+        }:
+            breaker_store.record_operational_failure(
+                self.tool_name,
+                threshold=settings.adapter_circuit_breaker_failure_threshold,
+                cooldown_seconds=settings.adapter_circuit_breaker_cooldown_seconds,
+                now=time.time(),
+            )
+        else:
+            breaker_store.reset(self.tool_name)
+        return result
+
+
+def classify_copilot_execution(result: CLIExecutionResult) -> CodexExecutionAssessment:
+    stderr_lower = result.stderr_clean.lower()
+
+    if result.success:
+        return CodexExecutionAssessment(
+            category="success",
+            is_operational_block=False,
+            detail="Copilot CLI completed successfully.",
+        )
+    if "circuit breaker open" in stderr_lower:
+        return CodexExecutionAssessment(
+            category="circuit_open",
+            is_operational_block=True,
+            detail=result.stderr_clean or "Copilot circuit breaker is open.",
+        )
+    if result.timed_out:
+        return CodexExecutionAssessment(
+            category="timeout",
+            is_operational_block=False,
+            detail="Copilot CLI exceeded the configured timeout.",
+        )
+    if _contains_any(stderr_lower, _LAUNCHER_UNAVAILABLE_COPILOT_PATTERNS):
+        return CodexExecutionAssessment(
+            category="launcher_unavailable",
+            is_operational_block=True,
+            detail=result.stderr_clean or "GitHub CLI (gh) is unavailable.",
+        )
+    if _contains_any(stderr_lower, _AUTHENTICATION_UNAVAILABLE_COPILOT_PATTERNS):
+        return CodexExecutionAssessment(
+            category="authentication_unavailable",
+            is_operational_block=True,
+            detail=result.stderr_clean or "GitHub Copilot authentication is unavailable.",
+        )
+    return CodexExecutionAssessment(
+        category="return_code_nonzero",
+        is_operational_block=False,
+        detail=result.stderr_clean or "Copilot CLI exited with a non-zero return code.",
+    )

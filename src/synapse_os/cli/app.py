@@ -54,10 +54,12 @@ app = typer.Typer(help="SynapseOS CLI")
 runtime_app = typer.Typer(help="Manage the minimal persistent runtime.")
 runs_app = typer.Typer(help="Inspect persisted runs and artifacts.")
 auth_app = typer.Typer(help="Manage the local auth registry.")
+control_plane_app = typer.Typer(help="Manage the local control plane HTTP API.")
 app.add_typer(runtime_app, name="runtime")
 app.add_typer(runs_app, name="runs")
 app.add_typer(auth_app, name="auth")
 app.add_typer(hooks_app, name="hooks")
+app.add_typer(control_plane_app, name="control-plane")
 
 
 @app.callback()
@@ -807,3 +809,51 @@ def runs_show(
         artifact_paths=artifact_store.list_artifact_paths(run_id),
         preview=resolved_preview,
     )
+
+
+@control_plane_app.command("start")
+def control_plane_start(
+    host: str = typer.Option("127.0.0.1", "--host", envvar="SYNAPSE_CONTROL_HOST"),
+    port: int = typer.Option(8080, "--port", envvar="SYNAPSE_CONTROL_PORT"),
+    api_token: str | None = typer.Option(None, "--token", envvar="SYNAPSE_API_TOKEN"),
+) -> None:
+    import uvicorn
+
+    if host != "127.0.0.1" and host != "localhost":
+        typer.echo(
+            "WARNING: Binding to non-localhost address. "
+            "The control plane has no network-level security.",
+            err=True,
+        )
+
+    try:
+        runtime_service = _runtime_service()
+        run_repo = _run_repository()
+        artifact_store = _artifact_store()
+    except CLIError:
+        raise
+
+    from synapse_os.control_plane.server import create_app
+
+    cp_app = create_app(
+        runtime_service=runtime_service,
+        run_repository=run_repo,
+        artifact_store=artifact_store,
+        api_token=api_token,
+    )
+
+    typer.echo(f"Starting control plane on http://{host}:{port}")
+    uvicorn.run(cp_app, host=host, port=port, log_level="info")
+
+
+@control_plane_app.command("status")
+def control_plane_status() -> None:
+
+    host = os.environ.get("SYNAPSE_CONTROL_HOST", "127.0.0.1")
+    port_raw = os.environ.get("SYNAPSE_CONTROL_PORT", "8080")
+    try:
+        port = int(port_raw)
+    except ValueError:
+        port = 8080
+    typer.echo(f"Control plane configured for http://{host}:{port}")
+    typer.echo("Use 'synapse control-plane start' to start the server.")

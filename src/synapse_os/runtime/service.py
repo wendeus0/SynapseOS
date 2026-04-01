@@ -6,13 +6,27 @@ import secrets
 import signal
 import subprocess
 import sys
+import threading
 import time
+from collections.abc import Callable
 from pathlib import Path
+from typing import Literal
 
+from pydantic import BaseModel, ConfigDict, Field
+
+from synapse_os.runtime.circuit_breaker import AdapterCircuitBreakerStore
 from synapse_os.runtime.state import RuntimeState, RuntimeStateStore
 from synapse_os.runtime.worker import RuntimeWorker
 
 PROCESS_MARKER = "--synapse-runtime-process"
+
+
+class RuntimeLifecycleEvent(BaseModel):
+    model_config = ConfigDict(strict=True)
+
+    event: str
+    timestamp: float = Field(default_factory=time.time)
+    data: dict[str, object] = Field(default_factory=dict)
 
 
 def _runtime_process_code() -> str:
@@ -78,7 +92,6 @@ class RuntimeService:
         previous_sigterm = signal.signal(signal.SIGTERM, handle_shutdown)
         previous_sigint = signal.signal(signal.SIGINT, handle_shutdown)
 
-        # This is the minimal resident process for the Synapse-Flow runtime.
         self.state_store.write_running(
             os.getpid(),
             process_identity,
@@ -188,3 +201,97 @@ def _is_foreground_runtime_process(arguments: list[str], process_identity: str) 
         and "--process-identity" in arguments
         and process_identity in arguments
     )
+
+
+class _InterruptibleHandler:
+    def __init__(self, handler: Callable[[], None], timeout: float) -> None:
+        self.handler = handler
+        self.timeout = timeout
+        self.thread: threading.Thread | None = None
+        self.exc: BaseException | None = None
+
+    def start(self) -> None:
+        self.thread = threading.Thread(target=self._run, daemon=True)
+        self.thread.start()
+
+    def _run(self) -> None:
+        try:
+            self.handler()
+        except BaseException as e:
+            self.exc = e
+
+    def join(self, timeout: float) -> None:
+        if self.thread is None:
+            return
+        self.thread.join(timeout=timeout)
+
+    def cancel(self) -> None:
+        pass
+
+    def is_alive(self) -> bool:
+        return self.thread is not None and self.thread.is_alive()
+
+
+class RuntimeCoordinator:
+    def __init__(
+        self,
+        circuit_breaker_store: AdapterCircuitBreakerStore | None = None,
+    ) -> None:
+        self.circuit_breaker_store = circuit_breaker_store or AdapterCircuitBreakerStore(
+            Path(".synapse-os/runtime/circuit-breakers.json")
+        )
+        self.lifecycle_events: list[RuntimeLifecycleEvent] = []
+        self._cleanup_handlers: list[Callable[[], None]] = []
+
+    def health_status(self) -> Literal["HEALTHY", "DEGRADED", "UNHEALTHY"]:
+        open_adapters = [
+            tool for tool in self._registered_tools() if self.circuit_breaker_store.is_open(tool)
+        ]
+        if not open_adapters:
+            return "HEALTHY"
+        if len(open_adapters) == 1:
+            return "DEGRADED"
+        return "UNHEALTHY"
+
+    def lifecycle_event(self, event: str, data: dict[str, object] | None = None) -> None:
+        self.lifecycle_events.append(RuntimeLifecycleEvent(event=event, data=data or {}))
+
+    def register_cleanup_handler(self, handler: Callable[[], None]) -> None:
+        self._cleanup_handlers.append(handler)
+
+    def run_cleanup_handlers(self) -> None:
+        for handler in self._cleanup_handlers:
+            try:
+                handler()
+            except Exception:
+                pass
+
+    def graceful_shutdown(self, timeout_seconds: float = 5.0) -> None:
+        self.lifecycle_event("runtime.stopping")
+        deadline = time.monotonic() + timeout_seconds
+        remaining = timeout_seconds
+
+        for handler in self._cleanup_handlers:
+            if remaining <= 0:
+                break
+            thread = _InterruptibleHandler(handler, remaining)
+            thread.start()
+            thread.join(timeout=remaining)
+            if thread.is_alive():
+                thread.cancel()
+            remaining = max(deadline - time.monotonic(), 0.0)
+
+        self._stop()
+        self.lifecycle_event("runtime.stopped")
+
+    @property
+    def degraded_adapters(self) -> set[str]:
+        return {
+            tool for tool in self._registered_tools() if self.circuit_breaker_store.is_open(tool)
+        }
+
+    def _registered_tools(self) -> list[str]:
+        return ["codex", "gemini", "copilot"]
+
+    def _stop(self) -> None:
+        pass
