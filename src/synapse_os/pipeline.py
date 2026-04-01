@@ -98,6 +98,7 @@ class PipelineContext(BaseModel):
     supervisor_decisions: list[StrictStr] = Field(default_factory=list)
     validated_spec: SpecDocument | None = None
     hooks_active: list[StrictStr] = Field(default_factory=list)
+    dag: dict[str, object] = Field(default_factory=dict)
 
 
 class StepExecutor(Protocol):
@@ -309,6 +310,7 @@ class PipelineEngine:
         context.validated_spec = spec_document
         context.artifacts["spec_id"] = spec_document.metadata.id
         context.artifacts["spec_summary"] = spec_document.metadata.summary
+        context.dag = spec_document.dag
         context.step_history.append(PipelineState.SPEC_VALIDATION)
         context.current_state = PipelineState.SPEC_VALIDATION
 

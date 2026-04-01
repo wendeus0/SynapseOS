@@ -27,6 +27,7 @@ class SpecMetadata(BaseModel):
     acceptance_criteria: list[str] = Field(min_length=1)
     non_goals: list[str]
     hooks: list[HookConfig] = Field(default_factory=list)
+    dag: dict[str, object] = Field(default_factory=dict)
 
 
 class SpecDocument(BaseModel):
@@ -35,15 +36,17 @@ class SpecDocument(BaseModel):
     metadata: SpecMetadata
     sections: dict[str, str]
     body: str
+    dag: dict[str, object] = Field(default_factory=dict)
 
 
 def validate_spec_file(path: Path) -> SpecDocument:
     text = path.read_text(encoding="utf-8")
     metadata_block, body = _split_front_matter(text)
     metadata = _load_metadata(metadata_block)
+    dag = _load_dag(metadata_block)
     sections = _parse_sections(body)
     _require_sections(sections, required_sections=("Contexto", "Objetivo"))
-    return SpecDocument(metadata=metadata, sections=sections, body=body.strip())
+    return SpecDocument(metadata=metadata, sections=sections, body=body.strip(), dag=dag)
 
 
 def _split_front_matter(text: str) -> tuple[str, str]:
@@ -76,6 +79,17 @@ def _load_metadata(metadata_block: str) -> SpecMetadata:
     except ValidationError as exc:
         message = exc.errors()[0]["loc"][0]
         raise SpecValidationError(f"SPEC metadata is invalid: {message}") from exc
+
+
+def _load_dag(metadata_block: str) -> dict[str, object]:
+    try:
+        raw = yaml.safe_load(metadata_block)
+    except yaml.YAMLError as exc:
+        raise SpecValidationError("SPEC front matter YAML is invalid.") from exc
+
+    if not isinstance(raw, dict):
+        return {}
+    return raw.get("dag", {}) or {}
 
 
 def _validate_hooks_in_raw_metadata(raw_metadata: dict[str, object]) -> None:

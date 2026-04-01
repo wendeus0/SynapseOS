@@ -3,9 +3,11 @@
 ## 1. Visão Geral
 
 ### 1.1 Propósito
+
 SynapseOS é um meta-orquestrador de agentes de IA via CLI. Seu papel é coordenar múltiplas ferramentas externas de IA, organizar hand-offs entre etapas de uma esteira controlada e produzir artefatos de software com rastreabilidade, resiliência e baixo custo operacional.
 
 ### 1.2 Objetivos
+
 - Orquestrar ferramentas de IA via CLI de forma uniforme.
 - Executar pipelines autônomos de desenvolvimento de software.
 - Isolar contexto entre etapas e agentes.
@@ -16,9 +18,11 @@ SynapseOS é um meta-orquestrador de agentes de IA via CLI. Seu papel é coorden
 - Permitir evolução futura para paralelismo, DAG real e workers distribuídos.
 
 ### 1.3 Escopo
+
 O sistema recebe uma tarefa, produz uma especificação estruturada, planeja sua execução, chama agentes externos por subprocess, limpa suas saídas, valida os artefatos, reage a falhas, persiste memória de execução e gera um relatório final por run.
 
 ### 1.4 Fora do escopo inicial
+
 - Cluster distribuído completo.
 - Suporte nativo a Windows/macOS como plataforma principal.
 - Interface web completa.
@@ -28,6 +32,7 @@ O sistema recebe uma tarefa, produz uma especificação estruturada, planeja sua
 ---
 
 ## 2. Premissas do MVP
+
 - Linguagem principal: **Python 3.12+**.
 - Execução principal: **CLI-first**.
 - Runtime do MVP: **dual**, com CLI efêmero e worker/daemon residente leve.
@@ -42,6 +47,7 @@ O sistema recebe uma tarefa, produz uma especificação estruturada, planeja sua
 ---
 
 ## 3. Princípios Arquiteturais
+
 1. **CLI-first**: integrações externas devem passar por adapters padronizados.
 2. **Spec-first**: a demanda bruta deve ser transformada em especificação verificável antes do planejamento executivo.
 3. **State-driven orchestration**: o fluxo deve ser auditável por máquina de estados e evolutivo para DAG.
@@ -58,23 +64,29 @@ O sistema recebe uma tarefa, produz uma especificação estruturada, planeja sua
 ### 4.1 Camadas principais
 
 #### Camada de Orquestração
+
 Responsável por estado, pipeline, supervisão, memória e decisão.
 
 Componentes:
+
 - Orchestrator Engine
 - Synapse-Flow
 - State Machine Manager
-- Pipeline Manager
-- Adaptive Supervisor
-- Memory Engine
+- Pipeline Manager (DAG execution)
+- Adaptive Supervisor (per-step policies, backoff)
+- Memory Engine (IndexedArtifactStore, namespacing)
 - Spec Engine
 - Runtime Coordinator
 
 #### Camada de Adapters
+
 Responsável por integração com ferramentas externas via CLI.
 
 Componentes:
+
 - Base CLI Adapter
+- AdapterRegistry
+- CapabilityRouter
 - Gemini Adapter
 - Codex Adapter
 - Copilot Adapter
@@ -83,10 +95,34 @@ Componentes:
 - Claude Adapter
 - Local LLM Adapter
 
+#### Camada de Controle HTTP
+
+Responsável por expor API REST para integração externa.
+
+Componentes:
+
+- FastAPI Application
+- REST Controllers (/runs, /steps, /artifacts, /agents)
+- Async Handlers
+- Webhook Dispatcher
+
+#### Camada de Extensão
+
+Responsável por permitir extensões sem modificar o core.
+
+Componentes:
+
+- Plugin Loader (entry point discovery)
+- Hook Manager (pluggy)
+- HookSpec Definitions
+- Plugin Registry
+
 #### Camada de Execução Autônoma
+
 Conjunto de ferramentas externas executadas sob demanda.
 
 #### Camada de Persistência e Observabilidade
+
 Responsável por persistir runs, steps, artefatos, eventos e relatórios.
 
 ---
@@ -100,6 +136,7 @@ SPEC → TEST_RED → CODE_GREEN → REFACTOR → QUALITY_GATE → SECURITY_REVI
 ```
 
 Regras:
+
 - `DOCKER_PREFLIGHT` é executado pela skill `repo-preflight` quando a feature exigir validação prática em Docker.
 - Em CI e no fluxo local, o `DOCKER_PREFLIGHT` padrão é leve: `compose config` sem `up`; build fica explícito quando necessário.
 - O runtime completo em container fica reservado para workflow dedicado ou acionamento explícito em features que toquem boot, ciclo de vida, persistência ou integração.
@@ -116,22 +153,24 @@ O macroestágio `SPEC` do fluxo oficial engloba `SPEC_DISCOVERY`, `SPEC_NORMALIZ
 
 ### 5.3 Mapeamento macro ↔ estados internos
 
-| Macroestágio (fluxo oficial) | Estados internos do Synapse-Flow |
-|---|---|
-| `SPEC` | `SPEC_DISCOVERY` → `SPEC_NORMALIZATION` → `SPEC_VALIDATION` |
-| `TEST_RED` | `PLAN` → `TEST_RED` |
-| `CODE_GREEN` | `CODE_GREEN` |
-| `REFACTOR` | parte de `CODE_GREEN` (sem estado dedicado no MVP) |
-| `QUALITY_GATE` | `QUALITY_GATE` |
-| `SECURITY_REVIEW` | `SECURITY` |
-| `REPORT` | `DOCUMENT` |
-| `COMMIT` | pós-`COMPLETE` (fora da state machine, ação do operador) |
-| — | `FAILED` (acessível de qualquer estado não-terminal) |
+| Macroestágio (fluxo oficial) | Estados internos do Synapse-Flow                            |
+| ---------------------------- | ----------------------------------------------------------- |
+| `SPEC`                       | `SPEC_DISCOVERY` → `SPEC_NORMALIZATION` → `SPEC_VALIDATION` |
+| `TEST_RED`                   | `PLAN` → `TEST_RED`                                         |
+| `CODE_GREEN`                 | `CODE_GREEN`                                                |
+| `REFACTOR`                   | parte de `CODE_GREEN` (sem estado dedicado no MVP)          |
+| `QUALITY_GATE`               | `QUALITY_GATE`                                              |
+| `SECURITY_REVIEW`            | `SECURITY`                                                  |
+| `REPORT`                     | `DOCUMENT`                                                  |
+| `COMMIT`                     | pós-`COMPLETE` (fora da state machine, ação do operador)    |
+| —                            | `FAILED` (acessível de qualquer estado não-terminal)        |
 
 ### 5.3 Motivação da etapa SPEC
+
 A etapa de especificação transforma intenção em contrato operacional. Ela reduz ambiguidade entre agentes, melhora a geração de testes, aumenta a previsibilidade do parsing e permite validar aderência entre requisito, teste, código e documentação.
 
 ### 5.4 Regras da etapa SPEC
+
 - A entrada é a tarefa bruta do usuário.
 - A saída é uma SPEC híbrida validável.
 - A pipeline não avança para `PLAN` sem validação mínima da SPEC.
@@ -142,7 +181,9 @@ A etapa de especificação transforma intenção em contrato operacional. Ela re
 ## 6. Modelo Runtime
 
 ### 6.1 Modo CLI efêmero
+
 Usado para:
+
 - executar ou validar `DOCKER_PREFLIGHT` antes do trabalho prático dependente de Docker,
 - iniciar runs,
 - executar runs curtas inline,
@@ -150,7 +191,9 @@ Usado para:
 - disparar jobs para execução posterior.
 
 ### 6.2 Worker/daemon residente leve
+
 Usado para:
+
 - consumir runs pendentes,
 - executar o Synapse-Flow,
 - aplicar retries longos,
@@ -158,6 +201,7 @@ Usado para:
 - gerar artefatos e relatório final.
 
 ### 6.3 Motivação do runtime dual
+
 O runtime dual permite preservar a experiência CLI e, ao mesmo tempo, suportar tarefas longas sem bloquear o operador. Também prepara o sistema para crescimento futuro sem obrigar adoção imediata de uma infraestrutura pesada de filas distribuídas.
 
 ---
@@ -220,12 +264,15 @@ O runtime dual permite preservar a experiência CLI e, ao mesmo tempo, suportar 
 ## 8. Módulos Principais
 
 ### 8.1 Orchestrator Engine
+
 Coordena a execução ponta a ponta, cria o contexto da run, invoca o Synapse-Flow e consolida resultados.
 
 ### 8.2 State Machine Manager
+
 Modela e valida estados e transições.
 
 Estados implementados no MVP:
+
 - `REQUEST`
 - `SPEC_DISCOVERY`
 - `SPEC_NORMALIZATION`
@@ -243,22 +290,35 @@ Estados implementados no MVP:
 > **Pós-MVP (não implementados)**: `INIT` e `RETRYING` estão reservados para versões futuras onde o estado de inicialização precisa de rastreamento explícito e retries têm estado próprio na máquina.
 
 ### 8.3 Pipeline Manager
-Executa a sequência de steps. No MVP, a esteira é linear; no futuro, deve suportar DAG com fan-out/fan-in.
+
+Executa a sequência de steps com suporte a DAG.
+
+Funcionalidades:
+
+- Execução linear (pipeline tradicional);
+- Execução paralela de steps independentes via `asyncio.gather`;
+- Fan-out/fan-in para steps com múltiplas dependências;
+- Detecção de ciclos no grafo de dependências;
+- Scheduling otimizado baseado em profundidade do DAG.
 
 ### 8.4 Spec Engine
+
 Responsável por:
+
 - converter a demanda bruta em especificação operacional;
 - normalizar linguagem, escopo, critérios de aceite e restrições;
 - validar schema e completude mínima;
 - produzir artefatos estruturados para planejamento e testes.
 
 Subcomponentes sugeridos:
+
 - `spec_discovery`
 - `spec_normalizer`
 - `spec_validator`
 - `spec_repository`
 
 ### 8.5 CLI Adapter Layer
+
 Abstrai a execução das ferramentas externas.
 
 Contrato mínimo (implementado em `src/synapse_os/contracts.py`):
@@ -279,7 +339,9 @@ class CLIExecutionResult:
 ```
 
 ### 8.6 Parsing Engine
+
 Transforma saídas ruidosas em artefatos estruturados. Deve operar em múltiplas fases:
+
 1. normalização textual,
 2. limpeza via regex,
 3. extração de blocos relevantes,
@@ -287,24 +349,47 @@ Transforma saídas ruidosas em artefatos estruturados. Deve operar em múltiplas
 5. fallback heurístico.
 
 Validações adicionais:
+
 - `ast.parse()` para código Python,
 - Pydantic para contratos internos,
 - JSON Schema para SPEC.
 
 ### 8.7 Memory Engine
-Armazena histórico operacional e memória semântica.
+
+Armazena histórico operacional e memória semântica com indexação.
+
+#### IndexedArtifactStore
+
+Armazenamento estruturado com índices:
+
+- Índice por run_id, step_id, tipo de artefato;
+- Índice por timestamp para consultas temporais;
+- Índice por hash de conteúdo para deduplicação;
+- Consultas rápidas via índices secundários.
+
+#### Namespacing
+
+Isolamento de contexto:
+
+- **Workspace**: projetos diferentes;
+- **Run**: contexto de execução específica;
+- **Step**: contexto de step individual;
+- **Global**: padrões compartilhados.
 
 #### Memória operacional
+
 - runs,
 - steps,
 - eventos,
 - falhas,
 - retries,
 - ferramentas usadas,
-- artefatos gerados.
+- artefatos gerados (via IndexedArtifactStore).
 
 #### Memória semântica
-No MVP, tem papel de apoio:
+
+Papel advisory no MVP:
+
 - registrar padrões úteis,
 - anotar heurísticas,
 - resumir falhas recorrentes,
@@ -312,18 +397,23 @@ No MVP, tem papel de apoio:
 - apoiar análise posterior.
 
 ### 8.8 Adaptive Supervisor
+
 Monitora a run e decide sobre:
-- retry,
-- reroute,
+
+- retry (com backoff exponencial),
+- reroute para outro agente via CapabilityRouter,
 - rollback lógico,
 - falha terminal,
 - reexecução com prompt mais restritivo,
-- retorno para etapa anterior em caso de rejeição ou inconsistência.
+- retorno para etapa anterior em caso de rejeição ou inconsistência,
+- per-step policies (configuração por tipo de step).
 
 ### 8.9 Runtime Coordinator
+
 Coordena a diferença entre execução inline via CLI e execução assíncrona via worker residente.
 
 Responsabilidades:
+
 - criar runs pendentes,
 - aplicar locking,
 - retomar runs,
@@ -331,11 +421,13 @@ Responsabilidades:
 - consolidar estado final.
 
 ### 8.10 Synapse-Flow
+
 O Synapse-Flow é a engine própria de pipeline do SynapseOS. Ele coordena os estados internos da run, os hand-offs entre steps, o encadeamento `SPEC → TEST_RED → CODE_GREEN → REFACTOR → SECURITY_REVIEW → REPORT` e a integração com supervisor, memória e adapters.
 
 ---
 
 ## 9. Fluxo de Dados
+
 1. `repo-preflight` valida o `DOCKER_PREFLIGHT` quando a feature exige execução prática.
 2. Usuário envia uma tarefa.
 3. O CLI cria ou dispara uma run.
@@ -348,6 +440,7 @@ O Synapse-Flow é a engine própria de pipeline do SynapseOS. Ele coordena os es
 10. Ao final, é gerado um `RUN_REPORT.md`.
 
 ### 9.1 Artefatos principais por run
+
 - `SPEC.md` — especificação validada
 - `PLAN.md` — plano gerado pelo step PLAN
 - `TESTS_RED.md` ou arquivos de teste — gerados no step TEST_RED
@@ -365,16 +458,19 @@ O Synapse-Flow é a engine própria de pipeline do SynapseOS. Ele coordena os es
 ## 10. Persistência
 
 ### 10.1 MVP
+
 - **SQLite** para metadados operacionais.
 - Arquivos em disco para artefatos (`raw`, `clean`, `spec`, `plan`, `tests`, `code`, `review`, `docs`, `report`).
 
 ### 10.2 Evolução futura
+
 - PostgreSQL para concorrência maior.
 - pgvector ou vector DB dedicado quando a memória semântica evoluir.
 
 ---
 
 ## 11. Tratamento de Erros
+
 - **Falhas de CLI**: detectar binário ausente, erro de autenticação, exit code != 0.
 - **Timeouts**: encerrar subprocesso e marcar step como recuperável ou terminal.
 - **Parsing errors**: tentar reparse ou reexecução com prompt mais restritivo.
@@ -387,9 +483,11 @@ O Synapse-Flow é a engine própria de pipeline do SynapseOS. Ele coordena os es
 ## 12. Observabilidade
 
 ### 12.1 Logs
+
 Logs estruturados por run e step.
 
 Campos mínimos:
+
 - `run_id`
 - `step`
 - `tool_name`
@@ -401,6 +499,7 @@ Campos mínimos:
 > **Nota**: `parser_confidence` foi considerado mas **não está implementado no MVP**. O campo `ParsedOutput` não expõe score de confiança. Caso a heurística de parsing evolua, esse campo pode ser adicionado ao modelo em versão futura.
 
 ### 12.2 Relatório por execução
+
 Cada run deve produzir:
 
 ```text
@@ -408,6 +507,7 @@ artifacts/<run_id>/RUN_REPORT.md
 ```
 
 Conteúdo mínimo:
+
 - resumo da solicitação,
 - SPEC validada,
 - estados percorridos,
@@ -420,6 +520,7 @@ Conteúdo mínimo:
 ---
 
 ## 13. Segurança e Isolamento
+
 - O sistema roda em container da aplicação.
 - Agentes selecionados podem rodar em containers específicos.
 - Não usar `shell=True` por padrão.
@@ -430,26 +531,32 @@ Conteúdo mínimo:
 ---
 
 ## 14. Escalabilidade e Evolução
-### Curto prazo
-- paralelizar alguns steps com `asyncio`;
-- permitir worker residente consumir múltiplas runs;
-- expandir o Synapse-Flow para DAG simples.
+
+### Curto prazo (implementado neste sprint)
+
+- ~~paralelizar alguns steps com `asyncio`~~ ✅ DAG pipeline com execução paralela;
+- ~~permitir worker residente consumir múltiplas runs~~ ✅ Worker leve residente;
+- ~~expandir o Synapse-Flow para DAG simples~~ ✅ DAG execution implementado.
 
 ### Médio prazo
-- DAG pipeline real;
+
 - workers distribuídos;
 - PostgreSQL;
-- vector memory.
+- vector memory;
+- roteamento automático por memória semântica.
 
 ### Longo prazo
+
 - orquestração distribuída durável;
 - múltiplos workspaces/branches efêmeras por run;
-- políticas adaptativas influenciadas por memória semântica.
+- políticas adaptativas influenciadas por memória semântica;
+- plugin ecosystem maduro.
 
 ---
 
 ## 15. Documentos Relacionados
+
 - TDD do SynapseOS
 - template oficial de SPEC
 - documentação de stack e runtime
-- ADR-001 a ADR-009
+- ADR-001 a ADR-015
