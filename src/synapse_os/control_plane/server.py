@@ -153,11 +153,10 @@ def create_app(
 
         try:
             run_repository.mark_run_cancelling(run_id)
-            run_repository.mark_run_cancelled(run_id, current_state=run.current_state)
         except ValueError as err:
             raise HTTPException(status_code=409, detail="Run cannot be cancelled") from err
 
-        return JSONResponse(content={"status": "cancelled", "run_id": run_id})
+        return JSONResponse(content={"status": "cancelling", "run_id": run_id})
 
     @app.get("/api/v1/runtime/status", response_model=RuntimeStatusResponse)
     async def runtime_status() -> RuntimeStatusResponse:
@@ -237,6 +236,7 @@ def _create_spec_from_prompt(prompt: str) -> Path:
         f"# API Run\n\n{prompt}\n"
     )
     spec_path.write_text(spec_content, encoding="utf-8")
+    spec_path.chmod(0o600)
     return spec_path
 
 

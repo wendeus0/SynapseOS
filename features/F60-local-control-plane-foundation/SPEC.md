@@ -1,26 +1,34 @@
 ---
-feature_id: F60
-feature_name: Local Control Plane Foundation
-status: draft
-author: AI Agent
-created: 2026-03-31
+id: F60-local-control-plane-foundation
+type: feature
+summary: Local HTTP API layer exposing SynapseOS core operations programmatically via FastAPI on localhost.
+inputs:
+    - SPEC.md with feature requirements
+    - Existing RunRepository, RuntimeService, ArtifactStore
+outputs:
+    - FastAPI control plane server with REST endpoints
+    - Auth middleware for API token validation
+    - CLI commands for control plane management
+acceptance_criteria:
+    - GET /health returns 200 with runtime status
+    - POST /api/v1/runs creates a run and returns 201
+    - GET /api/v1/runs lists runs with pagination
+    - POST /api/v1/runs/{id}/cancel marks run as cancelled
+    - Auth middleware blocks unauthorized requests with 401
+    - All unit tests pass
+non_goals:
+    - WebSocket streaming
+    - External network binding
+    - Web dashboard
 ---
 
-# F60: Local Control Plane Foundation
+# Contexto
 
-## Objetivo
+Atualmente o SynapseOS só pode ser controlado via CLI (`synapse` command). Não existe interface programática para submeter runs remotamente, consultar status em tempo real, monitorar o runtime, cancelar runs ou listar artefatos gerados.
+
+# Objetivo
 
 Criar uma camada de API HTTP local (localhost-only) que exponha as operações core do SynapseOS de forma programática, permitindo integração com ferramentas externas sem depender exclusivamente da CLI.
-
-## Problema
-
-Atualmente o SynapseOS só pode ser controlado via CLI (`synapse` command). Não existe interface programática para:
-
-- Submeter runs remotamente
-- Consultar status de runs em tempo real
-- Monitorar o estado do runtime
-- Cancelar runs em execução
-- Listar artefatos gerados
 
 ## Escopo
 
@@ -38,7 +46,6 @@ Atualmente o SynapseOS só pode ser controlado via CLI (`synapse` command). Não
     - `GET /api/v1/artifacts/{run_id}` — listar artefatos de uma run
 - Middleware de autenticação via token (reutilizar auth existente)
 - CORS desabilitado por padrão (localhost-only)
-- Logs estruturados de requests via structlog
 
 ### Out of scope
 
@@ -97,10 +104,10 @@ Atualmente o SynapseOS só pode ser controlado via CLI (`synapse` command). Não
 
 ### AC8: Autenticação por token
 
-- Token pode ser configurado via env `SYNAPSE_API_TOKEN` ou config
+- Token pode ser configurado via env `SYNAPSE_OS_API_TOKEN` ou config
 - Requests sem token válido retornam `401 Unauthorized`
 - Health check (`/health`) é público (sem auth)
-- Se `SYNAPSE_API_TOKEN` não estiver definido, auth é desabilitada (modo dev)
+- Se `SYNAPSE_OS_API_TOKEN` não estiver definido, auth é desabilitada (modo dev)
 
 ### AC9: Porta configurável
 

@@ -161,8 +161,8 @@ class TestPluginRegistry:
         mock_ep = MagicMock()
         mock_ep.name = "no-manifest-plugin"
         mock_ep.load.return_value.hook_manifest = None
-        with patch("importlib.metadata.entry_points") as mock_eps:
-            mock_eps.return_value.select.return_value = [mock_ep]
+        with patch("synapse_os.plugins.entry_points") as mock_eps:
+            mock_eps.return_value = [mock_ep]
             registry.load_plugins()
         assert "no-manifest-plugin" not in registry.list_plugins()
 

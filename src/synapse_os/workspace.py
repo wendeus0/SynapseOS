@@ -66,8 +66,13 @@ class WorkspacePool(BaseModel):
     workspace_counter: int = Field(default=0)
 
     def acquire(self, run_id: str) -> TrackedWorkspace:
-        if self.acquired_count >= self.max_size and not self.idle_workspaces:
-            raise PoolExhaustedError(f"Pool exhausted: {self.max_size}/{self.max_size}")
+        if self.idle_workspaces:
+            ws = self.idle_workspaces.pop(0)
+            ws.mark_ready(run_id)
+            self.acquired_count += 1
+            return ws
+        if self.acquired_count >= self.max_size:
+            raise PoolExhaustedError(f"Pool exhausted: {self.acquired_count}/{self.max_size}")
         self.workspace_counter += 1
         ws_root = self.base_dir / f"ws-{self.workspace_counter}"
         ws_root.mkdir(parents=True, exist_ok=True)
@@ -83,12 +88,14 @@ class WorkspacePool(BaseModel):
         self.acquired_count -= 1
 
     def discard(self, ws: TrackedWorkspace) -> None:
-        if ws in self.idle_workspaces:
+        was_idle = ws in self.idle_workspaces
+        if was_idle:
             self.idle_workspaces.remove(ws)
         if ws.root.exists():
             shutil.rmtree(ws.root)
         ws.mark_destroyed()
-        self.acquired_count -= 1
+        if not was_idle:
+            self.acquired_count -= 1
 
     @property
     def idle_count(self) -> int:

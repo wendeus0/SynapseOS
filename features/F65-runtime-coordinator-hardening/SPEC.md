@@ -27,7 +27,7 @@ O `RuntimeCoordinator` em `runtime/service.py` é o componente central que geren
 - Health check granular
 - Integração de observabilidade com o sistema de eventos existente
 
-# Decisão
+# Objetivo
 
 Introduzir um **RuntimeCoordinator reforçado** que:
 

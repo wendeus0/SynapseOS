@@ -141,7 +141,8 @@ class AdvancedSupervisor(BaseModel):
 
     def _is_short_circuit(self, error: Exception) -> bool:
         if isinstance(error, AdapterOperationalError):
-            return error.category == "launcher_unavailable"
+            category = getattr(error, "category", None) or getattr(error, "reason", None)
+            return category == "launcher_unavailable"
         return False
 
     def decide_after_failure(

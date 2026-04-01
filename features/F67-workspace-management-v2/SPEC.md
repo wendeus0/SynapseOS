@@ -1,32 +1,36 @@
 ---
 id: F67-workspace-management-v2
 type: feature
-summary: Workspace Management v2 with per-run workspace isolation, workspace lifecycle hooks, and workspace pool for reuse.
-status: ready
-created: 2026-03-31
-owner: agent
-inputs: []
-outputs: []
+summary: Workspace Management v2 with per-run workspace isolation, lifecycle hooks, and workspace pool for reuse.
+inputs:
+    - Existing WorkspaceProvider protocol
+    - Run lifecycle events
+outputs:
+    - WorkspaceState enum and TrackedWorkspace model
+    - WorkspacePool with acquire/release/discard
+    - WorkspaceManager integrating providers and pool
 acceptance_criteria:
     - WorkspaceProvider creates isolated per-run workspace directories
-    - WorkspaceProvider tracks workspace lifecycle (creating/ready/cleanup)
+    - WorkspaceProvider tracks workspace lifecycle states
     - Workspace cleanup hook is called when run completes
     - Workspace pool holds up to N reusable idle workspaces
     - Reuse of pooled workspace resets its contents
-    - All new unit tests pass; existing workspace tests continue to pass
-non_goals: []
+    - All unit tests pass
+non_goals:
+    - Cross-session workspace persistence
+    - Workspace templates
+    - Multi-tenant isolation
 ---
 
 # Contexto
 
-O sistema atual de workspace em `runtime_contracts.py` (`WorkspaceProvider`, `LocalWorkspaceProvider`, `RunScopedWorkspaceProvider`) não suporta:
+O sistema atual de workspace em `runtime_contracts.py` (`WorkspaceProvider`, `LocalWorkspaceProvider`, `RunScopedWorkspaceProvider`) não suporta pool de workspaces para reuse, lifecycle hooks de cleanup, tracking de estado ou reset de workspace antes de reuse.
 
-- Pool de workspaces para reuse
-- Lifecycle hooks de cleanup
-- Tracking de estado de workspace (creating/ready/cleanup)
-- Reset de workspace antes de reuse
+# Objetivo
 
-# Decisão
+Introduzir WorkspaceState enum, TrackedWorkspace, WorkspacePool com acquire/release/reset, Lifecycle hooks de cleanup, e WorkspaceManager que integra providers + pool.
+
+## 1. Decision
 
 Introduzir:
 
@@ -35,9 +39,9 @@ Introduzir:
 3. **WorkspacePool** — pool fixo de workspaces idle que podem ser reutilizados
 4. **Lifecycle hooks** — `on_workspace_cleanup(path)` callback
 
-# Escopo
+## 2. Scope
 
-## Dentro do Escopo
+### In Scope
 
 - `WorkspaceState` enum
 - `TrackedWorkspace` model
@@ -45,13 +49,13 @@ Introduzir:
 - `WorkspaceManager` que integra providers + pool
 - Unit tests
 
-## Fora do Escopo
+### Out of Scope
 
 - Persistência de workspace entre sessões
 - Workspace templates
 - Multi-tenant workspace isolation
 
-# Arquivos
+## 3. Files
 
 - `src/synapse_os/workspace.py` (novo)
 - `tests/unit/test_workspace_v2.py` (novo)

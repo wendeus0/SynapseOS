@@ -24,7 +24,7 @@ O `Supervisor` atual em `supervisor.py` suporta apenas três ações: `retry`, `
 
 O supervisor do Synapse-Flow precisa evoluir de um contador plano para um sistema driven por políticas onde diferentes categorias de erro, steps e adapters podem ter políticas de retry/comportamento distintas.
 
-# Decisão
+# Objetivo
 
 Introduzir um **supervisor orientado a políticas** que:
 

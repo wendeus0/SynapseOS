@@ -41,7 +41,6 @@ class RunDetailResponse(BaseModel):
 
 class RunCreateRequest(BaseModel):
     prompt: str = Field(..., min_length=1)
-    mode: str = Field(default="async", pattern="^(sync|async|auto)$")
 
 
 class RunCreateResponse(BaseModel):

@@ -172,7 +172,7 @@ def build_command(self, prompt: str) -> list[str]:
 **CVSS:** 8.1 (AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:H/A:L)
 
 **Description:**
-Prompt is interpolated directly into Python code string:
+Prompt is passed as a command-line argument (argv[1]) to `python -c`:
 
 ```python
 return [
@@ -180,13 +180,13 @@ return [
     "-c",
     "import os, sys; "
     "key = os.environ.get('SYNAPSE_OS_GEMINI_API_KEY'); "
-    f"print(f'Gemini response to: {sys.argv[1]}') "  # Injection via argv
+    "print(f'Gemini response to: {sys.argv[1]}') "
     "if key else sys.exit('Error: SYNAPSE_OS_GEMINI_API_KEY not set')",
     prompt,  # Passed as argv[1]
 ]
 ```
 
-If prompt contains: `"' + __import__('os').system('rm -rf /') + '"`
+The prompt is passed as a data argument (argv[1]), not interpolated into the Python source string, so it is not code injection. However, it is still passed via command line which can expose it to other local users via `/proc/<pid>/cmdline`.
 
 **Mitigation:**
 Pass prompt via stdin or environment variable instead of command line.

@@ -1,26 +1,34 @@
 ---
-feature_id: F61
-title: DAG Pipeline Evolution
-status: draft
-created: 2026-03-31
-owner: agent
-tags: [architecture, pipeline, dag, execution-model]
+id: F61-dag-pipeline-evolution
+type: feature
+summary: DAG-aware pipeline executor with parallel step execution, fan-out/fan-in, cycle detection, and linear fallback.
+inputs:
+    - SPEC.md with dag metadata
+    - PipelineEngine
+outputs:
+    - DAGExecutor with ThreadPoolExecutor parallel dispatch
+    - DAGValidator with Kahn cycle detection
+    - LinearPipelineAdapter for backward compatibility
+acceptance_criteria:
+    - DAG mode executes independent steps in parallel
+    - Cycle detection raises DAGSpecificationError
+    - Fan-in steps wait for all dependencies
+    - Linear fallback works when mode is linear
+    - All unit tests pass
+non_goals:
+    - Dynamic DAG construction at runtime
+    - Distributed execution
 ---
 
-# F61 — DAG Pipeline Evolution
+# Contexto
 
-## 1. Context
+The current `SynapseStateMachine` enforces a strictly linear state flow. Every pipeline step executes sequentially. This becomes a bottleneck when multiple independent steps could run in parallel, when fan-out/fan-in patterns are needed, or when conditional routing is required. Synapse-Flow, as the proprietary pipeline engine of SynapseOS, needs to evolve from a linear executor to a DAG-aware executor while maintaining backward compatibility.
 
-The current `SynapseStateMachine` enforces a strictly linear state flow (`LINEAR_STATE_FLOW`) with a single loopback: `REVIEW → CODE_GREEN`. Every pipeline step executes sequentially — one after the next. This works for single-task features but becomes a bottleneck when:
+# Objetivo
 
-- Multiple independent test files or implementation modules could be built in parallel.
-- A feature has conditional branches (e.g., "if API, do X; if CLI, do Y").
-- A step's output is needed by multiple downstream steps (fan-out).
-- A step must wait for multiple upstream steps to complete before starting (fan-in).
+Introduce a DAG mode that coexists with the existing linear mode. When a SPEC contains DAG metadata, the `PipelineEngine` switches to a `DAGExecutor` that resolves step dependencies and schedules work in parallel. When no DAG metadata is present, the system behaves exactly as before.
 
-Synapse-Flow, as the proprietary pipeline engine of SynapseOS, needs to evolve from a linear executor to a DAG-aware executor while maintaining backward compatibility with existing linear pipelines.
-
-## 2. Problem Statement
+## 1. Problem Statement
 
 The linear pipeline model limits throughput on multi-core hosts and cannot express conditional or data-flow-driven execution graphs. The system needs to support:
 
@@ -32,7 +40,7 @@ The linear pipeline model limits throughput on multi-core hosts and cannot expre
 
 All while keeping the existing linear pipeline as the default mode for simple features.
 
-## 3. Decision
+## 2. Decision
 
 We introduce a **DAG mode** that coexists with the existing linear mode. When a SPEC contains DAG metadata, the `PipelineEngine` switches to a `DAGExecutor` that resolves step dependencies and schedules work accordingly. When no DAG metadata is present, the system behaves exactly as before (linear, sequential).
 
@@ -73,9 +81,9 @@ The `DAGExecutor`:
 6. Supports fan-in synchronization (wait for all dependencies before next step starts).
 7. Falls back to linear order when `mode: linear` or no `dag` key present.
 
-## 4. Scope
+## 3. Scope
 
-### 4.1 In Scope
+### 3.1 In Scope
 
 - `DAGValidator`: validates DAG structure (no cycles, referenced steps exist, no orphan steps).
 - `DAGExecutor`: adjacency-list graph, Kahn topological sort, thread-pool-based parallel dispatch.
@@ -87,7 +95,7 @@ The `DAGExecutor`:
 - Unit tests covering: cycle detection, topological sort, fan-out, fan-in, linear fallback.
 - `LinearPipelineAdapter` — wraps existing linear flow so the same `PipelineEngine` can call either mode.
 
-### 4.2 Out of Scope
+### 3.2 Out of Scope
 
 - Dynamic DAG construction at runtime (steps added based on output of prior steps) — this is a future Phase 3 item.
 - Distributed DAG execution across machines.
@@ -95,7 +103,7 @@ The `DAGExecutor`:
 - Persistence of DAG intermediate state — linear pipeline persistence model is reused.
 - Automatic DAG generation from SPEC content.
 
-## 5. Architecture
+## 4. Architecture
 
 ```
 PipelineEngine
@@ -130,7 +138,7 @@ PipelineEngine
 - `src/synapse_os/specs/validator.py` — accept and parse `dag` key in SPEC front matter
 - `tests/unit/test_pipeline.py` — add DAG mode integration tests (can be minimal)
 
-## 6. Acceptance Criteria
+## 5. Acceptance Criteria
 
 | #   | Criterion                                                                                                                                             |
 | --- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -145,11 +153,11 @@ PipelineEngine
 | 9   | Fan-in synchronization: a step waits for all its `depends_on` to complete, not just one                                                               |
 | 10  | All new unit tests pass; existing linear pipeline tests continue to pass                                                                              |
 
-## 7. Dependencies
+## 6. Dependencies
 
 No new runtime dependencies. ThreadPoolExecutor is stdlib.
 
-## 8. Configuration
+## 7. Configuration
 
 `AppSettings` gains one new field:
 
@@ -157,7 +165,7 @@ No new runtime dependencies. ThreadPoolExecutor is stdlib.
 max_workers: int = Field(default=4, description="Max concurrent DAG step executions")
 ```
 
-## 9. Edge Cases
+## 8. Edge Cases
 
 | Case                                                             | Expected Behavior                                                               |
 | ---------------------------------------------------------------- | ------------------------------------------------------------------------------- |

@@ -532,11 +532,11 @@ Conteúdo mínimo:
 
 ## 14. Escalabilidade e Evolução
 
-### Curto prazo (implementado neste sprint)
+### Curto prazo (em implementação)
 
-- ~~paralelizar alguns steps com `asyncio`~~ ✅ DAG pipeline com execução paralela;
-- ~~permitir worker residente consumir múltiplas runs~~ ✅ Worker leve residente;
-- ~~expandir o Synapse-Flow para DAG simples~~ ✅ DAG execution implementado.
+- paralelizar alguns steps com DAG pipeline — execução paralela implementada em `DAGExecutor`;
+- permitir worker residente consumir múltiplas runs — Worker leve residente implementado;
+- expandir o Synapse-Flow para DAG simples — DAG execution implementado com `DAGExecutor` e `DAGValidator`.
 
 ### Médio prazo
 

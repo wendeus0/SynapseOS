@@ -1,35 +1,48 @@
 ---
-feature_id: F62
-title: Additional CLI Adapter — Copilot
-status: draft
-created: 2026-03-31
-owner: agent
-tags: [adapter, cli, copilot, github]
+id: F62-copilot-adapter
+type: feature
+summary: GitHub Copilot CLI adapter following BaseCLIAdapter pattern with circuit breaker and error classification.
+inputs:
+    - BaseCLIAdapter interface
+    - gh CLI available on PATH
+outputs:
+    - CopilotCLIAdapter class
+    - classify_copilot_execution function
+    - Unit tests
+acceptance_criteria:
+    - CopilotCLIAdapter inherits from BaseCLIAdapter
+    - adapter.capabilities includes code_generation
+    - classify_copilot_execution returns correct categories
+    - Circuit breaker integration works
+    - All unit tests pass
+non_goals:
+    - Interactive shell mode
+    - Bash completion
 ---
 
-# F62 — Additional CLI Adapter: Copilot
+# Contexto
 
-## 1. Context
+The SynapseOS adapter system (`BaseCLIAdapter` in `adapters.py`) currently supports two CLI-based AI runtimes: `CodexCLIAdapter` and `GeminiCLIAdapter`. The architecture supports arbitrary adapters via `BaseCLIAdapter`. GitHub Copilot CLI (`gh copilot`) is a widely-used AI coding assistant that complements Codex and Gemini.
 
-The SynapseOS adapter system (`BaseCLIAdapter` in `adapters.py`) currently supports two CLI-based AI runtimes: `CodexCLIAdapter` (Anthropic Claude Code via Docker) and `GeminiCLIAdapter` (Google Gemini). The architecture supports arbitrary adapters via `BaseCLIAdapter`.
+# Objetivo
 
-GitHub Copilot CLI (`gh copilot`) is a widely-used AI coding assistant that complements Codex and Gemini with unique strengths. Adding a `CopilotCLIAdapter` expands the routing options available to the `CapabilityRouter`.
+Create a `CopilotCLIAdapter` following the existing adapter pattern, expanding the routing options available to the `CapabilityRouter`.
 
-## 2. Decision
+## 1. Decision
 
 Create a `CopilotCLIAdapter` following the existing adapter pattern. The adapter:
 
-1. Calls `gh copilot ai` (or `gh copilot`) as the primary command
+1. Calls `gh copilot ai` as the primary command
 2. Returns a `CLIExecutionResult` with appropriate `success` flag
 3. Classifies execution outcomes using `classify_copilot_execution`
-4. Inherits circuit breaker and semaphore guard behavior from `CodexCLIAdapter`
+4. Inherits circuit breaker and semaphore guard behavior
 5. Has `capabilities = ("cli_execution", "code_generation")` matching Codex
 
 ### Environment Variable
 
-`SYNAPSE_OS_GH_TOKEN` — GitHub CLI token. Required for authentication. If absent, adapter returns `authentication_unavailable`.
+`SYNAPSE_OS_GH_TOKEN` — GitHub CLI token. Required for authentication.
 
-## 3. Scope
+## 2. Scope
 
 ### In Scope
 
@@ -38,7 +51,6 @@ Create a `CopilotCLIAdapter` following the existing adapter pattern. The adapter
 - Error classification: timeout, non-zero exit, authentication failure, unavailable
 - Integration with `AdapterCircuitBreakerStore`
 - Unit tests in `tests/unit/test_copilot_adapter.py`
-- Adapter registered in `multi_agent.py` `AdapterRegistry` (via existing pattern)
 
 ### Out of Scope
 
@@ -46,12 +58,12 @@ Create a `CopilotCLIAdapter` following the existing adapter pattern. The adapter
 - Supporting interactive `gh copilot` shell mode
 - Bash completion or streaming output
 
-## 4. Files
+## 3. Files
 
 - `src/synapse_os/adapters.py` — add `CopilotCLIAdapter` and `classify_copilot_execution`
 - `tests/unit/test_copilot_adapter.py` — unit tests (mock `gh copilot`)
 
-## 5. Acceptance Criteria
+## 4. Acceptance Criteria
 
 | #   | Criterion                                                                                                |
 | --- | -------------------------------------------------------------------------------------------------------- |

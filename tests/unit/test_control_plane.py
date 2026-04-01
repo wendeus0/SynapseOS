@@ -377,7 +377,6 @@ class TestCancelRunEndpoint:
 
         assert response.status_code == 200
         run_repo.mark_run_cancelling.assert_called_once_with("run-1")
-        run_repo.mark_run_cancelled.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_returns_409_for_completed_run(self):

@@ -28,7 +28,7 @@ O `RunReport` atual em `reporting.py` é um arquivo Markdown simples (RUN_REPORT
 - Validação via JSON Schema
 - Campos de feature_id e feature_title
 
-# Decisão
+# Objetivo
 
 Expandir o sistema de relatórios para incluir:
 

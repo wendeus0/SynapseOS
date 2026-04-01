@@ -45,6 +45,7 @@ class AdapterOperationalError(RuntimeError):
         self.tool_name = tool_name
         self.command = command
         self.reason = reason
+        self.message = message
 
 
 class BaseCLIAdapter(ABC):
@@ -395,7 +396,27 @@ class CopilotCLIAdapter(BaseCLIAdapter):
                 success=False,
             )
 
-        result = await super().execute(prompt)
+        try:
+            result = await super().execute(prompt)
+        except AdapterOperationalError as exc:
+            breaker_store.record_operational_failure(
+                self.tool_name,
+                threshold=settings.adapter_circuit_breaker_failure_threshold,
+                cooldown_seconds=settings.adapter_circuit_breaker_cooldown_seconds,
+                now=time.time(),
+            )
+            return CLIExecutionResult(
+                tool_name=self.tool_name,
+                command=exc.command,
+                return_code=1,
+                stdout_raw="",
+                stderr_raw=exc.message,
+                stdout_clean="",
+                stderr_clean=exc.message,
+                duration_ms=0,
+                timed_out=False,
+                success=False,
+            )
         assessment = classify_copilot_execution(result)
         if assessment.category in {
             "launcher_unavailable",

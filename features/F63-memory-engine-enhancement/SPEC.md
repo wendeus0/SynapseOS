@@ -1,21 +1,34 @@
 ---
-feature_id: F63
-title: Memory Engine Enhancement
-status: draft
-created: 2026-03-31
-owner: agent
-tags: [memory, reporting, artifacts, observability]
+id: F63-memory-engine-enhancement
+type: feature
+summary: Artifact metadata, indexed artifact store, and namespace-scoped memory store for run context persistence.
+inputs:
+    - Existing artifact store and report generator
+    - Run context and feature metadata
+outputs:
+    - ArtifactMetadata Pydantic model
+    - IndexedArtifactStore with find_by_tag and find_by_type
+    - MemoryStore with JSON-file backing and namespace isolation
+acceptance_criteria:
+    - ArtifactMetadata has type, tags, source_step, created_at fields
+    - IndexedArtifactStore.find_by_tag returns tagged artifacts
+    - MemoryStore.get/set/delete works with namespace isolation
+    - feature_memory returns namespaced view
+    - All unit tests pass
+non_goals:
+    - Vector/semantic search
+    - Cross-process memory sharing
 ---
 
-# F63 — Memory Engine Enhancement
+# Contexto
 
-## 1. Context
+The current `RunReportGenerator` produces basic markdown reports with limited metadata. The `artifact_store` is a simple file-based store with no indexing or search. Memory for feature state is entirely external with no integration into the runtime's artifact model.
 
-The current `RunReportGenerator` produces basic markdown reports with limited metadata. The `artifact_store` is a simple file-based store with no indexing or search. Memory for feature state is entirely external (opencode memory blocks) with no integration into the runtime's artifact model.
+# Objetivo
 
-The system needs to support richer structured metadata for artifacts, a simple in-memory artifact index for fast lookup, and a `MemoryStore` abstraction that provides a clean interface for persisting run context, feature decisions, and cross-run memory — all while keeping the implementation minimal.
+Introduce `ArtifactMetadata`, `IndexedArtifactStore`, and `MemoryStore` to support richer structured metadata, fast artifact lookup, and a clean interface for persisting run context and feature decisions.
 
-## 2. Decision
+## 1. Decision
 
 We introduce three complementary components:
 
@@ -27,7 +40,7 @@ We introduce three complementary components:
 
 These components are purely additive — no existing behavior changes.
 
-## 3. Scope
+## 2. Scope
 
 ### In Scope
 
@@ -36,7 +49,7 @@ These components are purely additive — no existing behavior changes.
 - `MemoryStore` class with JSON-file backing and namespace isolation
 - `feature_memory()` helper on `MemoryStore` returning a namespaced view
 - Unit tests for all three components
-- `ArtifactMetadata` attached to `StepExecutionResult`
+- `ArtifactMetadata` attached to `StepExecutionResult` artifacts field (optional key)
 
 ### Out of Scope
 
@@ -45,12 +58,12 @@ These components are purely additive — no existing behavior changes.
 - Automatic memory population from runs
 - Integration with opencode memory blocks
 
-## 4. Files
+## 3. Files
 
 - `src/synapse_os/memory.py` — all new memory/artifact index classes
 - `tests/unit/test_memory.py` — unit tests
 
-## 5. Acceptance Criteria
+## 4. Acceptance Criteria
 
 | #   | Criterion                                                                                             |
 | --- | ----------------------------------------------------------------------------------------------------- |
@@ -59,6 +72,6 @@ These components are purely additive — no existing behavior changes.
 | 3   | `IndexedArtifactStore.find_by_type("test_report")` returns artifacts of that type                     |
 | 4   | `MemoryStore.set("ns", "key", "value")` persists and `get("ns", "key")` retrieves it                  |
 | 5   | `MemoryStore.list_namespaces()` returns all namespaces                                                |
-| 6   | `feature_memory("F59")` returns a namespaced view that only touches F59 keys                          |
+| 6   | `feature_memory("F63")` returns a namespaced view that only touches F63 keys                          |
 | 7   | All unit tests pass; existing tests continue to pass                                                  |
 | 8   | `ArtifactMetadata` is added to `StepExecutionResult` artifacts field (optional key)                   |

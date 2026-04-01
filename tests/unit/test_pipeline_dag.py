@@ -401,9 +401,7 @@ class TestDAGExecutor:
         )
         executor.execute()
 
-        assert (
-            max(sum(concurrent[i : i + 2]) for i in range(0, len(concurrent), 2)) <= 2
-        )
+        assert max(concurrent) <= 2
 
 
 class TestLinearPipelineAdapter:

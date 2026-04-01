@@ -150,6 +150,8 @@ class DAGExecutor:
         self.spec = spec
         self.max_workers = max_workers
         self.step_runner = step_runner or (lambda _sid, _ctx: None)
+        if spec.mode == "dag":
+            DAGValidator.validate(spec)
         self.context = DAGContext(spec)
 
     def execute(self) -> None:
@@ -171,6 +173,9 @@ class DAGExecutor:
                 if not ready:
                     if not futures:
                         break
+                    import time as _time
+
+                    _time.sleep(0.01)
                     continue
 
                 for step_id in ready:

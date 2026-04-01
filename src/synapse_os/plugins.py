@@ -83,6 +83,9 @@ class PluginRegistry:
             raise PluginLoadError(f"Plugin '{plugin_name}' not registered")
         if plugin_name not in self._hook_map:
             self._hook_map[plugin_name] = {}
+        old_handler = self._hook_map[plugin_name].get(hook_type)
+        if old_handler is not None and old_handler in self._handlers.get(hook_type, []):
+            self._handlers[hook_type].remove(old_handler)
         self._hook_map[plugin_name][hook_type] = handler
         if hook_type not in self._handlers:
             self._handlers[hook_type] = []
@@ -90,7 +93,21 @@ class PluginRegistry:
             self._handlers[hook_type].append(handler)
 
     def get_handlers(self, hook_type: str) -> list[Callable[..., Any]]:
-        return list(self._handlers.get(hook_type, []))
+        handlers = []
+        for hook_type_key, handler_list in self._handlers.items():
+            if hook_type_key != hook_type:
+                continue
+            for handler in handler_list:
+                plugin_name = self._find_plugin_for_handler(handler)
+                if plugin_name is None or self._plugins[plugin_name].enabled:
+                    handlers.append(handler)
+        return handlers
+
+    def _find_plugin_for_handler(self, handler: Callable[..., Any]) -> str | None:
+        for plugin_name, hooks in self._hook_map.items():
+            if handler in hooks.values():
+                return plugin_name
+        return None
 
     def load_plugins(self) -> None:
         eps = entry_points(group="synapse_os.plugins")

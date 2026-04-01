@@ -15,6 +15,10 @@ class AuthMiddleware:
             await self.app(scope, receive, send)
             return
 
+        if scope.get("type") != "http":
+            await self.app(scope, receive, send)
+            return
+
         path = scope.get("path", "")
         if path == "/health":
             await self.app(scope, receive, send)
